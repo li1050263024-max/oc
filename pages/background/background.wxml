@@ -1,0 +1,65 @@
+<view class="page safe-bottom">
+  <view class="bg-solid"></view>
+  <view class="main">
+    <view class="title-wrap">
+      <text class="title">背景故事</text>
+      <text class="subtitle">世界观与人生大事件</text>
+    </view>
+
+    <view class="flip-wrap">
+      <view class="flip-inner {{cardFlipped ? 'flipped' : ''}}">
+        <view class="flip-back draw-card" bindtap="onFlipCard">
+          <view class="draw-card-inner">
+            <text class="draw-card-label">背景故事</text>
+            <text class="draw-card-text">点击翻开</text>
+          </view>
+        </view>
+        <view class="flip-front card-front">
+          <block wx:if="{{!background}}">
+            <view class="btn-wrap">
+              <view class="pixel-btn pixel-btn-primary btn-action" bindtap="onGenerateBackground">
+                <text class="btn-action-text">生成背景故事</text>
+              </view>
+            </view>
+          </block>
+          <block wx:if="{{background}}">
+            <view class="section-card">
+              <view class="card-title">世界观与人生大事件</view>
+              <view class="card-row {{lockedBackground.worldview ? 'row-locked' : ''}}">
+                <text class="label">世界观</text>
+                <input class="value-input" value="{{background.worldview}}" data-key="worldview" bindinput="onBackgroundInput" placeholder="可自行输入" />
+                <view class="lock-btn {{lockedBackground.worldview ? 'locked' : ''}}" bindtap="onLockBackground" data-key="worldview">{{lockedBackground.worldview ? '已锁定' : '锁定'}}</view>
+              </view>
+              <view class="card-row {{lockedBackground.lifeEvent0 ? 'row-locked' : ''}}" wx:if="{{background.lifeEvents[0] !== undefined}}">
+                <text class="label">事件1</text>
+                <input class="value-input" value="{{background.lifeEvents[0]}}" data-key="lifeEvent" data-index="0" bindinput="onBackgroundInput" placeholder="可自行输入" />
+                <view class="lock-btn {{lockedBackground.lifeEvent0 ? 'locked' : ''}}" bindtap="onLockBackground" data-key="lifeEvent0">{{lockedBackground.lifeEvent0 ? '已锁定' : '锁定'}}</view>
+              </view>
+              <view class="card-row {{lockedBackground.lifeEvent1 ? 'row-locked' : ''}}" wx:if="{{background.lifeEvents[1] !== undefined}}">
+                <text class="label">事件2</text>
+                <input class="value-input" value="{{background.lifeEvents[1]}}" data-key="lifeEvent" data-index="1" bindinput="onBackgroundInput" placeholder="可自行输入" />
+                <view class="lock-btn {{lockedBackground.lifeEvent1 ? 'locked' : ''}}" bindtap="onLockBackground" data-key="lifeEvent1">{{lockedBackground.lifeEvent1 ? '已锁定' : '锁定'}}</view>
+              </view>
+              <view class="card-row {{lockedBackground.lifeEvent2 ? 'row-locked' : ''}}" wx:if="{{background.lifeEvents[2] !== undefined}}">
+                <text class="label">事件3</text>
+                <input class="value-input" value="{{background.lifeEvents[2]}}" data-key="lifeEvent" data-index="2" bindinput="onBackgroundInput" placeholder="可自行输入" />
+                <view class="lock-btn {{lockedBackground.lifeEvent2 ? 'locked' : ''}}" bindtap="onLockBackground" data-key="lifeEvent2">{{lockedBackground.lifeEvent2 ? '已锁定' : '锁定'}}</view>
+              </view>
+              <view class="actions actions-small">
+                <view class="pixel-btn pixel-btn-primary btn-action" bindtap="onRedrawBackground">
+                  <text class="btn-action-text">重抽</text>
+                </view>
+              </view>
+            </view>
+            <view class="actions">
+              <view class="pixel-btn pixel-btn-primary btn-action" bindtap="onGoNext">
+                <text class="btn-action-text">下一步：语言与态度</text>
+              </view>
+            </view>
+          </block>
+        </view>
+      </view>
+    </view>
+  </view>
+  <oc-nav current="background" />
+</view>

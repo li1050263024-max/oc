@@ -1,0 +1,134 @@
+<view class="page safe-bottom">
+  <view class="bg-solid"></view>
+
+  <view class="shell">
+    <view class="header-block">
+      <text class="title">OC 抽卡器</text>
+      <text class="subtitle">点击抽卡，遇见你的 OC</text>
+    </view>
+
+    <view class="body-row">
+      <scroll-view
+        class="content-pane content-pane-full"
+        scroll-y
+        enhanced
+        show-scrollbar="{{false}}"
+        scroll-top="{{contentScrollTop}}"
+        scroll-with-animation
+      >
+        <view class="main-content {{!result ? 'main-content-centered' : ''}}">
+          <view class="char-wrap {{result && cardAnimate ? 'card-visible' : 'char-wrap-default'}}">
+            <view class="pixel-char">
+              <view class="char-name">{{result && step >= 1 ? result.name : '抽卡看看'}}</view>
+              <view class="char-head-wrap">
+                <view class="char-head"></view>
+                <view class="char-hair" style="background-color: {{result && step >= 3 ? hairHex : '#9c958c'}};"></view>
+                <view class="char-eyes">
+                  <view class="char-eye" style="background-color: {{result && step >= 4 ? eyeHex : '#4a4540'}};"></view>
+                  <view class="char-eye" style="background-color: {{result && step >= 4 ? eyeHex : '#4a4540'}};"></view>
+                </view>
+              </view>
+              <view class="char-arms-row">
+                <view class="char-arm char-arm-left"></view>
+                <view class="char-torso {{result && step >= 2 ? 'char-torso-race' : ''}}"></view>
+                <view class="char-arm char-arm-right"></view>
+              </view>
+              <view class="char-legs">
+                <view class="char-leg"></view>
+                <view class="char-leg"></view>
+              </view>
+            </view>
+          </view>
+
+          <block wx:if="{{!result}}">
+            <view class="draw-area">
+              <view class="draw-card draw-card-large" bindtap="onStartDraw">
+                <view class="draw-card-inner">
+                  <text class="draw-card-text-only">点击抽卡</text>
+                </view>
+              </view>
+            </view>
+          </block>
+
+          <block wx:if="{{result}}">
+            <view class="reveal-card-wrap">
+              <view class="reveal-card pixel-card {{cardFlipped ? 'card-flipped' : ''}}">
+                <view class="card-title">抽到的设定</view>
+                <view class="card-row {{step >= 6 && locked.name ? 'row-locked' : ''}}" wx:if="{{step >= 1}}">
+                  <text class="label">姓名</text>
+                  <input class="value-input" value="{{result.name}}" data-key="name" bindinput="onResultInput" placeholder="可自行输入" />
+                  <view class="lock-btn {{locked.name ? 'locked' : ''}}" wx:if="{{step >= 6}}" bindtap="onLockToggle" data-key="name">{{locked.name ? '已锁定' : '锁定'}}</view>
+                </view>
+                <view class="card-row {{step >= 6 && locked.race ? 'row-locked' : ''}}" wx:if="{{step >= 2}}">
+                  <text class="label">种族</text>
+                  <input class="value-input" value="{{result.race}}" data-key="race" bindinput="onResultInput" placeholder="可自行输入" />
+                  <view class="lock-btn {{locked.race ? 'locked' : ''}}" wx:if="{{step >= 6}}" bindtap="onLockToggle" data-key="race">{{locked.race ? '已锁定' : '锁定'}}</view>
+                </view>
+                <view class="card-row {{step >= 6 && locked.hairColor ? 'row-locked' : ''}}" wx:if="{{step >= 3}}">
+                  <text class="label">发色</text>
+                  <input class="value-input" value="{{result.hairColor}}" data-key="hairColor" bindinput="onResultInput" placeholder="可自行输入" />
+                  <view class="lock-btn {{locked.hairColor ? 'locked' : ''}}" wx:if="{{step >= 6}}" bindtap="onLockToggle" data-key="hairColor">{{locked.hairColor ? '已锁定' : '锁定'}}</view>
+                </view>
+                <view class="card-row {{step >= 6 && locked.eyeColor ? 'row-locked' : ''}}" wx:if="{{step >= 4}}">
+                  <text class="label">瞳色</text>
+                  <input class="value-input" value="{{result.eyeColor}}" data-key="eyeColor" bindinput="onResultInput" placeholder="可自行输入" />
+                  <view class="lock-btn {{locked.eyeColor ? 'locked' : ''}}" wx:if="{{step >= 6}}" bindtap="onLockToggle" data-key="eyeColor">{{locked.eyeColor ? '已锁定' : '锁定'}}</view>
+                </view>
+                <view class="card-row {{step >= 6 && locked.personality ? 'row-locked' : ''}}" wx:if="{{step >= 5}}">
+                  <text class="label">性格</text>
+                  <input class="value-input" value="{{result.personality}}" data-key="personality" bindinput="onResultInput" placeholder="可自行输入" />
+                  <view class="lock-btn {{locked.personality ? 'locked' : ''}}" wx:if="{{step >= 6}}" bindtap="onLockToggle" data-key="personality">{{locked.personality ? '已锁定' : '锁定'}}</view>
+                </view>
+                <view class="card-row {{step >= 6 && locked.quirk ? 'row-locked' : ''}}" wx:if="{{step >= 6}}">
+                  <text class="label">怪癖</text>
+                  <input class="value-input" value="{{result.quirk}}" data-key="quirk" bindinput="onResultInput" placeholder="可自行输入" />
+                  <view class="lock-btn {{locked.quirk ? 'locked' : ''}}" wx:if="{{step >= 6}}" bindtap="onLockToggle" data-key="quirk">{{locked.quirk ? '已锁定' : '锁定'}}</view>
+                </view>
+              </view>
+            </view>
+
+            <view class="actions actions-six">
+              <block wx:if="{{step < 6}}">
+                <view class="pixel-btn pixel-btn-primary btn-action" bindtap="onNextStep">
+                  <text class="btn-action-text">下一项</text>
+                </view>
+                <view class="pixel-btn btn-action btn-action-disabled btn-action-placeholder"><text class="btn-action-text">重抽</text></view>
+                <view class="pixel-btn btn-action btn-action-disabled btn-action-placeholder"><text class="btn-action-text">收藏</text></view>
+                <view class="pixel-btn btn-action btn-action-disabled btn-action-placeholder"><text class="btn-action-text">重新开始</text></view>
+                <view class="pixel-btn btn-action btn-action-disabled btn-action-placeholder"><text class="btn-action-text">复制文案</text></view>
+                <view class="pixel-btn btn-action btn-action-disabled btn-action-placeholder"><text class="btn-action-text">保存图片</text></view>
+                <view class="pixel-btn btn-action btn-action-disabled btn-action-placeholder"><text class="btn-action-text">完善背景故事</text></view>
+              </block>
+              <block wx:if="{{step >= 6}}">
+                <view class="pixel-btn pixel-btn-primary btn-action" bindtap="onRedrawUnlocked">
+                  <text class="btn-action-text">重抽</text>
+                </view>
+                <view class="pixel-btn btn-action {{saved ? 'btn-action-disabled' : ''}}" bindtap="onFavorite">
+                  <text class="btn-action-text">{{saved ? '已收藏' : '收藏'}}</text>
+                </view>
+                <view class="pixel-btn btn-action" bindtap="onDrawAgain">
+                  <text class="btn-action-text">重新开始</text>
+                </view>
+                <view class="pixel-btn btn-action" bindtap="onCopy">
+                  <text class="btn-action-text">复制文案</text>
+                </view>
+                <view class="pixel-btn btn-action" bindtap="onSaveImage">
+                  <text class="btn-action-text">保存图片</text>
+                </view>
+                <view class="pixel-btn pixel-btn-primary btn-action" bindtap="onGoBackground">
+                  <text class="btn-action-text">完善背景故事</text>
+                </view>
+              </block>
+            </view>
+          </block>
+        </view>
+        <view class="content-bottom-spacer"></view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <oc-nav current="index" bind:home="onNavHomeScroll" />
+
+  <canvas type="2d" id="card-canvas" class="canvas-hidden" style="width: 600px; height: 800px;"></canvas>
+  <canvas type="2d" id="mindmap-canvas" class="canvas-hidden" style="width: 750px; height: 1200px;"></canvas>
+</view>

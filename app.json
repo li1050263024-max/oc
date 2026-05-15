@@ -1,0 +1,26 @@
+{
+  "cloud": true,
+  "pages": [
+    "pages/index/index",
+    "pages/favorites/favorites",
+    "pages/pools/pools",
+    "pages/background/background",
+    "pages/attitude/attitude",
+    "pages/mindmap/mindmap",
+    "pages/ocBio/ocBio",
+    "pages/ocNotebook/ocNotebook",
+    "pages/ocChat/ocChat"
+  ],
+  "window": {
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#faf9f7",
+    "navigationBarTitleText": "OC 抽卡器",
+    "navigationBarTextStyle": "black"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents",
+  "usingComponents": {
+    "oc-nav": "/components/ocNav/ocNav"
+  }
+}

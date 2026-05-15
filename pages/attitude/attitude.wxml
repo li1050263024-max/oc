@@ -1,0 +1,91 @@
+<view class="page safe-bottom">
+  <view class="bg-solid"></view>
+  <view class="main">
+    <view class="title-wrap">
+      <text class="title">语言与态度</text>
+      <text class="subtitle">常用语与面对预设事件的态度</text>
+    </view>
+
+    <view class="flip-wrap">
+      <view class="flip-inner {{cardFlipped ? 'flipped' : ''}}">
+        <view class="flip-back draw-card" bindtap="onFlipCard">
+          <view class="draw-card-inner">
+            <text class="draw-card-label">语言与态度</text>
+            <text class="draw-card-text">点击翻开</text>
+          </view>
+        </view>
+        <view class="flip-front card-front">
+          <block wx:if="{{catchphrases.length === 0 && attitudes.length === 0}}">
+            <view class="btn-wrap">
+              <view class="pixel-btn pixel-btn-primary btn-action" bindtap="onGenerateLayer3">
+                <text class="btn-action-text">生成常用语与态度</text>
+              </view>
+            </view>
+          </block>
+          <block wx:if="{{catchphrases.length > 0 || attitudes.length > 0}}">
+            <view class="section-card">
+              <view class="card-title">常用语与态度</view>
+              <view class="card-row {{lockedLayer3.catchphrase0 ? 'row-locked' : ''}}" wx:if="{{catchphrases[0] !== undefined}}">
+                <text class="label">常用语1</text>
+                <input class="value-input" value="{{catchphrases[0]}}" data-index="0" bindinput="onCatchphraseInput" placeholder="可自行输入" />
+                <view class="lock-btn {{lockedLayer3.catchphrase0 ? 'locked' : ''}}" bindtap="onLockCatchphrase" data-key="catchphrase0">{{lockedLayer3.catchphrase0 ? '已锁定' : '锁定'}}</view>
+              </view>
+              <view class="card-row {{lockedLayer3.catchphrase1 ? 'row-locked' : ''}}" wx:if="{{catchphrases[1] !== undefined}}">
+                <text class="label">常用语2</text>
+                <input class="value-input" value="{{catchphrases[1]}}" data-index="1" bindinput="onCatchphraseInput" placeholder="可自行输入" />
+                <view class="lock-btn {{lockedLayer3.catchphrase1 ? 'locked' : ''}}" bindtap="onLockCatchphrase" data-key="catchphrase1">{{lockedLayer3.catchphrase1 ? '已锁定' : '锁定'}}</view>
+              </view>
+              <view class="card-row {{lockedLayer3.catchphrase2 ? 'row-locked' : ''}}" wx:if="{{catchphrases[2] !== undefined}}">
+                <text class="label">常用语3</text>
+                <input class="value-input" value="{{catchphrases[2]}}" data-index="2" bindinput="onCatchphraseInput" placeholder="可自行输入" />
+                <view class="lock-btn {{lockedLayer3.catchphrase2 ? 'locked' : ''}}" bindtap="onLockCatchphrase" data-key="catchphrase2">{{lockedLayer3.catchphrase2 ? '已锁定' : '锁定'}}</view>
+              </view>
+              <view class="attitude-row {{lockedLayer3.attitude0 ? 'row-locked' : ''}}" wx:if="{{attitudes[0]}}">
+                <text class="label">态度1</text>
+                <view class="attitude-content">
+                  <text class="attitude-event">{{attitudes[0].event}}</text>
+                  <input class="value-input attitude-input" value="{{attitudes[0].attitude}}" data-index="0" bindinput="onAttitudeInput" placeholder="可自行输入态度" />
+                </view>
+                <view class="lock-btn {{lockedLayer3.attitude0 ? 'locked' : ''}}" bindtap="onLockAttitude" data-key="attitude0">{{lockedLayer3.attitude0 ? '已锁定' : '锁定'}}</view>
+              </view>
+              <view class="attitude-row {{lockedLayer3.attitude1 ? 'row-locked' : ''}}" wx:if="{{attitudes[1]}}">
+                <text class="label">态度2</text>
+                <view class="attitude-content">
+                  <text class="attitude-event">{{attitudes[1].event}}</text>
+                  <input class="value-input attitude-input" value="{{attitudes[1].attitude}}" data-index="1" bindinput="onAttitudeInput" placeholder="可自行输入态度" />
+                </view>
+                <view class="lock-btn {{lockedLayer3.attitude1 ? 'locked' : ''}}" bindtap="onLockAttitude" data-key="attitude1">{{lockedLayer3.attitude1 ? '已锁定' : '锁定'}}</view>
+              </view>
+              <view class="attitude-row {{lockedLayer3.attitude2 ? 'row-locked' : ''}}" wx:if="{{attitudes[2]}}">
+                <text class="label">态度3</text>
+                <view class="attitude-content">
+                  <text class="attitude-event">{{attitudes[2].event}}</text>
+                  <input class="value-input attitude-input" value="{{attitudes[2].attitude}}" data-index="2" bindinput="onAttitudeInput" placeholder="可自行输入态度" />
+                </view>
+                <view class="lock-btn {{lockedLayer3.attitude2 ? 'locked' : ''}}" bindtap="onLockAttitude" data-key="attitude2">{{lockedLayer3.attitude2 ? '已锁定' : '锁定'}}</view>
+              </view>
+            </view>
+            <view class="actions actions-layer3">
+              <view class="pixel-btn pixel-btn-primary btn-action" bindtap="onRedrawLayer3">
+                <text class="btn-action-text">重抽</text>
+              </view>
+              <view class="pixel-btn pixel-btn-primary btn-action" bindtap="onGenerateMindMap">
+                <text class="btn-action-text">生成人设图</text>
+              </view>
+              <view class="pixel-btn pixel-btn-primary btn-action" wx:if="{{layer3Ready}}" bindtap="onGoOcChat">
+                <text class="btn-action-text">OC对话</text>
+              </view>
+              <view class="pixel-btn pixel-btn-primary btn-action" wx:if="{{layer3Ready}}" bindtap="onGoOcBio">
+                <text class="btn-action-text">OC小传</text>
+              </view>
+              <view class="pixel-btn btn-action" bindtap="onBackHome">
+                <text class="btn-action-text">返回首页</text>
+              </view>
+            </view>
+          </block>
+        </view>
+      </view>
+    </view>
+  </view>
+  <oc-nav current="attitude" />
+</view>

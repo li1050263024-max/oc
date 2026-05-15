@@ -1,0 +1,55 @@
+<view class="page safe-bottom">
+  <view class="bg-solid"></view>
+  <view class="main">
+    <view class="title-wrap">
+      <text class="title">我的收藏</text>
+      <text class="subtitle" wx:if="{{list.length === 0}}">还没有收藏的 OC，去抽一张吧</text>
+      <text class="subtitle" wx:else>共 {{list.length}} 个</text>
+    </view>
+
+    <view class="list" wx:if="{{list.length > 0}}">
+      <view class="item pixel-card" wx:for="{{list}}" wx:key="id">
+        <view class="item-header">
+          <text class="item-name">{{item.result.name}}</text>
+          <text class="item-race">{{item.result.race}}</text>
+        </view>
+        <view class="item-row"><text class="label">发色</text><text class="value">{{item.result.hairColor}}</text></view>
+        <view class="item-row"><text class="label">瞳色</text><text class="value">{{item.result.eyeColor}}</text></view>
+        <view class="item-row"><text class="label">性格</text><text class="value">{{item.result.personality}}</text></view>
+        <view class="item-row"><text class="label">怪癖</text><text class="value">{{item.result.quirk}}</text></view>
+        <block wx:if="{{item.background && item.background.worldview}}">
+          <view class="item-row item-section"><text class="label">世界观</text><text class="value">{{item.background.worldview}}</text></view>
+          <view class="item-row" wx:for="{{item.background.lifeEvents}}" wx:for-item="ev" wx:key="*this"><text class="label">事件</text><text class="value">{{ev}}</text></view>
+        </block>
+        <block wx:if="{{item.catchphrases && item.catchphrases.length > 0}}">
+          <view class="item-row item-section"><text class="label">常用语</text><text class="value">{{item.catchphrases.join(' / ')}}</text></view>
+        </block>
+        <block wx:if="{{item.attitudes && item.attitudes.length > 0}}">
+          <view class="item-row" wx:for="{{item.attitudes}}" wx:for-item="att" wx:key="event"><text class="label">态度</text><text class="value">{{att.event}} → {{att.attitude}}</text></view>
+        </block>
+        <view class="item-actions">
+          <view class="pixel-btn btn-small" bindtap="onChat" data-id="{{item.id}}">
+            <text class="btn-small-text">对话</text>
+          </view>
+          <view class="pixel-btn btn-small" bindtap="onLoadToNotebook" data-id="{{item.id}}">
+            <text class="btn-small-text">载入设定本</text>
+          </view>
+          <view class="pixel-btn btn-small" bindtap="onCopy" data-id="{{item.id}}">
+            <text class="btn-small-text">复制</text>
+          </view>
+          <view class="pixel-btn btn-small btn-del" bindtap="onDelete" data-id="{{item.id}}">
+            <text class="btn-small-text">删除</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="empty" wx:else>
+      <text class="empty-text">去首页抽一张 OC 吧</text>
+      <view class="pixel-btn pixel-btn-primary btn-back" bindtap="onBackHome">
+        <text class="btn-small-text">返回首页</text>
+      </view>
+    </view>
+  </view>
+  <oc-nav current="favorites" />
+</view>

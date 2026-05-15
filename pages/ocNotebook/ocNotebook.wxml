@@ -1,0 +1,82 @@
+<view class="page safe-bottom">
+  <view class="bg-solid"></view>
+  <scroll-view class="scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <text class="lead">在此手写或修改 OC：基础设定、背景世界观、语言与态度会与抽卡流程共用同一份「进行中」存档。</text>
+
+    <view class="section-card">
+      <view class="section-title">基础设定</view>
+      <view class="preview-row">
+        <view class="mini-char">
+          <view class="mini-hair" style="background-color: {{hairHex}};"></view>
+          <view class="mini-face"></view>
+          <view class="mini-eyes">
+            <view class="mini-eye" style="background-color: {{eyeHex}};"></view>
+            <view class="mini-eye" style="background-color: {{eyeHex}};"></view>
+          </view>
+        </view>
+      </view>
+      <view class="form-row">
+        <text class="form-label">姓名</text>
+        <input class="form-input" value="{{result.name}}" data-key="name" bindinput="onResultInput" placeholder="姓名" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">种族</text>
+        <input class="form-input" value="{{result.race}}" data-key="race" bindinput="onResultInput" placeholder="种族" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">发色</text>
+        <input class="form-input" value="{{result.hairColor}}" data-key="hairColor" bindinput="onResultInput" placeholder="发色" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">瞳色</text>
+        <input class="form-input" value="{{result.eyeColor}}" data-key="eyeColor" bindinput="onResultInput" placeholder="瞳色" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">性格</text>
+        <input class="form-input" value="{{result.personality}}" data-key="personality" bindinput="onResultInput" placeholder="性格" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">怪癖</text>
+        <input class="form-input" value="{{result.quirk}}" data-key="quirk" bindinput="onResultInput" placeholder="怪癖" />
+      </view>
+    </view>
+
+    <view class="section-card">
+      <view class="section-title">背景 · 世界观与人生大事件</view>
+      <view class="form-row block">
+        <text class="form-label">世界观</text>
+        <textarea class="form-textarea" value="{{background.worldview}}" bindinput="onBgWorldview" auto-height placeholder="世界观" maxlength="-1" />
+      </view>
+      <view class="form-row block" wx:for="{{[0,1,2]}}" wx:key="*this">
+        <text class="form-label">事件{{index + 1}}</text>
+        <textarea class="form-textarea" value="{{background.lifeEvents[index]}}" data-index="{{index}}" bindinput="onLifeEvent" auto-height placeholder="人生大事件" maxlength="-1" />
+      </view>
+    </view>
+
+    <view class="section-card">
+      <view class="section-title">语言与态度</view>
+      <view class="form-row block" wx:for="{{[0,1,2]}}" wx:key="*this">
+        <text class="form-label">常用语{{index + 1}}</text>
+        <input class="form-input" value="{{catchphrases[index]}}" data-index="{{index}}" bindinput="onCatchphraseInput" placeholder="常用语" />
+      </view>
+      <view class="att-block" wx:for="{{[0,1,2]}}" wx:key="*this">
+        <text class="form-label">态度{{index + 1}}</text>
+        <input class="form-input sub" value="{{attitudes[index].event}}" data-index="{{index}}" bindinput="onAttitudeEventInput" placeholder="情境 / 事件" />
+        <input class="form-input sub" value="{{attitudes[index].attitude}}" data-index="{{index}}" bindinput="onAttitudeTextInput" placeholder="该情境下的态度" />
+      </view>
+    </view>
+
+    <view class="section-card" wx:if="{{generatedBio}}">
+      <view class="section-title">已生成人物小传</view>
+      <text class="bio-preview" user-select>{{generatedBio}}</text>
+    </view>
+
+    <view class="action-bar">
+      <view class="pixel-btn btn-ghost" bindtap="onSaveNotebook"><text class="btn-t">保存设定</text></view>
+      <view class="pixel-btn pixel-btn-primary" bindtap="onGoMindmap"><text class="btn-t">查看人设图</text></view>
+      <view class="pixel-btn pixel-btn-primary" bindtap="onGoOcBio"><text class="btn-t">去 OC 小传</text></view>
+    </view>
+    <view class="bottom-spacer"></view>
+  </scroll-view>
+  <oc-nav current="notebook" />
+</view>

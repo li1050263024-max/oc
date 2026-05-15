@@ -1,0 +1,31 @@
+<view class="page safe-bottom">
+  <view class="bg-solid"></view>
+  <view class="main">
+    <text class="lead">根据当前 OC 完整设定（或自行修改下方文案），由 DeepSeek 生成一段人物小传；密钥仅在云函数环境变量中配置。</text>
+
+    <view class="section-card">
+      <view class="field-label">设定 / 关键词</view>
+      <textarea
+        class="hints-area"
+        placeholder="例如：银发精灵游侠，表面冷淡其实怕寂寞，在港口城市接悬赏为生……"
+        maxlength="2000"
+        value="{{hints}}"
+        bindinput="onHintsInput"
+        show-confirm-bar="{{false}}"
+        auto-height
+      />
+      <view class="pixel-btn pixel-btn-primary gen-btn" bindtap="onGenerate">
+        <text class="gen-btn-text">{{loading ? '生成中…' : '生成 OC 小传'}}</text>
+      </view>
+    </view>
+
+    <view class="section-card" wx:if="{{bio}}">
+      <view class="out-title">生成结果</view>
+      <text class="bio-text" user-select>{{bio}}</text>
+      <view class="pixel-btn copy-btn" bindtap="onCopyBio">
+        <text class="gen-btn-text">复制全文</text>
+      </view>
+    </view>
+  </view>
+  <oc-nav current="bio" />
+</view>

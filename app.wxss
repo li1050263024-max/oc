@@ -1,0 +1,62 @@
+/** OC 设定抽卡器 - 渐变弥散风格 */
+page {
+  /* 整体背景：弥散渐变效果增强（圆心更亮、线性对比更强） */
+  --diffuse-bg: radial-gradient(ellipse 90% 80% at 50% 25%, rgba(255, 252, 255, 0.95) 0%, rgba(242, 236, 252, 0.7) 22%, rgba(224, 228, 248, 0.35) 48%, rgba(200, 214, 238, 0.1) 70%, transparent 100%),
+    linear-gradient(165deg, #c8bee4 0%, #b8c8e8 20%, #dcc8cc 45%, #b0c4e0 70%, #c4d0e8 100%);
+  --diffuse-card: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.78) 100%);
+  --diffuse-card-solid: rgba(255, 255, 255, 0.85);
+  --diffuse-border: rgba(200, 190, 220, 0.4);
+  --diffuse-accent: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
+  /* 卡背：紫色变浅 15% */
+  --diffuse-card-back: linear-gradient(145deg, #9c8ff7 0%, #b49cfb 40%, #ccc0fd 100%);
+  --diffuse-card-back-shadow: 0 24rpx 56rpx rgba(156, 143, 247, 0.28), 0 12rpx 32rpx rgba(0, 0, 0, 0.06);
+  /* 磨砂玻璃：选项框统一使用 */
+  --glass-bg: rgba(255, 255, 255, 0.42);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-shadow: 0 24rpx 56rpx rgba(0, 0, 0, 0.06), 0 0 0 1rpx rgba(255, 255, 255, 0.5) inset;
+  --diffuse-accent-text: #5b21b6;
+  --diffuse-text: #374151;
+  --diffuse-highlight: #6d28d9;
+  --diffuse-subtle: #7c7c8a;
+  --diffuse-shadow: 0 20rpx 60rpx rgba(139, 92, 246, 0.08), 0 8rpx 24rpx rgba(0, 0, 0, 0.04);
+  --diffuse-shadow-strong: 0 24rpx 48rpx rgba(139, 92, 246, 0.12), 0 12rpx 32rpx rgba(0, 0, 0, 0.06);
+  /* 兼容保留 */
+  --pixel-bg: #f5f0ff;
+  --pixel-card: rgba(255,255,255,0.9);
+  --pixel-border: rgba(200, 190, 220, 0.5);
+  --pixel-accent: #a78bfa;
+  --pixel-text: #374151;
+  --pixel-highlight: #6d28d9;
+  --pixel-subtle: #7c7c8a;
+  background: var(--diffuse-bg);
+  background-attachment: fixed;
+  color: var(--diffuse-text);
+  font-size: 28rpx;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.safe-bottom {
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pixel-btn {
+  border: 1rpx solid var(--glass-border);
+  border-radius: 24rpx;
+  background: var(--glass-bg);
+  backdrop-filter: blur(24rpx);
+  -webkit-backdrop-filter: blur(24rpx);
+  color: var(--diffuse-text);
+  font-weight: 500;
+  box-shadow: var(--glass-shadow);
+}
+.pixel-btn::after {
+  border: none;
+}
+.pixel-btn-primary {
+  background: var(--diffuse-accent);
+  color: #fff;
+  border: none;
+  box-shadow: 0 12rpx 32rpx rgba(167, 139, 250, 0.35);
+}

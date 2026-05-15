@@ -1,0 +1,64 @@
+<view class="page safe-bottom">
+  <view class="bg-solid"></view>
+  <view class="layout">
+    <view class="oc-panel">
+      <text class="panel-title">选择 OC</text>
+      <scroll-view class="oc-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+        <view
+          class="oc-item {{selectedId === item.id ? 'oc-item-active' : ''}}"
+          wx:for="{{ocList}}"
+          wx:key="id"
+          data-id="{{item.id}}"
+          bindtap="onSelectOc"
+        >
+          <text class="oc-item-name">{{item.name}}</text>
+        </view>
+        <view class="oc-empty" wx:if="{{ocList.length === 0}}">
+          <text>暂无 OC。请先在首页抽卡并收藏，或在 OC 设定本中填写姓名。</text>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view class="chat-panel">
+      <view class="chat-head" wx:if="{{selectedName}}">
+        <text class="chat-with">与 {{selectedName}} 对话</text>
+        <text class="chat-clear" bindtap="onClearChat">清空</text>
+      </view>
+      <scroll-view
+        class="chat-scroll"
+        scroll-y
+        scroll-into-view="{{scrollTo}}"
+        enhanced
+        show-scrollbar="{{false}}"
+      >
+        <view class="chat-inner">
+          <view class="msg-hint" wx:if="{{!selectedId}}">请从左侧选择一名 OC</view>
+          <view class="msg-hint" wx:elif="{{messages.length === 0}}">说点什么，让 TA 回应你吧</view>
+          <view
+            class="msg-row {{item.role === 'user' ? 'msg-user' : 'msg-assistant'}}"
+            wx:for="{{messages}}"
+            wx:key="index"
+          >
+            <text class="msg-bubble" user-select>{{item.content}}</text>
+          </view>
+          <view id="chat-bottom" class="chat-anchor"></view>
+        </view>
+      </scroll-view>
+      <view class="composer">
+        <input
+          class="composer-input"
+          value="{{inputText}}"
+          bindinput="onInput"
+          confirm-type="send"
+          bindconfirm="onSend"
+          placeholder="{{selectedId ? '输入消息…' : '请先选择 OC'}}"
+          disabled="{{!selectedId || loading}}"
+        />
+        <view class="pixel-btn pixel-btn-primary send-btn {{loading || !selectedId ? 'disabled' : ''}}" bindtap="onSend">
+          <text class="send-t">发送</text>
+        </view>
+      </view>
+    </view>
+  </view>
+  <oc-nav current="chat" />
+</view>

@@ -1,0 +1,59 @@
+<view class="oc-nav-root">
+  <view
+    class="nav-fab {{popupOpen ? 'nav-fab-open' : ''}}"
+    style="left: {{fabLeft}}px; top: {{fabTop}}px;"
+    bindtap="onTogglePopup"
+  >
+    <text class="nav-fab-icon">{{popupOpen ? '×' : '☰'}}</text>
+  </view>
+
+  <view
+    wx:if="{{popupOpen}}"
+    class="nav-popup"
+    style="left: {{panelLeft}}px; top: {{panelTop}}px;"
+    catchtouchmove="preventBubble"
+  >
+    <view
+      class="nav-popup-head"
+      bindtouchstart="onDragStart"
+      bindtouchmove="onDragMove"
+      bindtouchend="onDragEnd"
+      bindtouchcancel="onDragEnd"
+    >
+      <text class="nav-drag-hint">按住拖动</text>
+      <text class="nav-popup-close" catchtap="onClosePopup">×</text>
+    </view>
+    <view class="nav-popup-list">
+      <view
+        class="nav-popup-item {{current === 'index' ? 'nav-popup-item-active' : ''}}"
+        data-key="index"
+        catchtap="onNavTap"
+      >首页</view>
+      <view
+        class="nav-popup-item {{current === 'favorites' ? 'nav-popup-item-active' : ''}}"
+        data-key="favorites"
+        catchtap="onNavTap"
+      >历史收藏</view>
+      <view
+        class="nav-popup-item {{current === 'pools' ? 'nav-popup-item-active' : ''}}"
+        data-key="pools"
+        catchtap="onNavTap"
+      >选项库</view>
+      <view
+        class="nav-popup-item {{current === 'notebook' ? 'nav-popup-item-active' : ''}}"
+        data-key="notebook"
+        catchtap="onNavTap"
+      >设定本</view>
+      <view
+        class="nav-popup-item {{current === 'chat' ? 'nav-popup-item-active' : ''}} {{layer3Ready ? '' : 'nav-popup-item-disabled'}}"
+        data-key="chat"
+        catchtap="onNavTap"
+      >OC对话</view>
+      <view
+        class="nav-popup-item {{current === 'bio' ? 'nav-popup-item-active' : ''}} {{layer3Ready ? '' : 'nav-popup-item-disabled'}}"
+        data-key="bio"
+        catchtap="onNavTap"
+      >OC小传</view>
+    </view>
+  </view>
+</view>

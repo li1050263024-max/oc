@@ -1,0 +1,51 @@
+<view class="page safe-bottom">
+  <view class="bg-solid"></view>
+  <view class="main">
+    <view class="diagram-title">人设逻辑图</view>
+    <view class="center-node" wx:if="{{result}}">{{result.name}}</view>
+
+    <view class="branch-wrap" wx:if="{{result}}">
+      <view class="branch-card">
+        <view class="branch-title">外貌</view>
+        <view class="branch-detail">种族：{{result.race}}</view>
+        <view class="branch-detail">发色：{{result.hairColor}}</view>
+        <view class="branch-detail">瞳色：{{result.eyeColor}}</view>
+      </view>
+      <view class="branch-card">
+        <view class="branch-title">性格</view>
+        <view class="branch-detail">性格：{{result.personality}}</view>
+        <view class="branch-detail">怪癖：{{result.quirk}}</view>
+      </view>
+      <view class="branch-card" wx:if="{{background && background.worldview}}">
+        <view class="branch-title">世界观</view>
+        <view class="branch-detail">{{background.worldview}}</view>
+      </view>
+      <view class="branch-card" wx:if="{{background && background.lifeEvents && background.lifeEvents.length}}">
+        <view class="branch-title">人生大事件</view>
+        <view class="branch-detail" wx:for="{{background.lifeEvents}}" wx:key="*this">{{index + 1}}. {{item}}</view>
+      </view>
+      <view class="branch-card" wx:if="{{catchphrases && catchphrases.length > 0}}">
+        <view class="branch-title">常用语</view>
+        <view class="branch-detail" wx:for="{{catchphrases}}" wx:key="*this">{{index + 1}}. {{item}}</view>
+      </view>
+      <view class="branch-card" wx:if="{{attitudes && attitudes.length > 0}}">
+        <view class="branch-title">态度</view>
+        <view class="branch-detail" wx:for="{{attitudes}}" wx:key="event">{{item.event}} → {{item.attitude}}</view>
+      </view>
+    </view>
+
+    <view class="actions">
+      <view class="pixel-btn pixel-btn-primary btn-action" bindtap="onSaveImage">
+        <text class="btn-action-text">保存图片</text>
+      </view>
+      <view class="pixel-btn btn-action" bindtap="onShareImage">
+        <text class="btn-action-text">分享</text>
+      </view>
+      <view class="pixel-btn btn-action" bindtap="onBack">
+        <text class="btn-action-text">返回</text>
+      </view>
+    </view>
+  </view>
+  <canvas type="2d" id="mindmap-canvas" class="canvas-hidden" style="width: 750px; height: 1200px;"></canvas>
+  <oc-nav current="mindmap" />
+</view>

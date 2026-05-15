@@ -1,0 +1,42 @@
+<view class="page safe-bottom">
+  <view class="bg-solid"></view>
+  <view class="main">
+    <view class="title-wrap">
+      <text class="title">自定义选项</text>
+      <text class="subtitle">编辑各维度选项，抽卡时将使用你的选项池</text>
+    </view>
+
+    <scroll-view class="sections" scroll-y>
+      <view class="section pixel-card" wx:for="{{sections}}" wx:key="key">
+        <view class="section-title">{{item.label}}选项</view>
+        <view class="item-list">
+          <view class="item-row" wx:for="{{item.list}}" wx:for-item="opt" wx:key="*this">
+            <text class="item-text">{{opt}}</text>
+            <view class="item-del" bindtap="onDelete" data-key="{{item.key}}" data-index="{{index}}">
+              <text class="item-del-text">删除</text>
+            </view>
+          </view>
+        </view>
+        <view class="add-row">
+          <input
+            class="add-input"
+            placeholder="输入新{{item.label}}选项"
+            value="{{item.newVal}}"
+            data-key="{{item.key}}"
+            bindinput="onNewInput"
+          />
+          <view class="pixel-btn pixel-btn-primary btn-add" bindtap="onAdd" data-key="{{item.key}}">
+            <text class="btn-add-text">添加</text>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="bottom-actions">
+      <view class="pixel-btn btn-reset" bindtap="onReset">
+        <text class="btn-reset-text">恢复默认</text>
+      </view>
+    </view>
+  </view>
+  <oc-nav current="pools" />
+</view>
