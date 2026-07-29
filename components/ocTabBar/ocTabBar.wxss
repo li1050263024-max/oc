@@ -90,7 +90,7 @@
 }
 
 .oc-tab-label {
-  font-size: 18rpx;
+  font-size: 16rpx;
   line-height: 1.2;
   color: #a3a3ad;
   white-space: nowrap;
@@ -251,6 +251,29 @@
   border-radius: 50%;
   box-sizing: border-box;
   background: transparent;
+}
+
+.oc-tab-icon--douyin::before {
+  content: '';
+  position: absolute;
+  left: 10rpx;
+  top: 6rpx;
+  width: 20rpx;
+  height: 28rpx;
+  border: 2rpx solid currentColor;
+  border-radius: 8rpx;
+  box-sizing: border-box;
+}
+.oc-tab-icon--douyin::after {
+  content: '';
+  position: absolute;
+  left: 17rpx;
+  top: 15rpx;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 6rpx 0 6rpx 10rpx;
+  border-color: transparent transparent transparent currentColor;
 }
 
 .oc-chat-mode-switch {

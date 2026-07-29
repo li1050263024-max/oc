@@ -1,0 +1,188 @@
+.dy-page {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  background: #0a0a0c;
+  color: #f5f5f7;
+  overflow: hidden;
+}
+
+.dy-top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  padding: calc(12rpx + env(safe-area-inset-top)) 28rpx 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent);
+  pointer-events: none;
+}
+
+.dy-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+  pointer-events: auto;
+}
+
+.dy-top-actions {
+  display: flex;
+  gap: 16rpx;
+  pointer-events: auto;
+}
+
+.dy-top-btn {
+  padding: 8rpx 20rpx;
+  font-size: 24rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1rpx solid rgba(255, 255, 255, 0.18);
+}
+
+.dy-loading,
+.dy-empty {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 40%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24rpx;
+  padding: 0 48rpx;
+  z-index: 5;
+}
+
+.dy-loading-text,
+.dy-empty-text {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.72);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.dy-empty-btn {
+  padding: 14rpx 36rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 26rpx;
+}
+
+.dy-swiper {
+  width: 100%;
+}
+
+.dy-item,
+.dy-card {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.dy-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #141418;
+}
+
+.dy-mask {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 48%;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72));
+  pointer-events: none;
+}
+
+.dy-side {
+  position: absolute;
+  right: 24rpx;
+  bottom: calc(220rpx + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 36rpx;
+  z-index: 6;
+}
+
+.dy-avatar-wrap {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3rpx solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.35);
+}
+
+.dy-avatar {
+  width: 100%;
+  height: 100%;
+}
+
+.dy-avatar--ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #6d28d9;
+  font-size: 36rpx;
+}
+
+.dy-like {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.dy-like-icon {
+  font-size: 52rpx;
+  line-height: 1;
+  text-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.45);
+}
+
+.dy-like--on .dy-like-icon {
+  color: #ff4d6d;
+}
+
+.dy-like-label {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dy-bottom {
+  position: absolute;
+  left: 28rpx;
+  right: 140rpx;
+  bottom: calc(140rpx + env(safe-area-inset-bottom));
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.dy-name {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.dy-caption {
+  font-size: 28rpx;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.dy-tags {
+  font-size: 24rpx;
+  color: rgba(180, 220, 255, 0.9);
+  line-height: 1.4;
+}
+
+.dy-album {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.45);
+}

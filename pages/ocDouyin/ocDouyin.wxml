@@ -1,0 +1,73 @@
+<view class="dy-page">
+  <view class="dy-top">
+    <text class="dy-title">OC 抖音</text>
+    <view class="dy-top-actions">
+      <view class="dy-top-btn" catchtap="onGoMoments">朋友圈</view>
+      <view class="dy-top-btn" catchtap="onRefreshTap">刷新</view>
+    </view>
+  </view>
+
+  <view class="dy-loading" wx:if="{{loading || (generating && !feed.length)}}">
+    <text class="dy-loading-text">{{generating ? '正在生成出镜文案…' : '加载中…'}}</text>
+  </view>
+
+  <view class="dy-empty" wx:elif="{{!feed.length}}">
+    <text class="dy-empty-text">{{emptyHint}}</text>
+    <view class="dy-empty-btn" catchtap="onRefreshTap">再试一次</view>
+  </view>
+
+  <swiper
+    wx:else
+    class="dy-swiper"
+    vertical
+    circular="{{false}}"
+    current="{{current}}"
+    bindchange="onSwiperChange"
+    style="height: {{windowHeight}}px;"
+  >
+    <swiper-item wx:for="{{feed}}" wx:key="id" class="dy-item">
+      <view class="dy-card">
+        <image
+          class="dy-image"
+          src="{{item.imagePath}}"
+          mode="aspectFill"
+          lazy-load
+          data-src="{{item.imagePath}}"
+          catchtap="onPreviewImage"
+        />
+        <view class="dy-mask"></view>
+
+        <view class="dy-side">
+          <view class="dy-avatar-wrap" catchtap="onTapOc" data-oc-id="{{item.ocId}}">
+            <image
+              wx:if="{{item.avatarDisplay}}"
+              class="dy-avatar"
+              src="{{item.avatarDisplay}}"
+              mode="aspectFill"
+            />
+            <view wx:else class="dy-avatar dy-avatar--ph">
+              <text>{{item.avatarLetter}}</text>
+            </view>
+          </view>
+          <view
+            class="dy-like {{item.liked ? 'dy-like--on' : ''}}"
+            catchtap="onToggleLike"
+            data-id="{{item.id}}"
+          >
+            <text class="dy-like-icon">{{item.liked ? '♥' : '♡'}}</text>
+            <text class="dy-like-label">赞</text>
+          </view>
+        </view>
+
+        <view class="dy-bottom">
+          <text class="dy-name" catchtap="onTapOc" data-oc-id="{{item.ocId}}">@{{item.ocName}}</text>
+          <text class="dy-caption" user-select>{{item.content}}</text>
+          <text class="dy-tags" wx:if="{{item.tagText}}">{{item.tagText}}</text>
+          <text class="dy-album" wx:if="{{item.albumName}}">来自图册 · {{item.albumName}}</text>
+        </view>
+      </view>
+    </swiper-item>
+  </swiper>
+
+  <oc-tab-bar current="douyin" flat-top="{{true}}" />
+</view>

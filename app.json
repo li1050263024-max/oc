@@ -90,6 +90,11 @@
       "pages": ["ocMoments"]
     },
     {
+      "root": "pages/ocDouyin",
+      "name": "ocDouyin",
+      "pages": ["ocDouyin"]
+    },
+    {
       "root": "pages/feedback",
       "name": "feedback",
       "pages": ["feedback"]
@@ -115,6 +120,7 @@
         "ocBioHub",
         "ocChat",
         "ocMoments",
+        "ocDouyin",
         "ocStory",
         "ocGroupChat"
       ]

@@ -126,6 +126,41 @@ function parseCommentPlainText(text) {
   return raw.replace(/^[\s"'「『]+|[\s"'」』]+$/g, '').slice(0, 120);
 }
 
+function parseDouyinPostsFromText(text, postCount) {
+  const raw = String(text || '').trim();
+  if (!raw) return [];
+  const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const candidate = fence ? fence[1].trim() : raw;
+  const normalizeOne = (x) => {
+    if (!x) return null;
+    if (typeof x === 'string') {
+      const c = x.trim();
+      return c ? { content: c, tags: [] } : null;
+    }
+    const content = String(x.content || x.caption || x.text || '').trim();
+    if (!content) return null;
+    let tags = [];
+    if (Array.isArray(x.tags)) {
+      tags = x.tags.map((t) => String(t || '').replace(/^#/, '').trim()).filter(Boolean);
+    }
+    return { content: content.slice(0, 80), tags: tags.slice(0, 4) };
+  };
+  try {
+    const obj = JSON.parse(candidate);
+    if (Array.isArray(obj)) {
+      return obj.map(normalizeOne).filter(Boolean).slice(0, postCount || 3);
+    }
+    if (obj && Array.isArray(obj.posts)) {
+      return obj.posts.map(normalizeOne).filter(Boolean).slice(0, postCount || 3);
+    }
+    const one = normalizeOne(obj);
+    return one ? [one] : [];
+  } catch (e) {
+    const plain = parseCommentPlainText(raw);
+    return plain ? [{ content: plain, tags: [] }] : [];
+  }
+}
+
 exports.main = async (event) => {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
@@ -197,6 +232,81 @@ exports.main = async (event) => {
       content = String(content || '').trim();
       if (!content) return { ok: false, errMsg: '模型未返回有效内容' };
       return { ok: true, content };
+    } catch (e) {
+      return { ok: false, errMsg: e.message || '调用失败' };
+    }
+  }
+
+  // OC 抖音：短视频感图文配文
+  if (mode === 'douyin' || mode === 'tiktok' || mode === 'caption') {
+    if (!ocSetting) {
+      return { ok: false, errMsg: '缺少 OC 设定' };
+    }
+    const topicHint =
+      event && event.topicHint != null ? String(event.topicHint).trim() : '';
+    const albumHint =
+      event && event.albumHint != null ? String(event.albumHint).trim() : '';
+    let postCount = Number(event && event.postCount);
+    if (!postCount || postCount < 1) postCount = 1;
+    if (postCount > 3) postCount = 3;
+
+    const DOUYIN_SYSTEM =
+      '你是【独立的中文二次元 OC 角色】，正在发短视频平台（类似抖音）的出镜图文。' +
+      '必须扮演 user 给出的角色名那一人。' +
+      '文案要短、口语、有出镜感；可带 1～3 个话题标签。' +
+      '硬性要求：\n' +
+      '1. 严格符合性格与小传，绝不 OOC；\n' +
+      '2. 12～55 字正文；不要「在吗」式聊天；不要解释自己在拍短视频；\n' +
+      '3. 未确认亲密关系前不要过度黏腻告白；\n' +
+      '4. 不要提真实明星/政治热搜专有名；可用题材池口吻；\n' +
+      '5. 只输出 JSON：{"posts":[{"content":"...","tags":["标签1","标签2"]}]}，posts 长度等于 postCount。';
+
+    let userContent =
+      '角色名：' +
+      ocName +
+      '\n\n【OC 设定】\n' +
+      ocSetting.slice(0, 2800) +
+      '\n\n【人物小传】\n' +
+      (ocBio || '（暂无）').slice(0, 1200) +
+      '\n\n需要条数 postCount=' +
+      postCount;
+    if (topicHint) userContent += '\n\n【本条题材】\n' + topicHint.slice(0, 400);
+    if (albumHint) userContent += '\n\n【图片来源】\n' + albumHint.slice(0, 120);
+    if (chatSummary) {
+      userContent +=
+        '\n\n【与用户的私聊记忆·可含蓄呼应】\n' + chatSummary.slice(0, 1000);
+    }
+    userContent += '\n\n请生成抖音风出镜文案，只输出 JSON。';
+
+    try {
+      const result = await postJson(
+        'api.deepseek.com',
+        '/v1/chat/completions',
+        { Authorization: `Bearer ${apiKey}` },
+        {
+          model: 'deepseek-v4-flash',
+          thinking: { type: 'disabled' },
+          messages: [
+            { role: 'system', content: DOUYIN_SYSTEM },
+            { role: 'user', content: userContent.slice(0, 4800) }
+          ],
+          temperature: 0.85,
+          max_tokens: 320,
+          top_p: 0.9
+        }
+      );
+      const text =
+        result.choices &&
+        result.choices[0] &&
+        result.choices[0].message &&
+        result.choices[0].message.content;
+      let posts = parseDouyinPostsFromText(text, postCount);
+      if (!posts.length) {
+        const plain = parseCommentPlainText(text);
+        if (plain) posts = [{ content: plain, tags: [] }];
+      }
+      if (!posts.length) return { ok: false, errMsg: '模型未返回有效内容' };
+      return { ok: true, posts: posts.slice(0, postCount) };
     } catch (e) {
       return { ok: false, errMsg: e.message || '调用失败' };
     }

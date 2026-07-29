@@ -248,5 +248,10 @@ Page({
       url: '/pages/ocChat/ocChat?ocId=' + encodeURIComponent(ocId),
       fail: () => wx.showToast({ title: '无法打开对话', icon: 'none' })
     });
+  },
+
+  onGoDouyin() {
+    const nav = require('../../utils/nav.js');
+    nav.switchMainTab('douyin');
   }
 });

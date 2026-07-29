@@ -19,6 +19,7 @@ const ROUTES = {
   bio: '/pages/ocBioHub/ocBioHub',
   story: '/pages/ocStory/ocStory',
   moments: '/pages/ocMoments/ocMoments',
+  douyin: '/pages/ocDouyin/ocDouyin',
   feedback: '/pages/feedback/feedback'
 };
 
@@ -27,7 +28,8 @@ const MAIN_TABS = {
   pools: ROUTES.pools,
   story: ROUTES.bio,
   chat: ROUTES.chat,
-  moments: ROUTES.moments
+  moments: ROUTES.moments,
+  douyin: ROUTES.douyin
 };
 
 function getCurrentRoute() {
@@ -46,6 +48,7 @@ function routeKeyFromPath(route) {
     ['ocChat/ocChat', 'chat'],
     ['ocGroupChat/ocGroupChat', 'groupChat'],
     ['ocMoments/ocMoments', 'moments'],
+    ['ocDouyin/ocDouyin', 'douyin'],
     ['ocNotebookEdit', 'notebookEdit'],
     ['ocNotebook/ocNotebook', 'notebook'],
     ['favorites/favorites', 'favorites'],
@@ -177,6 +180,14 @@ function switchMainTab(key) {
     });
     return false;
   }
+  if (key === 'douyin' && !checkAnyOcHasBio()) {
+    wx.showToast({
+      title: '请先在设定本中保存 OC',
+      icon: 'none',
+      duration: 2800
+    });
+    return false;
+  }
 
   const tabRouteKey = key === 'story' ? 'bio' : key === 'chat' ? 'chat' : key;
   const cur = routeKeyFromPath(getCurrentRoute());
@@ -201,7 +212,7 @@ function goTo(key) {
   if (key === 'bio') {
     return switchMainTab('story');
   }
-  if (key === 'notebook' || key === 'pools' || key === 'moments') {
+  if (key === 'notebook' || key === 'pools' || key === 'moments' || key === 'douyin') {
     return switchMainTab(key);
   }
   if (key === 'story') {

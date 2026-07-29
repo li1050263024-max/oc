@@ -10,6 +10,7 @@
         <text class="moments-cover-title">OC 朋友圈</text>
         <text class="moments-cover-sub">点击封面可更换</text>
       </view>
+      <view class="moments-cover-go-dy" catchtap="onGoDouyin">抖音</view>
     </view>
 
     <view class="moments-body">

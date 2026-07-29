@@ -1,0 +1,11 @@
+{
+  "navigationStyle": "custom",
+  "backgroundColor": "#0a0a0c",
+  "backgroundColorTop": "#0a0a0c",
+  "backgroundColorBottom": "#0a0a0c",
+  "backgroundColorContent": "#0a0a0c",
+  "disableScroll": true,
+  "usingComponents": {
+    "oc-tab-bar": "/components/ocTabBar/ocTabBar"
+  }
+}

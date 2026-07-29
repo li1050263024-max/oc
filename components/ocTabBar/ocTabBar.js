@@ -25,7 +25,8 @@ Component({
       { key: 'notebook', label: '设定本', icon: 'book' },
       { key: 'story', label: 'oc故事', icon: 'pen' },
       { key: 'chat', label: 'oc聊天', icon: 'chat' },
-      { key: 'moments', label: '朋友圈', icon: 'moments' }
+      { key: 'moments', label: '朋友圈', icon: 'moments' },
+      { key: 'douyin', label: '抖音', icon: 'douyin' }
     ]
   },
 
@@ -119,6 +120,10 @@ Component({
         return;
       }
       if (key === 'moments' && !hasAnyOcForSocial()) {
+        wx.showToast({ title: '请先在设定本中保存 OC', icon: 'none', duration: 2800 });
+        return;
+      }
+      if (key === 'douyin' && !hasAnyOcForSocial()) {
         wx.showToast({ title: '请先在设定本中保存 OC', icon: 'none', duration: 2800 });
         return;
       }
