@@ -59,7 +59,12 @@ Page({
     this._genLock = true;
     this.setData({ generating: true });
     try {
-      if (!douyinGen.hasAnyOcWithImages()) {
+      // 先修复已缓存 feed 的图片路径
+      await douyinGen.hydrateFeedImagePaths();
+      if (this._alive) this.refreshFeed();
+
+      const hasImg = await douyinGen.hasAnyOcWithImages();
+      if (!hasImg) {
         if (this._alive) {
           this.setData({
             emptyHint: '请先在设定本相册里上传 OC 图片',
@@ -70,6 +75,7 @@ Page({
         return;
       }
       await douyinGen.ensureDouyinForPageOpen();
+      await douyinGen.hydrateFeedImagePaths();
       if (this._alive) this.refreshFeed();
     } catch (e) {
       console.warn('[ocDouyin] generate', e);
@@ -84,14 +90,21 @@ Page({
     const feed = raw.map((item) =>
       Object.assign({}, item, {
         avatarDisplay: item.avatarUrl || '',
-        avatarLetter: String(item.ocName || 'O').slice(0, 1)
+        avatarLetter: String(item.ocName || 'O').slice(0, 1),
+        imageBroken: false,
+        // 加时间戳打破 image 缓存，避免旧路径白屏
+        imageSrc: item.imagePath
+          ? item.imagePath +
+            (String(item.imagePath).indexOf('?') >= 0 ? '&' : '?') +
+            't=' +
+            (item.createdAt || Date.now())
+          : ''
       })
     );
     let emptyHint = '暂无内容';
     if (!feed.length) {
       if (!getOcsWithBio().length) emptyHint = '请先在设定本中保存带小传的 OC';
-      else if (!douyinGen.hasAnyOcWithImages()) emptyHint = '请先在设定本相册里上传 OC 图片';
-      else emptyHint = '正在生成中，下拉或稍后再进…';
+      else emptyHint = '请先在设定本相册里上传 OC 图片，或点刷新重试';
     }
     this.setData({
       feed: feed,
@@ -245,13 +258,39 @@ Page({
   onRefreshTap() {
     if (this._genLock) return;
     this.setData({ generating: true });
-    douyinGen
-      .generateDouyinBatch({ force: true })
+    // 清空失效 feed 后强制重生
+    Promise.resolve()
+      .then(() => douyinGen.hydrateFeedImagePaths())
+      .then(() => douyinGen.generateDouyinBatch({ force: true }))
+      .then(() => douyinGen.hydrateFeedImagePaths())
       .then(() => {
         if (this._alive) this.refreshFeed();
       })
       .finally(() => {
         if (this._alive) this.setData({ generating: false });
       });
+  },
+
+  async onImageError(e) {
+    const idx = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.index;
+    if (idx == null) return;
+    const feed = this.data.feed || [];
+    const item = feed[idx];
+    if (!item) return;
+    try {
+      const fixed = await douyinGen.resolveAlbumImagePath(item.ocId, {
+        id: item.imageId,
+        path: item.imagePath
+      });
+      if (fixed) {
+        this.setData({
+          ['feed[' + idx + '].imagePath']: fixed,
+          ['feed[' + idx + '].imageSrc']: fixed + '?t=' + Date.now(),
+          ['feed[' + idx + '].imageBroken']: false
+        });
+        return;
+      }
+    } catch (_) {}
+    this.setData({ ['feed[' + idx + '].imageBroken']: true });
   }
 });

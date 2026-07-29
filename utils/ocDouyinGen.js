@@ -1,4 +1,5 @@
 const ocAlbum = require('./ocAlbum.js');
+const ocImage = require('./ocImage.js');
 const { getOcsWithBio } = require('./ocSocialEligible.js');
 const { buildOcPromptFromWork } = require('./ocContext.js');
 const { buildSocialPlotContext } = require('./ocSocialContext.js');
@@ -7,6 +8,7 @@ const {
   getMeta,
   setMeta,
   getFeed,
+  saveFeed,
   appendClips,
   newClipId,
   getOcUsedImageIdsToday,
@@ -26,7 +28,24 @@ const FALLBACK_CAPTIONS = [
   '状态一般，图先放着。'
 ];
 
-function collectOcImageCandidates(oc, dateKey) {
+async function resolveAlbumImagePath(ocId, img) {
+  if (!img) return '';
+  const raw = String(img.path || '').trim();
+  if (raw) {
+    const ok = await ocImage.resolveLocalImagePath(raw);
+    if (ok) return ok;
+  }
+  const imageId = String(img.id || '').trim();
+  if (ocId && imageId) {
+    const ext = ocImage.extractImageExt(raw);
+    const rebuilt = ocImage.getOcImageListPath(ocId, imageId, ext);
+    const ok2 = await ocImage.resolveLocalImagePath(rebuilt);
+    if (ok2) return ok2;
+  }
+  return '';
+}
+
+async function collectOcImageCandidates(oc, dateKey) {
   if (!oc || !oc.work) return [];
   const work = ocAlbum.syncWorkImagesFromAlbums(Object.assign({}, oc.work));
   const albums = ocAlbum.normalizeOcAlbums(work);
@@ -35,20 +54,24 @@ function collectOcImageCandidates(oc, dateKey) {
     used[id] = true;
   });
   const out = [];
-  albums.forEach((alb) => {
-    (alb.images || []).forEach((img) => {
-      if (!img || !img.path) return;
-      const iid = String(img.id || img.path);
-      if (used[iid]) return;
+  for (let a = 0; a < albums.length; a++) {
+    const alb = albums[a];
+    const imgs = (alb && alb.images) || [];
+    for (let i = 0; i < imgs.length; i++) {
+      const img = imgs[i];
+      if (!img) continue;
+      const iid = String(img.id || img.path || '');
+      if (!iid || used[iid]) continue;
+      const imagePath = await resolveAlbumImagePath(oc.id, img);
+      if (!imagePath) continue;
       out.push({
         imageId: iid,
-        imagePath: img.path,
+        imagePath: imagePath,
         albumId: alb.id,
         albumName: alb.name || ''
       });
-    });
-  });
-  // 洗牌
+    }
+  }
   for (let i = out.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     const tmp = out[i];
@@ -146,12 +169,13 @@ async function generateDouyinBatch(options) {
 
   const dateKey = localDateKey(now);
   const plans = [];
-  ocs.forEach((oc) => {
-    const imgs = collectOcImageCandidates(oc, dateKey).slice(0, MAX_PER_OC);
+  for (let oi = 0; oi < ocs.length; oi++) {
+    const oc = ocs[oi];
+    const imgs = (await collectOcImageCandidates(oc, dateKey)).slice(0, MAX_PER_OC);
     imgs.forEach((img) => {
       plans.push({ oc: oc, img: img });
     });
-  });
+  }
   if (!plans.length) {
     return { ok: false, reason: 'no_images' };
   }
@@ -232,15 +256,52 @@ async function ensureDouyinForPageOpen() {
   return generateDouyinBatch({ force: false });
 }
 
-function hasAnyOcWithImages() {
+/**
+ * 打开页面时刷新 feed 里的本地图路径，去掉已失效条目
+ */
+async function hydrateFeedImagePaths() {
+  const list = getFeed();
+  if (!list.length) return [];
+  const next = [];
+  let changed = false;
+  for (let i = 0; i < list.length; i++) {
+    const clip = list[i];
+    if (!clip) continue;
+    const resolved = await resolveAlbumImagePath(clip.ocId, {
+      id: clip.imageId,
+      path: clip.imagePath
+    });
+    if (!resolved) {
+      changed = true;
+      continue;
+    }
+    if (resolved !== clip.imagePath) {
+      changed = true;
+      next.push(Object.assign({}, clip, { imagePath: resolved }));
+    } else {
+      next.push(clip);
+    }
+  }
+  if (changed) saveFeed(next);
+  return next;
+}
+
+async function hasAnyOcWithImages() {
   const ocs = getOcsWithBio();
   const dateKey = localDateKey();
   for (let i = 0; i < ocs.length; i++) {
-    if (collectOcImageCandidates(ocs[i], dateKey).length) return true;
-    // 即使今天用完也算有图
+    const found = await collectOcImageCandidates(ocs[i], dateKey);
+    if (found.length) return true;
+    // 今日额度用尽时，仍算「有图」
     const work = ocAlbum.syncWorkImagesFromAlbums(Object.assign({}, ocs[i].work || {}));
-    const flat = ocAlbum.flattenAlbumImages(ocAlbum.normalizeOcAlbums(work));
-    if (flat.length) return true;
+    const albums = ocAlbum.normalizeOcAlbums(work);
+    for (let a = 0; a < albums.length; a++) {
+      const imgs = albums[a].images || [];
+      for (let j = 0; j < imgs.length; j++) {
+        const p = await resolveAlbumImagePath(ocs[i].id, imgs[j]);
+        if (p) return true;
+      }
+    }
   }
   return false;
 }
@@ -249,5 +310,7 @@ module.exports = {
   generateDouyinBatch,
   ensureDouyinForPageOpen,
   hasAnyOcWithImages,
-  collectOcImageCandidates
+  collectOcImageCandidates,
+  hydrateFeedImagePaths,
+  resolveAlbumImagePath
 };

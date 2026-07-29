@@ -28,13 +28,20 @@
     <swiper-item wx:for="{{feed}}" wx:key="id" class="dy-item">
       <view class="dy-card">
         <image
+          wx:if="{{!item.imageBroken && item.imageSrc}}"
           class="dy-image"
-          src="{{item.imagePath}}"
+          src="{{item.imageSrc}}"
           mode="aspectFill"
-          lazy-load
+          lazy-load="{{false}}"
           data-src="{{item.imagePath}}"
+          data-index="{{index}}"
+          binderror="onImageError"
           catchtap="onPreviewImage"
         />
+        <view wx:else class="dy-image dy-image--broken">
+          <text class="dy-broken-text">图片暂不可用</text>
+          <text class="dy-broken-sub">可到设定本相册重新上传，或点右上角刷新</text>
+        </view>
         <view class="dy-mask"></view>
 
         <view class="dy-side">

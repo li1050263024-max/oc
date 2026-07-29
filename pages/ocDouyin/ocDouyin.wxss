@@ -89,6 +89,28 @@
   background: #141418;
 }
 
+.dy-image--broken {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  background: #1a1a20;
+}
+
+.dy-broken-text {
+  font-size: 30rpx;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.dy-broken-sub {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 0 48rpx;
+  text-align: center;
+  line-height: 1.4;
+}
+
 .dy-mask {
   position: absolute;
   left: 0;
