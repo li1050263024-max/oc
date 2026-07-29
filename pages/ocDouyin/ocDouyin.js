@@ -11,7 +11,11 @@ Page({
     loading: true,
     generating: false,
     emptyHint: '暂无内容',
-    windowHeight: 600
+    windowHeight: 600,
+    commentOpen: false,
+    commentClipId: '',
+    commentList: [],
+    commentText: ''
   },
 
   onLoad() {
@@ -37,6 +41,17 @@ Page({
     }
     this.refreshFeed();
     this._ensureGenerate();
+  },
+
+  onShareAppMessage() {
+    const feed = this.data.feed || [];
+    const cur = feed[this.data.current] || feed[0] || {};
+    const name = cur.ocName || 'OC';
+    const caption = String(cur.content || '').slice(0, 36);
+    return {
+      title: caption ? name + '：' + caption : '来看 ' + name + ' 的 OC 抖音',
+      path: '/pages/ocDouyin/ocDouyin'
+    };
   },
 
   async _ensureGenerate() {
@@ -105,7 +120,6 @@ Page({
   onSwiperChange(e) {
     const cur = (e && e.detail && e.detail.current) || 0;
     this.setData({ current: cur });
-    // 滑到末尾附近再补生成
     const feed = this.data.feed || [];
     if (feed.length && cur >= feed.length - 2 && !this._genLock) {
       this._ensureGenerate();
@@ -117,6 +131,90 @@ Page({
     if (!id) return;
     douyinStore.toggleLike(id);
     this.refreshFeed();
+  },
+
+  onToggleFavorite(e) {
+    const id = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id;
+    if (!id) return;
+    const on = douyinStore.toggleFavorite(id);
+    this.refreshFeed();
+    wx.showToast({
+      title: on ? '已收藏' : '已取消收藏',
+      icon: 'none',
+      duration: 1200
+    });
+  },
+
+  onOpenComment(e) {
+    const id = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id;
+    if (!id) return;
+    this.setData({
+      commentOpen: true,
+      commentClipId: id,
+      commentList: douyinStore.getComments(id),
+      commentText: ''
+    });
+  },
+
+  onCloseComment() {
+    this.setData({
+      commentOpen: false,
+      commentClipId: '',
+      commentList: [],
+      commentText: ''
+    });
+  },
+
+  onCommentInput(e) {
+    this.setData({ commentText: (e && e.detail && e.detail.value) || '' });
+  },
+
+  onSubmitComment() {
+    const id = this.data.commentClipId;
+    const text = String(this.data.commentText || '').trim();
+    if (!id) return;
+    if (!text) {
+      wx.showToast({ title: '写点内容再发', icon: 'none' });
+      return;
+    }
+    douyinStore.addComment(id, text);
+    this.setData({
+      commentText: '',
+      commentList: douyinStore.getComments(id)
+    });
+    this.refreshFeed();
+  },
+
+  onShareTap(e) {
+    const id = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id;
+    const clip =
+      (this.data.feed || []).find((x) => x && x.id === id) ||
+      (this.data.feed || [])[this.data.current] ||
+      null;
+    if (!clip) return;
+    const shareText =
+      '@' +
+      (clip.ocName || 'OC') +
+      '\n' +
+      String(clip.content || '') +
+      (clip.tagText ? '\n' + clip.tagText : '');
+    wx.showActionSheet({
+      itemList: ['复制文案', '分享给朋友（右上角···）'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          wx.setClipboardData({
+            data: shareText,
+            success: () => wx.showToast({ title: '已复制', icon: 'success' })
+          });
+        } else if (res.tapIndex === 1) {
+          wx.showToast({
+            title: '请点右上角 ··· 转发给朋友',
+            icon: 'none',
+            duration: 2500
+          });
+        }
+      }
+    });
   },
 
   onTapOc(e) {

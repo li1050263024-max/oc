@@ -201,6 +201,9 @@ async function generateDouyinBatch(options) {
         content: cap.content,
         tags: cap.tags || [],
         topicId: topic.id,
+        likeBase: 3 + Math.floor(Math.random() * 40),
+        commentBase: Math.floor(Math.random() * 8),
+        favBase: Math.floor(Math.random() * 12),
         createdAt: now - i * 1000,
         source: 'douyin'
       };

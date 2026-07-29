@@ -101,12 +101,12 @@
 
 .dy-side {
   position: absolute;
-  right: 24rpx;
-  bottom: calc(220rpx + env(safe-area-inset-bottom));
+  right: 20rpx;
+  bottom: calc(200rpx + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 36rpx;
+  gap: 28rpx;
   z-index: 6;
 }
 
@@ -132,26 +132,41 @@
   font-size: 36rpx;
 }
 
-.dy-like {
+.dy-action {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6rpx;
+  min-width: 72rpx;
 }
 
-.dy-like-icon {
-  font-size: 52rpx;
+.dy-action-icon {
+  font-size: 48rpx;
   line-height: 1;
   text-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.45);
 }
 
-.dy-like--on .dy-like-icon {
+.dy-action-icon--comment {
+  font-size: 40rpx;
+}
+
+.dy-action-icon--share {
+  font-size: 44rpx;
+  font-weight: 700;
+}
+
+.dy-action--like-on .dy-action-icon {
   color: #ff4d6d;
 }
 
-.dy-like-label {
-  font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.85);
+.dy-action--fav-on .dy-action-icon {
+  color: #ffd666;
+}
+
+.dy-action-label {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.4);
 }
 
 .dy-bottom {
@@ -185,4 +200,107 @@
 .dy-album {
   font-size: 22rpx;
   color: rgba(255, 255, 255, 0.45);
+}
+
+/* 评论半屏 */
+.dy-sheet-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.dy-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 41;
+  height: 58%;
+  background: #16161a;
+  border-radius: 28rpx 28rpx 0 0;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: calc(12rpx + env(safe-area-inset-bottom));
+}
+
+.dy-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 28rpx 12rpx;
+}
+
+.dy-sheet-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #f5f5f7;
+}
+
+.dy-sheet-close {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 8rpx 12rpx;
+}
+
+.dy-sheet-list {
+  flex: 1;
+  padding: 8rpx 28rpx 16rpx;
+  box-sizing: border-box;
+}
+
+.dy-comment-empty {
+  padding: 48rpx 0;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 26rpx;
+}
+
+.dy-comment-item {
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.dy-comment-author {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.dy-comment-text {
+  font-size: 28rpx;
+  color: #f0f0f2;
+  line-height: 1.45;
+}
+
+.dy-sheet-compose {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 12rpx 20rpx 8rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
+}
+
+.dy-sheet-input {
+  flex: 1;
+  height: 72rpx;
+  padding: 0 24rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 26rpx;
+}
+
+.dy-sheet-send {
+  padding: 14rpx 28rpx;
+  border-radius: 999rpx;
+  background: #fe2c55;
+  color: #fff;
+  font-size: 26rpx;
+  font-weight: 600;
 }

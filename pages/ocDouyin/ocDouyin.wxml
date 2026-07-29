@@ -49,13 +49,41 @@
               <text>{{item.avatarLetter}}</text>
             </view>
           </view>
+
           <view
-            class="dy-like {{item.liked ? 'dy-like--on' : ''}}"
+            class="dy-action {{item.liked ? 'dy-action--like-on' : ''}}"
             catchtap="onToggleLike"
             data-id="{{item.id}}"
           >
-            <text class="dy-like-icon">{{item.liked ? '♥' : '♡'}}</text>
-            <text class="dy-like-label">赞</text>
+            <text class="dy-action-icon">{{item.liked ? '♥' : '♡'}}</text>
+            <text class="dy-action-label">{{item.likeCountText}}</text>
+          </view>
+
+          <view
+            class="dy-action"
+            catchtap="onOpenComment"
+            data-id="{{item.id}}"
+          >
+            <text class="dy-action-icon dy-action-icon--comment">💬</text>
+            <text class="dy-action-label">{{item.commentCountText}}</text>
+          </view>
+
+          <view
+            class="dy-action {{item.favorited ? 'dy-action--fav-on' : ''}}"
+            catchtap="onToggleFavorite"
+            data-id="{{item.id}}"
+          >
+            <text class="dy-action-icon">{{item.favorited ? '★' : '☆'}}</text>
+            <text class="dy-action-label">{{item.favCountText}}</text>
+          </view>
+
+          <view
+            class="dy-action"
+            catchtap="onShareTap"
+            data-id="{{item.id}}"
+          >
+            <text class="dy-action-icon dy-action-icon--share">↗</text>
+            <text class="dy-action-label">分享</text>
           </view>
         </view>
 
@@ -68,6 +96,36 @@
       </view>
     </swiper-item>
   </swiper>
+
+  <!-- 评论面板 -->
+  <view class="dy-sheet-mask" wx:if="{{commentOpen}}" catchtap="onCloseComment"></view>
+  <view class="dy-sheet {{commentOpen ? 'dy-sheet--open' : ''}}" wx:if="{{commentOpen}}">
+    <view class="dy-sheet-head">
+      <text class="dy-sheet-title">评论 {{commentList.length || ''}}</text>
+      <view class="dy-sheet-close" catchtap="onCloseComment">关闭</view>
+    </view>
+    <scroll-view class="dy-sheet-list" scroll-y>
+      <view class="dy-comment-empty" wx:if="{{!commentList.length}}">
+        <text>还没有评论，来抢沙发吧</text>
+      </view>
+      <view class="dy-comment-item" wx:for="{{commentList}}" wx:key="id">
+        <text class="dy-comment-author">{{item.author}}</text>
+        <text class="dy-comment-text">{{item.content}}</text>
+      </view>
+    </scroll-view>
+    <view class="dy-sheet-compose">
+      <input
+        class="dy-sheet-input"
+        value="{{commentText}}"
+        bindinput="onCommentInput"
+        placeholder="说点什么…"
+        maxlength="200"
+        confirm-type="send"
+        bindconfirm="onSubmitComment"
+      />
+      <view class="dy-sheet-send" catchtap="onSubmitComment">发送</view>
+    </view>
+  </view>
 
   <oc-tab-bar current="douyin" flat-top="{{true}}" />
 </view>
