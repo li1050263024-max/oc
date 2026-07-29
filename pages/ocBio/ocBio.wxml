@@ -1,31 +1,79 @@
-<view class="page safe-bottom">
+<view class="page oc-page safe-bottom {{uiThemeClass}}">
   <view class="bg-solid"></view>
-  <view class="main">
-    <text class="lead">根据当前 OC 完整设定（或自行修改下方文案），由 DeepSeek 生成一段人物小传；密钥仅在云函数环境变量中配置。</text>
+  <oc-page-nav />
+  <oc-back-btn />
+  <view class="oc-page-shell bio-shell">
+    <scroll-view class="bio-panel" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="bio-inner">
+        <text class="lead" wx:if="{{fromFavorite && ocName}}">
+          为「{{ocName}}」填写人物小传。可智能生成，也可自行粘贴或上传文本。小传会写入设定本，并用于补全对话人设。
+        </text>
+        <text class="lead" wx:else>
+          填写人物小传后才能与 OC 对话。可智能生成，也可自行粘贴或上传文本；保存后写入设定本。
+        </text>
 
-    <view class="section-card">
-      <view class="field-label">设定 / 关键词</view>
-      <textarea
-        class="hints-area"
-        placeholder="例如：银发精灵游侠，表面冷淡其实怕寂寞，在港口城市接悬赏为生……"
-        maxlength="2000"
-        value="{{hints}}"
-        bindinput="onHintsInput"
-        show-confirm-bar="{{false}}"
-        auto-height
-      />
-      <view class="pixel-btn pixel-btn-primary gen-btn" bindtap="onGenerate">
-        <text class="gen-btn-text">{{loading ? '生成中…' : '生成 OC 小传'}}</text>
-      </view>
-    </view>
+        <view class="section-card section-card--hints">
+          <view class="field-label">设定 / 关键词（生成用）</view>
+          <text class="field-hint">智能生成时的主要依据，可修改</text>
+          <textarea
+            class="hints-area"
+            placeholder="例如：银发精灵游侠，表面冷淡其实怕寂寞……"
+            maxlength="4000"
+            value="{{hints}}"
+            bindinput="onHintsInput"
+            show-confirm-bar="{{false}}"
+            auto-height
+            cursor-spacing="24"
+          />
 
-    <view class="section-card" wx:if="{{bio}}">
-      <view class="out-title">生成结果</view>
-      <text class="bio-text" user-select>{{bio}}</text>
-      <view class="pixel-btn copy-btn" bindtap="onCopyBio">
-        <text class="gen-btn-text">复制全文</text>
+          <view class="field-label field-label--sub">自行补充细节（选填）</view>
+          <textarea
+            class="hints-area extra-area"
+            placeholder="例如：重点写与青梅的羁绊；文风偏诗意……"
+            maxlength="1500"
+            value="{{extraDetails}}"
+            bindinput="onExtraInput"
+            show-confirm-bar="{{false}}"
+            auto-height
+            cursor-spacing="24"
+          />
+
+          <view class="pixel-btn pixel-btn-primary gen-btn" bindtap="onGenerate">
+            <text class="gen-btn-text">{{loading ? '生成中…' : (bio ? '重新生成小传' : '智能生成小传')}}</text>
+          </view>
+        </view>
+
+        <view class="section-card">
+          <view class="field-label">人物小传正文</view>
+          <text class="field-hint">可直接编辑、粘贴已有小传，或从聊天文件导入 .txt / .md</text>
+          <textarea
+            class="hints-area bio-edit-area"
+            placeholder="在此粘贴或撰写人物小传……"
+            maxlength="8000"
+            value="{{bio}}"
+            bindinput="onBioInput"
+            show-confirm-bar="{{false}}"
+            auto-height
+            cursor-spacing="24"
+          />
+          <text class="bio-unsaved-hint" wx:if="{{bio && !bioSaved}}">尚未保存，点击「保存」后才会写入设定本并可用于对话</text>
+          <view class="result-actions result-actions--three">
+            <view
+              class="pixel-btn pixel-btn-primary result-btn {{bioSaved && bio ? 'result-btn--saved' : ''}}"
+              bindtap="onSaveBio"
+            >
+              <text class="gen-btn-text">{{bioSaved && bio ? '已保存' : '保存'}}</text>
+            </view>
+            <view class="pixel-btn pixel-btn-primary result-btn" bindtap="onImportBioFile">
+              <text class="gen-btn-text">上传文件</text>
+            </view>
+            <view class="pixel-btn copy-btn result-btn" bindtap="onCopyBio">
+              <text class="gen-btn-text">复制</text>
+            </view>
+          </view>
+        </view>
       </view>
-    </view>
+      <view class="scroll-bottom"></view>
+    </scroll-view>
   </view>
-  <oc-nav current="bio" />
 </view>

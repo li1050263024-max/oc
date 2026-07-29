@@ -1,0 +1,23 @@
+.oc-back-btn {
+  position: fixed;
+  left: 20rpx;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72rpx;
+  min-height: 32px;
+  padding: 0 12rpx;
+  box-sizing: border-box;
+  pointer-events: auto;
+  background: transparent;
+}
+
+.oc-back-chevron {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 14rpx 20rpx 14rpx 0;
+  border-color: transparent var(--diffuse-highlight, #6d28d9) transparent transparent;
+  margin-left: -4rpx;
+}

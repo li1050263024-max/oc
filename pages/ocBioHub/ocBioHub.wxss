@@ -1,0 +1,181 @@
+@import './_shared_ocBio.wxss';
+@import './_shared_ocStory.wxss';
+
+/* 覆盖 ocBio 的 overflow:hidden，避免 Tab 页白屏/点不着 */
+.page.has-tab-bar {
+  overflow: visible;
+  background: transparent;
+}
+
+.biohub-shell {
+  padding-bottom: 0;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.biohub-header {
+  flex-shrink: 0;
+  text-align: center;
+  margin-bottom: 12rpx;
+  padding: 0 20rpx;
+}
+
+.biohub-title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: var(--diffuse-highlight);
+}
+
+.biohub-subtitle {
+  display: block;
+  font-size: 24rpx;
+  color: #7c7c8a;
+  margin-top: 8rpx;
+  line-height: 1.5;
+}
+
+.biohub-panel {
+  flex: 1;
+  min-height: 0;
+}
+
+.biohub-panel-inner {
+  padding: 0 20rpx 8rpx;
+  box-sizing: border-box;
+}
+
+/* 姓名胶囊与 ocStory 一致（横向拖动切换） */
+.biohub-panel-inner .story-oc-switcher {
+  width: 100%;
+  margin-bottom: 12rpx;
+}
+
+.biohub-merged-card {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 16rpx;
+}
+
+.biohub-merged-head {
+  margin-bottom: 12rpx;
+}
+
+.biohub-merged-head-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.biohub-name-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.biohub-oc-name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--diffuse-highlight);
+}
+
+.biohub-oc-tag {
+  font-size: 20rpx;
+  color: var(--theme-accent-deep);
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  background: var(--theme-fill-mid2);
+  flex-shrink: 0;
+}
+
+.biohub-expand-hint {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: var(--diffuse-highlight);
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.biohub-oc-basic {
+  margin-bottom: 0;
+}
+
+.biohub-oc-row {
+  display: flex;
+  font-size: 24rpx;
+  line-height: 1.45;
+  margin-bottom: 8rpx;
+  color: #374151;
+}
+
+.biohub-oc-row .lab {
+  width: 72rpx;
+  flex-shrink: 0;
+  color: #6b7280;
+}
+
+.biohub-oc-row .val {
+  flex: 1;
+  word-break: break-all;
+}
+
+.biohub-extra {
+  margin-top: 12rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx solid var(--theme-border);
+}
+
+.biohub-extra-block {
+  display: block;
+  font-size: 24rpx;
+  color: var(--diffuse-text);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: 12rpx;
+}
+
+.biohub-preview {
+  margin-bottom: 16rpx;
+}
+
+.biohub-preview-label {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--diffuse-highlight);
+  margin-bottom: 12rpx;
+}
+
+.biohub-preview-text {
+  display: block;
+  font-size: 26rpx;
+  color: var(--diffuse-text);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 8em;
+  overflow: hidden;
+}
+
+.biohub-preview-more {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: var(--diffuse-highlight);
+  text-align: right;
+}
+
+.biohub-gen-wrap {
+  margin-bottom: 16rpx;
+}
+
+.biohub-gen-wrap .gen-btn {
+  width: 100%;
+  margin: 0;
+}

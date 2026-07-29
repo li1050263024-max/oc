@@ -1,0 +1,41 @@
+<view class="page page-settings safe-bottom {{uiThemeClass}}">
+  <view class="bg-solid"></view>
+  <view class="page-settings-head">
+    <oc-back-btn />
+    <text class="page-settings-title">页面设置</text>
+  </view>
+
+  <view class="page-settings-body">
+    <text class="page-settings-label">界面主题</text>
+    <view class="theme-picker-row">
+      <view
+        class="theme-card {{uiTheme === 'purple' ? 'theme-card--active' : ''}}"
+        catchtap="onPickTheme"
+        data-theme="purple"
+      >
+        <view class="theme-card-preview theme-card-preview--purple"></view>
+        <text class="theme-card-name">弥散紫</text>
+        <text class="theme-card-desc">默认渐变主题</text>
+      </view>
+      <view
+        class="theme-card {{uiTheme === 'mono' ? 'theme-card--active' : ''}}"
+        catchtap="onPickTheme"
+        data-theme="mono"
+      >
+        <view class="theme-card-preview theme-card-preview--mono"></view>
+        <text class="theme-card-name">弥散灰</text>
+        <text class="theme-card-desc">黑白灰三色</text>
+      </view>
+      <view
+        class="theme-card {{uiTheme === 'pink' ? 'theme-card--active' : ''}}"
+        catchtap="onPickTheme"
+        data-theme="pink"
+      >
+        <view class="theme-card-preview theme-card-preview--pink"></view>
+        <text class="theme-card-name">弥散粉</text>
+        <text class="theme-card-desc">弥散渐变 · 粉蓝紫</text>
+      </view>
+    </view>
+    <text class="page-settings-tip">切换后立即生效，聊天、设定本、抽卡等全套界面同步更新。</text>
+  </view>
+</view>

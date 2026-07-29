@@ -1,33 +1,110 @@
-/** OC 设定抽卡器 - 渐变弥散风格 */
+/** OC 设定抽卡器 - 全局 UI */
+@import './styles/theme-mono.wxss';
+@import './styles/theme-pink.wxss';
+
+/* 对话/设定本统一胶囊按钮 */
+.oc-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10rpx 18rpx;
+  min-height: 52rpx;
+  border-radius: 28rpx;
+  background: var(--theme-chip-bg, #a78bfa);
+  border: 1rpx solid var(--theme-chip-border, #8b5cf6);
+  box-sizing: border-box;
+}
+.oc-chip-btn-text {
+  font-size: 22rpx;
+  line-height: 1.25;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
 page {
-  /* 整体背景：弥散渐变效果增强（圆心更亮、线性对比更强） */
-  --diffuse-bg: radial-gradient(ellipse 90% 80% at 50% 25%, rgba(255, 252, 255, 0.95) 0%, rgba(242, 236, 252, 0.7) 22%, rgba(224, 228, 248, 0.35) 48%, rgba(200, 214, 238, 0.1) 70%, transparent 100%),
+  --diffuse-bg: radial-gradient(ellipse 90% 80% at 50% 25%, rgba(220, 210, 245, 0.88) 0%, rgba(242, 236, 252, 0.72) 22%, rgba(224, 228, 248, 0.35) 48%, rgba(200, 214, 238, 0.1) 70%, transparent 100%),
     linear-gradient(165deg, #c8bee4 0%, #b8c8e8 20%, #dcc8cc 45%, #b0c4e0 70%, #c4d0e8 100%);
-  --diffuse-card: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.78) 100%);
-  --diffuse-card-solid: rgba(255, 255, 255, 0.85);
-  --diffuse-border: rgba(200, 190, 220, 0.4);
   --diffuse-accent: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
-  /* 卡背：紫色变浅 15% */
-  --diffuse-card-back: linear-gradient(145deg, #9c8ff7 0%, #b49cfb 40%, #ccc0fd 100%);
-  --diffuse-card-back-shadow: 0 24rpx 56rpx rgba(156, 143, 247, 0.28), 0 12rpx 32rpx rgba(0, 0, 0, 0.06);
-  /* 磨砂玻璃：选项框统一使用 */
-  --glass-bg: rgba(255, 255, 255, 0.42);
   --glass-border: rgba(255, 255, 255, 0.55);
-  --glass-shadow: 0 24rpx 56rpx rgba(0, 0, 0, 0.06), 0 0 0 1rpx rgba(255, 255, 255, 0.5) inset;
-  --diffuse-accent-text: #5b21b6;
+  --glass-bg: rgba(255, 255, 255, 0.35);
   --diffuse-text: #374151;
   --diffuse-highlight: #6d28d9;
   --diffuse-subtle: #7c7c8a;
-  --diffuse-shadow: 0 20rpx 60rpx rgba(139, 92, 246, 0.08), 0 8rpx 24rpx rgba(0, 0, 0, 0.04);
-  --diffuse-shadow-strong: 0 24rpx 48rpx rgba(139, 92, 246, 0.12), 0 12rpx 32rpx rgba(0, 0, 0, 0.06);
-  /* 兼容保留 */
-  --pixel-bg: #f5f0ff;
-  --pixel-card: rgba(255,255,255,0.9);
-  --pixel-border: rgba(200, 190, 220, 0.5);
-  --pixel-accent: #a78bfa;
-  --pixel-text: #374151;
-  --pixel-highlight: #6d28d9;
-  --pixel-subtle: #7c7c8a;
+  --theme-chip-bg: #a78bfa;
+  --theme-chip-border: #8b5cf6;
+  --theme-tab-active: #6d28d9;
+  --theme-tab-idle: #a3a3ad;
+  --theme-bar-border: rgba(139, 92, 246, 0.12);
+  --theme-bar-shadow: rgba(109, 40, 217, 0.06);
+  --theme-mode-switch-on: #a78bfa;
+  --theme-mode-switch-shadow: rgba(139, 92, 246, 0.28);
+  --theme-solid-soft: rgba(167, 139, 250, 0.55);
+  --theme-solid-soft-border: rgba(139, 92, 246, 0.28);
+  --theme-settings-bg: rgba(167, 139, 250, 0.92);
+  --theme-settings-border: rgba(139, 92, 246, 0.35);
+  --theme-settings-shadow: rgba(109, 40, 217, 0.2);
+  --oc-gacha-back: #c9b8e8;
+  --theme-border-faint: rgba(139, 92, 246, 0.08);
+  --theme-border-soft: rgba(139, 92, 246, 0.1);
+  --theme-border: rgba(139, 92, 246, 0.12);
+  --theme-border-mid: rgba(139, 92, 246, 0.18);
+  --theme-border-mid2: rgba(139, 92, 246, 0.2);
+  --theme-border-strong: rgba(139, 92, 246, 0.25);
+  --theme-border-bold: rgba(139, 92, 246, 0.35);
+  --theme-border-heavy: rgba(139, 92, 246, 0.45);
+  --theme-fill-faint: rgba(167, 139, 250, 0.08);
+  --theme-fill-soft2: rgba(167, 139, 250, 0.12);
+  --theme-fill-soft: rgba(167, 139, 250, 0.15);
+  --theme-fill-soft3: rgba(167, 139, 250, 0.18);
+  --theme-fill-mid2: rgba(167, 139, 250, 0.22);
+  --theme-fill-mid: rgba(167, 139, 250, 0.28);
+  --theme-fill-mid3: rgba(167, 139, 250, 0.35);
+  --theme-fill-strong: rgba(167, 139, 250, 0.55);
+  --theme-fill-solid: rgba(167, 139, 250, 0.88);
+  --theme-fill-solid-dim: rgba(167, 139, 250, 0.42);
+  --theme-fill-solid-bg: rgba(167, 139, 250, 0.92);
+  --theme-accent-deep: #7c3aed;
+  --theme-accent-light: #c4b5fd;
+  --theme-accent-pale: #ddd6fe;
+  --theme-highlight-soft: rgba(139, 92, 246, 0.75);
+  --theme-nav-ring: rgba(109, 40, 217, 0.35);
+  --theme-nav-ring-soft: rgba(109, 40, 217, 0.2);
+  --theme-shadow-sm: rgba(109, 40, 217, 0.06);
+  --theme-shadow-md: rgba(109, 40, 217, 0.12);
+  --theme-shadow-lg: rgba(109, 40, 217, 0.14);
+  --theme-shadow-xl: rgba(167, 139, 250, 0.32);
+  --theme-shadow-btn: rgba(139, 92, 246, 0.18);
+  --theme-shadow-btn2: rgba(139, 92, 246, 0.25);
+  --theme-shadow-btn3: rgba(139, 92, 246, 0.28);
+  --theme-shadow-focus: rgba(167, 139, 250, 0.55);
+  --theme-gradient-primary: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+  --theme-gradient-primary-3: linear-gradient(135deg, #7c3aed 0%, #a78bfa 45%, #c4b5fd 100%);
+  --theme-gradient-soft: linear-gradient(145deg, #c4b5fd, #a78bfa);
+  --theme-gradient-avatar: linear-gradient(145deg, #ddd6fe, #a78bfa);
+  --theme-gradient-share: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  --theme-secondary-wire: rgba(200, 214, 230, 0.8);
+  --theme-card-drop: rgba(68, 52, 128, 0.28);
+  --theme-shadow-card: rgba(72, 56, 140, 0.14);
+  --theme-shadow-card-sm: rgba(72, 56, 140, 0.12);
+  --theme-shadow-card-md: rgba(72, 56, 140, 0.2);
+  --theme-shadow-card-bold: rgba(72, 56, 140, 0.35);
+  --theme-indicator: rgba(109, 40, 217, 0.25);
+  --theme-locked-bg: rgba(109, 40, 217, 0.12);
+  --theme-modal-confirm: #6d28d9;
+  /* 卡牌固定尺寸（2:3），三环节、卡背卡面完全一致 */
+  --oc-card-w: 504rpx;
+  --oc-layer3-actions-w: 680rpx;
+  --oc-card-h: 756rpx;
+  --oc-card-radius: 36rpx;
+  --oc-card-border: 2rpx solid rgba(55, 65, 81, 0.18);
+  --oc-card-shadow-back: 0 44rpx 104rpx var(--theme-shadow-card-bold),
+    0 28rpx 64rpx rgba(0, 0, 0, 0.16),
+    0 12rpx 28rpx var(--theme-shadow-card-md);
+  --oc-card-shadow-face: 0 44rpx 104rpx var(--theme-shadow-card-bold),
+    0 28rpx 64rpx rgba(0, 0, 0, 0.14),
+    0 12rpx 28rpx var(--theme-border-mid);
+  /* 三环节牌面展示底色（淡紫） */
+  --oc-card-face-bg: #ede9fe;
   background: var(--diffuse-bg);
   background-attachment: fixed;
   color: var(--diffuse-text);
@@ -41,15 +118,160 @@ page {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+.has-tab-bar {
+  padding-bottom: calc(112rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+/* 确保带 Tab 的页面不裁切底部 cover-view */
+.page.has-tab-bar,
+.page.oc-page.has-tab-bar,
+.page.oc-page.oc-page--gacha.has-tab-bar {
+  overflow: visible !important;
+}
+
+/* 内容区自己裁切，不要让原生滚动层盖住 Tab */
+.page.has-tab-bar .oc-page-shell,
+.page.has-tab-bar .notebook-shell,
+.page.has-tab-bar .biohub-shell,
+.page.has-tab-bar .story-shell,
+.page.has-tab-bar .layout,
+.page.has-tab-bar .moments-scroll,
+.page.has-tab-bar .notebook-panel,
+.page.has-tab-bar .biohub-panel {
+  position: relative;
+  z-index: 1;
+}
+
+/* 全屏背景不抢点击，避免挡住底部 Tab */
+.bg-solid {
+  pointer-events: none !important;
+}
+
+.page.has-tab-bar,
+.page.oc-page.has-tab-bar {
+  background: transparent;
+}
+
+.page.has-tab-bar,
+.page.has-tab-bar.has-page-nav {
+  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  /* 不可对整页 overflow:hidden，否则真机上会裁切/挡住底部 fixed Tab */
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+/* 抽卡首页：留出底部 Tab，内容区可滚动；整页不可 overflow:hidden，否则会挡 fixed Tab 点击 */
+.page.oc-page.oc-page--gacha.has-tab-bar {
+  height: 100vh;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.page.oc-page.oc-page--gacha.has-tab-bar .oc-page-shell {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.page.has-tab-bar .layout {
+  flex: 1;
+  min-height: 0;
+  height: auto !important;
+}
+
+.page.has-tab-bar.oc-page .oc-page-shell,
+.page.has-tab-bar.oc-page .biohub-shell,
+.page.has-tab-bar.oc-page .story-shell,
+.page.has-tab-bar.oc-page .notebook-shell {
+  flex: 1;
+  min-height: 0;
+}
+
+.page.has-tab-bar .scroll,
+.page.has-tab-bar .moments-scroll,
+.page.has-tab-bar .main,
+.page.has-tab-bar .notebook-panel {
+  flex: 1;
+  min-height: 0;
+  height: auto !important;
+}
+
+/* 页面骨架 */
+.oc-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* 抽卡三环节：与首页同视口高度，卡牌居中区域一致 */
+.page.oc-page.oc-page--gacha:not(.has-tab-bar) {
+  height: 100vh;
+  overflow: hidden;
+}
+.oc-page-shell {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 24rpx 28rpx 0;
+  box-sizing: border-box;
+}
+
+.oc-segment-nav-float {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  /* 全宽定位层不拦截左侧菜单等点击 */
+  pointer-events: none;
+}
+
+.oc-segment-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  pointer-events: auto;
+}
+.oc-page-header {
+  flex-shrink: 0;
+  text-align: center;
+  margin-bottom: 20rpx;
+}
+.oc-page-title {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 600;
+  color: var(--diffuse-text);
+  letter-spacing: 2rpx;
+  margin-bottom: 8rpx;
+}
+.oc-page-subtitle {
+  display: block;
+  font-size: 24rpx;
+  color: var(--diffuse-subtle);
+  line-height: 1.4;
+}
+
 .pixel-btn {
-  border: 1rpx solid var(--glass-border);
-  border-radius: 24rpx;
-  background: var(--glass-bg);
-  backdrop-filter: blur(24rpx);
-  -webkit-backdrop-filter: blur(24rpx);
+  border: var(--oc-card-border);
+  border-radius: 36rpx;
+  background: rgba(255, 255, 255, 0.75);
   color: var(--diffuse-text);
   font-weight: 500;
-  box-shadow: var(--glass-shadow);
 }
 .pixel-btn::after {
   border: none;
@@ -58,5 +280,689 @@ page {
   background: var(--diffuse-accent);
   color: #fff;
   border: none;
-  box-shadow: 0 12rpx 32rpx rgba(167, 139, 250, 0.35);
+  box-shadow: 0 10rpx 28rpx var(--theme-shadow-xl);
+}
+.btn-wire-secondary {
+  background: var(--theme-secondary-wire);
+  color: var(--diffuse-text);
+}
+.btn-wire-primary {
+  background: var(--theme-fill-solid);
+  color: #fff;
+  border: none;
+}
+
+/* 抽卡舞台：卡牌+按钮整体居中 */
+.oc-gacha-stage {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24rpx 0 32rpx;
+  box-sizing: border-box;
+}
+.oc-gacha-card-slot {
+  width: var(--oc-card-w);
+  min-width: var(--oc-card-w);
+  max-width: var(--oc-card-w);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+}
+
+/* 固定尺寸卡牌槽：外阴影在卡牌层，按钮层叠于阴影之上（三环节 504×756rpx，2:3） */
+.oc-gacha-card-box {
+  width: var(--oc-card-w);
+  height: var(--oc-card-h);
+  min-width: var(--oc-card-w);
+  max-width: var(--oc-card-w);
+  min-height: var(--oc-card-h);
+  max-height: var(--oc-card-h);
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  filter: drop-shadow(0 48rpx 112rpx var(--theme-card-drop))
+    drop-shadow(0 28rpx 68rpx rgba(0, 0, 0, 0.1));
+}
+.oc-gacha-card-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+/* 卡背：铺满卡槽，无描边 */
+.oc-gacha-back {
+  border-radius: var(--oc-card-radius);
+  border: none;
+  box-shadow: var(--oc-card-shadow-back);
+  overflow: hidden;
+  padding: 0;
+  background: var(--oc-gacha-back);
+  box-sizing: border-box;
+}
+.oc-gacha-back-img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform: translate(-50%, -50%);
+  transform-origin: center center;
+  pointer-events: none;
+}
+/* 盖在卡背上的透明点击层（避免 image / 3D 层拦截触摸） */
+.oc-gacha-tap-cover {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 30;
+  border-radius: var(--oc-card-radius);
+}
+.oc-gacha-tap-cover-hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* 翻面：以卡片中线为轴，卡背/牌面同槽不位移 */
+.oc-gacha-card-fill.oc-flip-wrap {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+.oc-flip-wrap {
+  perspective: 1200rpx;
+  perspective-origin: center center;
+  box-sizing: border-box;
+}
+.oc-flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform-origin: center center;
+}
+.oc-flip-inner.flipped {
+  transform: rotateY(180deg);
+  transform-origin: center center;
+}
+/* 抽卡：中线为轴旋转两圈半（900deg ≡ 180deg 牌面） */
+@keyframes oc-card-spin-once {
+  0% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(900deg);
+  }
+}
+.oc-flip-inner.spin-once {
+  transform-origin: center center;
+  animation: oc-card-spin-once 3.75s cubic-bezier(0.38, 0.06, 0.18, 1) forwards;
+}
+
+/* AI 等待：1.5s/圈（与 cardAnim.SPIN_REV_MS 同步） */
+@keyframes oc-card-ai-wait-spin {
+  0% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(360deg);
+  }
+}
+
+/* 第二、三环节 AI 等待：牌面紫 → 浅紫（keyframes 用实色，兼容小程序） */
+@keyframes oc-card-ai-wait-face-color {
+  0% {
+    background-color: #a78bfa;
+  }
+  100% {
+    background-color: #ede9fe;
+  }
+}
+
+.oc-flip-inner.ai-waiting {
+  transform-origin: center center;
+  animation: oc-card-ai-wait-spin 1.5s linear infinite;
+}
+
+.oc-flip-inner.ai-waiting .oc-flip-front.oc-flip-front-face,
+.oc-flip-inner.ai-waiting .oc-card-face-blank {
+  background-color: var(--theme-chip-bg);
+  animation: oc-card-ai-wait-face-color 3s ease forwards;
+}
+
+.oc-flip-inner.ai-waiting .oc-card-face-blank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 36rpx 40rpx;
+  box-sizing: border-box;
+}
+
+.oc-ai-wait-quote {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  font-family: OcWaitScript, "Snell Roundhand", "Apple Chancery", "Segoe Script", cursive;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 30rpx;
+  line-height: 1.65;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.94);
+  text-align: center;
+  word-break: break-word;
+  pointer-events: none;
+}
+
+/* 第一环节等待：1.5s 紫 → 浅紫，诗句同步淡出 */
+@keyframes oc-ai-wait-quote-fade {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.oc-flip-inner.ai-waiting.layer1-waiting .oc-flip-front.oc-flip-front-face,
+.oc-flip-inner.ai-waiting.layer1-waiting .oc-card-face-blank {
+  animation: oc-card-ai-wait-face-color 1.5s ease forwards;
+}
+
+.oc-flip-inner.ai-waiting.layer1-waiting .oc-ai-wait-quote {
+  animation: oc-ai-wait-quote-fade 1.5s ease forwards;
+}
+
+/* 翻面展示结果时诗句立即隐藏（由 wxml 移除；兜底防残留） */
+.oc-flip-inner.spin-once .oc-ai-wait-quote {
+  display: none;
+}
+
+/* 翻面旋转：文字自上而下 */
+@keyframes oc-card-content-reveal {
+  0% {
+    clip-path: inset(0 0 100% 0);
+    -webkit-clip-path: inset(0 0 100% 0);
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    -webkit-clip-path: inset(0 0 0 0);
+  }
+}
+
+.oc-flip-inner.spin-once .oc-result-card {
+  overflow: hidden;
+  clip-path: inset(0 0 100% 0);
+  -webkit-clip-path: inset(0 0 100% 0);
+  animation: oc-card-content-reveal 3.75s ease-out forwards;
+}
+.oc-flip-back,
+.oc-flip-front {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.oc-flip-back {
+  display: block;
+  transform: rotateY(0deg);
+}
+.oc-flip-front {
+  transform: rotateY(180deg);
+  display: block;
+}
+/* 未翻开时正面层不参与点击，避免挡住卡背 */
+.oc-flip-inner:not(.flipped) .oc-flip-front {
+  pointer-events: none;
+}
+/* 翻开后彻底隐藏卡背，避免背面文字透出 */
+.oc-flip-inner.flipped .oc-flip-back {
+  display: none;
+  visibility: hidden;
+  pointer-events: none;
+}
+.oc-flip-inner.flipped .oc-flip-front {
+  transform: rotateY(180deg) translateZ(2px);
+}
+/* 牌面：淡紫底（三环节牌面展示统一） */
+.oc-flip-front.oc-flip-front-face {
+  background: var(--oc-card-face-bg);
+  border: var(--oc-card-border);
+  border-radius: var(--oc-card-radius);
+  box-shadow: var(--oc-card-shadow-face);
+  box-sizing: border-box;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* AI 等待 / 翻面旋转：占位铺满牌面（等待时由紫渐变白） */
+.oc-card-face-blank {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  background: var(--oc-card-face-bg);
+  border-radius: var(--oc-card-radius);
+}
+
+.oc-flip-front.oc-flip-front-face .oc-result-card {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+/* 卡背 / 卡面均铺满固定卡牌槽 */
+.oc-flip-back .oc-gacha-back,
+.oc-flip-front .oc-gacha-back,
+.oc-flip-front .oc-result-card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* 卡面：与卡背同宽高 */
+.oc-result-card-wrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  box-sizing: border-box;
+}
+.oc-result-card {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 16rpx 18rpx 12rpx;
+  border: none;
+  border-radius: var(--oc-card-radius);
+  background: transparent;
+  box-shadow: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.oc-result-card .card-scroll {
+  width: 100%;
+  height: calc(var(--oc-card-h) - 132rpx);
+  box-sizing: border-box;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.oc-result-card .card-face-hint {
+  display: block;
+  font-size: 20rpx;
+  color: var(--diffuse-subtle);
+  text-align: center;
+  margin-bottom: 6rpx;
+  flex-shrink: 0;
+}
+.oc-result-card .card-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--diffuse-highlight);
+  margin-bottom: 12rpx;
+  text-align: center;
+  flex-shrink: 0;
+}
+.oc-result-card .card-row {
+  display: flex;
+  align-items: center;
+  padding: 6rpx 0;
+  border-bottom: 1rpx solid var(--theme-border-faint);
+}
+.oc-result-card .card-row--dense {
+  padding: 3rpx 0;
+}
+.oc-result-card .card-row--dense .label {
+  width: 72rpx;
+  font-size: 22rpx;
+}
+.oc-result-card .card-row--dense .value-input {
+  height: 44rpx;
+  font-size: 24rpx;
+}
+.oc-result-card .card-row--dense .row-lock {
+  width: 48rpx;
+  height: 48rpx;
+}
+.oc-result-card .card-row:last-child {
+  border-bottom: none;
+}
+.oc-result-card .label {
+  width: 84rpx;
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: var(--diffuse-subtle);
+}
+.oc-result-card .value-input {
+  flex: 1;
+  min-width: 0;
+  height: 52rpx;
+  padding: 0 8rpx;
+  font-size: 26rpx;
+  color: var(--diffuse-text);
+  background: transparent;
+  border: none;
+}
+.oc-result-card .card-row--locked .value-input,
+.oc-result-card .attitude-row--locked .attitude-input {
+  color: var(--diffuse-highlight);
+}
+.row-lock {
+  flex-shrink: 0;
+  width: 52rpx;
+  height: 52rpx;
+  margin-left: 4rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 4;
+}
+.row-lock-hover {
+  opacity: 0.75;
+}
+.row-lock-icon {
+  width: 28rpx;
+  height: 32rpx;
+  position: relative;
+  box-sizing: border-box;
+}
+.row-lock-bar {
+  position: absolute;
+  left: 4rpx;
+  bottom: 0;
+  width: 20rpx;
+  height: 16rpx;
+  border: 3rpx solid #a8a8b8;
+  border-radius: 4rpx;
+  box-sizing: border-box;
+}
+.row-lock-ring {
+  position: absolute;
+  left: 6rpx;
+  top: 0;
+  width: 16rpx;
+  height: 12rpx;
+  border: 3rpx solid #a8a8b8;
+  border-bottom: none;
+  border-radius: 10rpx 10rpx 0 0;
+  box-sizing: border-box;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+/* 未锁定：锁梁抬起（开锁） */
+.row-lock:not(.row-lock--on) .row-lock-ring {
+  transform: translateY(-5rpx);
+  opacity: 0.75;
+}
+.row-lock:not(.row-lock--on) .row-lock-bar,
+.row-lock:not(.row-lock--on) .row-lock-ring {
+  border-color: #a8a8b8;
+}
+/* 已锁定：锁梁扣下（闭锁） */
+.row-lock--on .row-lock-bar,
+.row-lock--on .row-lock-ring {
+  border-color: var(--diffuse-highlight);
+}
+.row-lock--on .row-lock-ring {
+  transform: translateY(4rpx);
+  opacity: 1;
+}
+.row-lock--on .row-lock-bar {
+  background: var(--theme-shadow-md);
+}
+.oc-result-card .attitude-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 6rpx 0;
+  border-bottom: 1rpx solid var(--theme-border-faint);
+}
+.oc-result-card .attitude-row .row-lock {
+  margin-top: 4rpx;
+}
+.oc-result-card .attitude-row .label {
+  padding-top: 8rpx;
+}
+.oc-result-card .attitude-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+.oc-result-card .attitude-event {
+  font-size: 22rpx;
+  color: var(--diffuse-subtle);
+  line-height: 1.35;
+}
+.oc-result-card .attitude-input {
+  height: 52rpx;
+  font-size: 26rpx;
+  padding: 0 8rpx;
+  background: transparent;
+  border: none;
+}
+
+/* 卡牌下方按钮：叠在卡牌外阴影之上，避免被 filter 阴影挡住 */
+.actions-below-card {
+  position: relative;
+  z-index: 2;
+  transform: translateZ(2px);
+  width: var(--oc-card-w);
+  display: flex;
+  gap: 20rpx;
+  margin-top: 28rpx;
+  flex-shrink: 0;
+}
+.actions-below-card .btn-action {
+  flex: 1;
+  min-width: 0;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 36rpx;
+}
+.actions-below-card--triple {
+  gap: 12rpx;
+}
+.actions-below-card--triple .btn-action {
+  flex: 1;
+  min-width: 0;
+  padding: 0 8rpx;
+}
+.actions-below-card--triple .btn-action-text {
+  font-size: 24rpx;
+}
+.actions-below-card .btn-action-text {
+  font-size: 28rpx;
+}
+
+.actions-layer3 {
+  position: relative;
+  z-index: 2;
+  align-self: center;
+  width: var(--oc-layer3-actions-w);
+  min-width: var(--oc-layer3-actions-w);
+  max-width: var(--oc-layer3-actions-w);
+  transform: translateZ(2px);
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 28rpx;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.actions-layer3-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16rpx 14rpx;
+  align-items: stretch;
+}
+.actions-layer3 .btn-action,
+.actions-layer3 .pixel-btn {
+  min-width: 0;
+  width: 100%;
+  min-height: 88rpx;
+  height: 88rpx;
+  padding: 8rpx 6rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 30rpx;
+  box-sizing: border-box;
+}
+.actions-layer3-row--primary .btn-layer3-ghost {
+  background: rgba(255, 255, 255, 0.42);
+  border: var(--oc-card-border);
+  color: var(--diffuse-text);
+  box-shadow: none;
+}
+.actions-layer3-row--primary .btn-layer3-save {
+  background: rgba(255, 255, 255, 0.88);
+  border: var(--oc-card-border);
+  color: var(--diffuse-text);
+  box-shadow: none;
+}
+.actions-layer3-row--secondary .pixel-btn {
+  background: var(--diffuse-accent);
+  color: #fff;
+  border: none;
+  box-shadow: 0 10rpx 28rpx var(--theme-shadow-xl);
+}
+.actions-layer3 .actions-span-2 {
+  grid-column: span 1;
+}
+.actions-layer3 .btn-action-text {
+  font-size: 26rpx;
+  line-height: 1.25;
+}
+.actions-layer3 .btn-action-disabled {
+  opacity: 0.55;
+}
+
+.actions-layer3-triple {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12rpx 10rpx;
+  width: 100%;
+}
+.actions-layer3-triple .btn-action {
+  min-width: 0;
+}
+.actions-layer3-triple .btn-action-text {
+  font-size: 24rpx;
+}
+
+/* 人设卡右侧立绘（设定本 / 小传 / 故事共用） */
+.oc-card-main-row {
+  display: flex;
+  align-items: stretch;
+  gap: 16rpx;
+  margin-top: 8rpx;
+}
+
+.oc-card-main-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.oc-card-portrait {
+  width: 200rpx;
+  flex-shrink: 0;
+  min-height: 280rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1rpx solid var(--glass-border);
+}
+
+.oc-card-portrait-img {
+  width: 100%;
+  height: 280rpx;
+  display: block;
+}
+
+.oc-card-portrait-img--placeholder {
+  background: #d8d8de;
+  object-fit: contain;
+}
+
+.oc-card-portrait-placeholder {
+  width: 100%;
+  height: 280rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.oc-card-portrait-empty {
+  font-size: 24rpx;
+  color: var(--diffuse-subtle);
+  line-height: 1.4;
+  text-align: center;
+}
+
+.mini-char {
+  position: relative;
+  width: 56rpx;
+  height: 56rpx;
+}
+
+.mini-face {
+  width: 56rpx;
+  height: 56rpx;
+  background: #f0dcd0;
+  border-radius: 50%;
+  border: 1rpx solid var(--pixel-border);
+}
+
+.mini-hair {
+  position: absolute;
+  left: 4rpx;
+  top: 4rpx;
+  width: 48rpx;
+  height: 26rpx;
+  border-radius: 26rpx 26rpx 0 0;
+  border: 1rpx solid var(--pixel-border);
+}
+
+.mini-eyes {
+  position: absolute;
+  left: 0;
+  top: 22rpx;
+  width: 56rpx;
+  display: flex;
+  justify-content: space-evenly;
+}
+
+.mini-eye {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
 }

@@ -1,0 +1,34 @@
+.oc-segment-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 12rpx 24rpx 8rpx;
+  flex-shrink: 0;
+}
+
+.oc-segment-item {
+  min-width: 120rpx;
+  padding: 10rpx 28rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1rpx solid var(--theme-border-mid);
+  text-align: center;
+}
+
+.oc-segment-item--active {
+  background: var(--theme-chip-bg);
+  border-color: var(--theme-chip-border);
+  box-shadow: 0 4rpx 12rpx var(--theme-border-strong);
+}
+
+.oc-segment-text {
+  font-size: 26rpx;
+  color: var(--diffuse-subtle, #7c7c8a);
+  line-height: 1.2;
+}
+
+.oc-segment-item--active .oc-segment-text {
+  color: #ffffff;
+  font-weight: 600;
+}

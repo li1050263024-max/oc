@@ -1,134 +1,494 @@
-<view class="page safe-bottom">
+<view class="page oc-page oc-page--gacha safe-bottom has-tab-bar {{uiThemeClass}} {{scopePanelOpen || knownPanelOpen ? 'index-panel-open' : ''}}">
   <view class="bg-solid"></view>
+  <oc-page-nav height="{{indexNavHeight}}" />
 
-  <view class="shell">
-    <view class="header-block">
-      <text class="title">OC 抽卡器</text>
-      <text class="subtitle">点击抽卡，遇见你的 OC</text>
+  <view class="index-settings-wrap" style="{{settingsWrapStyle}}">
+    <view class="index-settings-btn" bindtap="onToggleSettings">
+      <view class="index-settings-hamburger">
+        <view class="index-settings-bar"></view>
+        <view class="index-settings-bar"></view>
+        <view class="index-settings-bar"></view>
+      </view>
     </view>
+    <view class="index-settings-menu" wx:if="{{settingsOpen}}">
+      <view class="index-settings-item" bindtap="onGoPools">选项库</view>
+      <view class="index-settings-item" bindtap="onGoFeedback">意见与反馈</view>
+      <view class="index-settings-item" bindtap="onPageSettings">页面设置</view>
+      <view class="index-settings-item" bindtap="onGoRedeem">兑换码</view>
+      <view class="index-settings-item" bindtap="onFollowOfficialAccount">关注公众号</view>
+    </view>
+    <view class="index-settings-mask" wx:if="{{settingsOpen}}" bindtap="onCloseSettings"></view>
+  </view>
 
-    <view class="body-row">
-      <scroll-view
-        class="content-pane content-pane-full"
-        scroll-y
-        enhanced
-        show-scrollbar="{{false}}"
-        scroll-top="{{contentScrollTop}}"
-        scroll-with-animation
-      >
-        <view class="main-content {{!result ? 'main-content-centered' : ''}}">
-          <view class="char-wrap {{result && cardAnimate ? 'card-visible' : 'char-wrap-default'}}">
-            <view class="pixel-char">
-              <view class="char-name">{{result && step >= 1 ? result.name : '抽卡看看'}}</view>
-              <view class="char-head-wrap">
-                <view class="char-head"></view>
-                <view class="char-hair" style="background-color: {{result && step >= 3 ? hairHex : '#9c958c'}};"></view>
-                <view class="char-eyes">
-                  <view class="char-eye" style="background-color: {{result && step >= 4 ? eyeHex : '#4a4540'}};"></view>
-                  <view class="char-eye" style="background-color: {{result && step >= 4 ? eyeHex : '#4a4540'}};"></view>
+  <view class="oc-page-shell">
+    <!-- 第一环节：人物设定 -->
+    <view class="gacha-phase-pane" wx:if="{{gachaPhase == 1}}">
+      <view class="oc-page-header {{!(result && cardFlipped) ? 'index-home-header' : ''}}">
+        <block wx:if="{{!(result && cardFlipped)}}">
+          <view class="index-home-title-float">
+            <text class="oc-page-title">OC 抽卡器</text>
+            <text class="oc-page-subtitle">完成 3 次抽卡，遇见你的 OC</text>
+          </view>
+          <view
+            class="index-gacha-toolbar {{scopePanelOpen || knownPanelOpen ? 'index-gacha-toolbar--wide' : ''}}"
+            wx:if="{{!cardSpinning && !cardAiWaiting && !cardLayer1Waiting}}"
+          >
+            <block wx:if="{{!scopePanelOpen && !knownPanelOpen}}">
+              <view class="index-gacha-btn-row">
+                <view class="index-gacha-btn" catchtap="onToggleScopePanel">
+                  <text class="index-gacha-btn-text">设置抽卡范围</text>
+                </view>
+                <view class="index-gacha-btn" catchtap="onToggleKnownPanel">
+                  <text class="index-gacha-btn-text">创建已有人物</text>
                 </view>
               </view>
-              <view class="char-arms-row">
-                <view class="char-arm char-arm-left"></view>
-                <view class="char-torso {{result && step >= 2 ? 'char-torso-race' : ''}}"></view>
-                <view class="char-arm char-arm-right"></view>
+            </block>
+            <view class="index-scope-panel" wx:elif="{{scopePanelOpen}}">
+              <view class="index-scope-panel-head">
+                <text class="index-scope-panel-title">设置抽卡范围</text>
+                <text class="index-scope-panel-close" catchtap="onToggleScopePanel">收起</text>
               </view>
-              <view class="char-legs">
-                <view class="char-leg"></view>
-                <view class="char-leg"></view>
+              <view class="index-scope-field">
+                <textarea
+                  class="index-scope-input index-scope-input--area"
+                  style="background-color:#ffffff;color:#374151;"
+                  placeholder-class="index-scope-placeholder"
+                  value="{{gachaScopeHint}}"
+                  bindinput="onScopeHintInput"
+                  placeholder="选填：描述你想抽到的 OC 简易特点，例如：赛博朋克调律师、内向兽耳少年、温柔治愈系"
+                  maxlength="500"
+                  show-confirm-bar="{{false}}"
+                />
+                <view
+                  class="index-scope-inline-btn {{gachaScopeApplied ? 'index-scope-inline-btn--applied' : ''}} {{!gachaScopeHint ? 'index-scope-inline-btn--disabled' : ''}}"
+                  catchtap="onApplyScopeHint"
+                >
+                  <text class="index-scope-inline-btn-text">{{gachaScopeApplied ? '已应用' : '应用'}}</text>
+                </view>
+              </view>
+            </view>
+            <view class="index-scope-panel" wx:else>
+              <view class="index-scope-panel-head">
+                <text class="index-scope-panel-title">创建已有人物</text>
+                <text class="index-scope-panel-close" catchtap="onToggleKnownPanel">收起</text>
+              </view>
+              <view class="index-scope-field">
+                <textarea
+                  class="index-scope-input index-scope-input--area"
+                  style="background-color:#ffffff;color:#374151;"
+                  placeholder-class="index-scope-placeholder"
+                  value="{{knownCharacterName}}"
+                  bindinput="onKnownCharacterInput"
+                  placeholder="输入已知的人物名称，会直接载入设定本，例如：初音未来、甄嬛、蜘蛛侠"
+                  maxlength="500"
+                  show-confirm-bar="{{false}}"
+                />
+                <view
+                  class="index-scope-inline-btn {{creatingKnown || !knownCharacterCanSubmit ? 'index-scope-inline-btn--disabled' : ''}}"
+                  catchtap="onCreateKnownCharacter"
+                >
+                  <text class="index-scope-inline-btn-text">{{creatingKnown ? '创建中…' : '创建'}}</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </block>
+        <block wx:else>
+          <text class="oc-page-title">人物设定</text>
+          <text class="oc-page-subtitle">可编辑设定；点右侧锁锁定，重抽时保留</text>
+        </block>
+      </view>
+
+      <view class="oc-gacha-stage">
+        <view class="oc-gacha-card-slot">
+          <view
+            class="index-pools-guide"
+            wx:if="{{!(result && cardFlipped) && !cardSpinning && !cardAiWaiting && !cardLayer1Waiting}}"
+          >
+            <text class="index-pools-guide-text">抽卡结果来自</text>
+            <view class="index-pools-guide-btn" catchtap="onGoPools">
+              <text class="index-pools-guide-btn-text">选项库</text>
+            </view>
+            <text class="index-pools-guide-text">，点击前往管理</text>
+          </view>
+          <view class="oc-gacha-card-box">
+            <view class="oc-gacha-card-fill oc-flip-wrap">
+              <view
+                class="oc-flip-inner {{cardFlipped ? 'flipped' : ''}} {{cardSpinning ? 'spin-once' : ''}} {{cardAiWaiting ? 'ai-waiting' : ''}} {{cardLayer1Waiting ? 'layer1-waiting' : ''}}"
+                bindanimationend="onCardSpinEnd"
+              >
+                <view class="oc-flip-back">
+                  <view class="oc-gacha-back" bindtap="onStartDraw">
+                    <image class="oc-gacha-back-img" src="{{cardBackSrc}}" mode="aspectFill" />
+                  </view>
+                </view>
+                <view class="oc-flip-front oc-flip-front-face" wx:if="{{cardSpinning || cardAiWaiting || (result && cardFlipped)}}">
+                  <view class="oc-card-face-blank" wx:if="{{cardAiWaiting && !result}}">
+                    <text class="oc-ai-wait-quote">{{aiWaitQuote}}</text>
+                  </view>
+                  <view class="oc-result-card" wx:if="{{result && (cardFlipped || cardSpinning || cardAiWaiting)}}">
+                    <text class="card-face-hint">牌面展示</text>
+                    <view class="card-title">抽到的设定</view>
+                    <view class="card-scroll">
+                      <view class="card-row card-row--dense {{locked.name ? 'card-row--locked' : ''}}">
+                        <text class="label">姓名</text>
+                        <input class="value-input" value="{{result.name}}" data-key="name" bindinput="onResultInput" placeholder="输入" />
+                        <view class="row-lock {{locked.name ? 'row-lock--on' : ''}}" bindtap="onLockToggle" hover-class="row-lock-hover" data-lock-key="name">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row card-row--dense {{locked.race ? 'card-row--locked' : ''}}">
+                        <text class="label">种族</text>
+                        <input class="value-input" value="{{result.race}}" data-key="race" bindinput="onResultInput" placeholder="输入" />
+                        <view class="row-lock {{locked.race ? 'row-lock--on' : ''}}" bindtap="onLockToggle" hover-class="row-lock-hover" data-lock-key="race">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row card-row--dense {{locked.gender ? 'card-row--locked' : ''}}">
+                        <text class="label">性别</text>
+                        <input class="value-input" value="{{result.gender}}" data-key="gender" bindinput="onResultInput" placeholder="输入" />
+                        <view class="row-lock {{locked.gender ? 'row-lock--on' : ''}}" bindtap="onLockToggle" hover-class="row-lock-hover" data-lock-key="gender">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row card-row--dense {{locked.age ? 'card-row--locked' : ''}}">
+                        <text class="label">年龄</text>
+                        <input class="value-input" value="{{result.age}}" data-key="age" bindinput="onResultInput" placeholder="输入" />
+                        <view class="row-lock {{locked.age ? 'row-lock--on' : ''}}" bindtap="onLockToggle" hover-class="row-lock-hover" data-lock-key="age">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row card-row--dense {{locked.hairColor ? 'card-row--locked' : ''}}">
+                        <text class="label">发色</text>
+                        <input class="value-input" value="{{result.hairColor}}" data-key="hairColor" bindinput="onResultInput" placeholder="输入" />
+                        <view class="row-lock {{locked.hairColor ? 'row-lock--on' : ''}}" bindtap="onLockToggle" hover-class="row-lock-hover" data-lock-key="hairColor">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row card-row--dense {{locked.eyeColor ? 'card-row--locked' : ''}}">
+                        <text class="label">瞳色</text>
+                        <input class="value-input" value="{{result.eyeColor}}" data-key="eyeColor" bindinput="onResultInput" placeholder="输入" />
+                        <view class="row-lock {{locked.eyeColor ? 'row-lock--on' : ''}}" bindtap="onLockToggle" hover-class="row-lock-hover" data-lock-key="eyeColor">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row card-row--dense {{locked.personality0 ? 'card-row--locked' : ''}}">
+                        <text class="label">性格</text>
+                        <input class="value-input" value="{{result.personalities[0]}}" data-key="personalities" data-index="0" bindinput="onResultInput" placeholder="输入" />
+                        <view class="row-lock {{locked.personality0 ? 'row-lock--on' : ''}}" bindtap="onLockToggle" hover-class="row-lock-hover" data-lock-key="personality0">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row card-row--dense {{locked.personality1 ? 'card-row--locked' : ''}}">
+                        <text class="label">性格</text>
+                        <input class="value-input" value="{{result.personalities[1]}}" data-key="personalities" data-index="1" bindinput="onResultInput" placeholder="输入" />
+                        <view class="row-lock {{locked.personality1 ? 'row-lock--on' : ''}}" bindtap="onLockToggle" hover-class="row-lock-hover" data-lock-key="personality1">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row card-row--dense {{locked.likes ? 'card-row--locked' : ''}}">
+                        <text class="label">喜欢</text>
+                        <input class="value-input" value="{{result.likes}}" data-key="likes" bindinput="onResultInput" placeholder="输入" />
+                        <view class="row-lock {{locked.likes ? 'row-lock--on' : ''}}" bindtap="onLockToggle" hover-class="row-lock-hover" data-lock-key="likes">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row card-row--dense {{locked.quirk0 ? 'card-row--locked' : ''}}">
+                        <text class="label">怪癖</text>
+                        <input class="value-input" value="{{result.quirks[0]}}" data-key="quirks" data-index="0" bindinput="onResultInput" placeholder="输入" />
+                        <view class="row-lock {{locked.quirk0 ? 'row-lock--on' : ''}}" bindtap="onLockToggle" hover-class="row-lock-hover" data-lock-key="quirk0">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row card-row--dense {{locked.quirk1 ? 'card-row--locked' : ''}}">
+                        <text class="label">怪癖</text>
+                        <input class="value-input" value="{{result.quirks[1]}}" data-key="quirks" data-index="1" bindinput="onResultInput" placeholder="输入" />
+                        <view class="row-lock {{locked.quirk1 ? 'row-lock--on' : ''}}" bindtap="onLockToggle" hover-class="row-lock-hover" data-lock-key="quirk1">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                    </view>
+                  </view>
+                </view>
               </view>
             </view>
           </view>
 
-          <block wx:if="{{!result}}">
-            <view class="draw-area">
-              <view class="draw-card draw-card-large" bindtap="onStartDraw">
-                <view class="draw-card-inner">
-                  <text class="draw-card-text-only">点击抽卡</text>
-                </view>
-              </view>
+          <view class="actions-below-card" wx:if="{{result && cardFlipped && !cardSpinning}}">
+            <view class="pixel-btn btn-action btn-wire-secondary" bindtap="onRedrawUnlocked">
+              <text class="btn-action-text">重抽</text>
             </view>
-          </block>
-
-          <block wx:if="{{result}}">
-            <view class="reveal-card-wrap">
-              <view class="reveal-card pixel-card {{cardFlipped ? 'card-flipped' : ''}}">
-                <view class="card-title">抽到的设定</view>
-                <view class="card-row {{step >= 6 && locked.name ? 'row-locked' : ''}}" wx:if="{{step >= 1}}">
-                  <text class="label">姓名</text>
-                  <input class="value-input" value="{{result.name}}" data-key="name" bindinput="onResultInput" placeholder="可自行输入" />
-                  <view class="lock-btn {{locked.name ? 'locked' : ''}}" wx:if="{{step >= 6}}" bindtap="onLockToggle" data-key="name">{{locked.name ? '已锁定' : '锁定'}}</view>
-                </view>
-                <view class="card-row {{step >= 6 && locked.race ? 'row-locked' : ''}}" wx:if="{{step >= 2}}">
-                  <text class="label">种族</text>
-                  <input class="value-input" value="{{result.race}}" data-key="race" bindinput="onResultInput" placeholder="可自行输入" />
-                  <view class="lock-btn {{locked.race ? 'locked' : ''}}" wx:if="{{step >= 6}}" bindtap="onLockToggle" data-key="race">{{locked.race ? '已锁定' : '锁定'}}</view>
-                </view>
-                <view class="card-row {{step >= 6 && locked.hairColor ? 'row-locked' : ''}}" wx:if="{{step >= 3}}">
-                  <text class="label">发色</text>
-                  <input class="value-input" value="{{result.hairColor}}" data-key="hairColor" bindinput="onResultInput" placeholder="可自行输入" />
-                  <view class="lock-btn {{locked.hairColor ? 'locked' : ''}}" wx:if="{{step >= 6}}" bindtap="onLockToggle" data-key="hairColor">{{locked.hairColor ? '已锁定' : '锁定'}}</view>
-                </view>
-                <view class="card-row {{step >= 6 && locked.eyeColor ? 'row-locked' : ''}}" wx:if="{{step >= 4}}">
-                  <text class="label">瞳色</text>
-                  <input class="value-input" value="{{result.eyeColor}}" data-key="eyeColor" bindinput="onResultInput" placeholder="可自行输入" />
-                  <view class="lock-btn {{locked.eyeColor ? 'locked' : ''}}" wx:if="{{step >= 6}}" bindtap="onLockToggle" data-key="eyeColor">{{locked.eyeColor ? '已锁定' : '锁定'}}</view>
-                </view>
-                <view class="card-row {{step >= 6 && locked.personality ? 'row-locked' : ''}}" wx:if="{{step >= 5}}">
-                  <text class="label">性格</text>
-                  <input class="value-input" value="{{result.personality}}" data-key="personality" bindinput="onResultInput" placeholder="可自行输入" />
-                  <view class="lock-btn {{locked.personality ? 'locked' : ''}}" wx:if="{{step >= 6}}" bindtap="onLockToggle" data-key="personality">{{locked.personality ? '已锁定' : '锁定'}}</view>
-                </view>
-                <view class="card-row {{step >= 6 && locked.quirk ? 'row-locked' : ''}}" wx:if="{{step >= 6}}">
-                  <text class="label">怪癖</text>
-                  <input class="value-input" value="{{result.quirk}}" data-key="quirk" bindinput="onResultInput" placeholder="可自行输入" />
-                  <view class="lock-btn {{locked.quirk ? 'locked' : ''}}" wx:if="{{step >= 6}}" bindtap="onLockToggle" data-key="quirk">{{locked.quirk ? '已锁定' : '锁定'}}</view>
-                </view>
-              </view>
+            <view class="pixel-btn pixel-btn-primary btn-action btn-wire-primary" bindtap="onGoBackground">
+              <text class="btn-action-text">下一步</text>
             </view>
-
-            <view class="actions actions-six">
-              <block wx:if="{{step < 6}}">
-                <view class="pixel-btn pixel-btn-primary btn-action" bindtap="onNextStep">
-                  <text class="btn-action-text">下一项</text>
-                </view>
-                <view class="pixel-btn btn-action btn-action-disabled btn-action-placeholder"><text class="btn-action-text">重抽</text></view>
-                <view class="pixel-btn btn-action btn-action-disabled btn-action-placeholder"><text class="btn-action-text">收藏</text></view>
-                <view class="pixel-btn btn-action btn-action-disabled btn-action-placeholder"><text class="btn-action-text">重新开始</text></view>
-                <view class="pixel-btn btn-action btn-action-disabled btn-action-placeholder"><text class="btn-action-text">复制文案</text></view>
-                <view class="pixel-btn btn-action btn-action-disabled btn-action-placeholder"><text class="btn-action-text">保存图片</text></view>
-                <view class="pixel-btn btn-action btn-action-disabled btn-action-placeholder"><text class="btn-action-text">完善背景故事</text></view>
-              </block>
-              <block wx:if="{{step >= 6}}">
-                <view class="pixel-btn pixel-btn-primary btn-action" bindtap="onRedrawUnlocked">
-                  <text class="btn-action-text">重抽</text>
-                </view>
-                <view class="pixel-btn btn-action {{saved ? 'btn-action-disabled' : ''}}" bindtap="onFavorite">
-                  <text class="btn-action-text">{{saved ? '已收藏' : '收藏'}}</text>
-                </view>
-                <view class="pixel-btn btn-action" bindtap="onDrawAgain">
-                  <text class="btn-action-text">重新开始</text>
-                </view>
-                <view class="pixel-btn btn-action" bindtap="onCopy">
-                  <text class="btn-action-text">复制文案</text>
-                </view>
-                <view class="pixel-btn btn-action" bindtap="onSaveImage">
-                  <text class="btn-action-text">保存图片</text>
-                </view>
-                <view class="pixel-btn pixel-btn-primary btn-action" bindtap="onGoBackground">
-                  <text class="btn-action-text">完善背景故事</text>
-                </view>
-              </block>
-            </view>
-          </block>
+          </view>
         </view>
-        <view class="content-bottom-spacer"></view>
-      </scroll-view>
+      </view>
+    </view>
+
+    <!-- 第二环节：背景故事 -->
+    <view class="gacha-phase-pane" wx:if="{{gachaPhase == 2}}">
+      <view class="oc-page-header">
+        <text class="oc-page-title">背景故事</text>
+        <text class="oc-page-subtitle">{{hasBackground ? '可编辑设定；点右侧锁锁定，重抽时保留' : '点击卡牌生成背景'}}</text>
+      </view>
+
+      <view class="oc-gacha-stage">
+        <view class="oc-gacha-card-slot">
+          <view class="oc-gacha-card-box" wx:key="phase-2">
+            <view class="oc-gacha-card-fill oc-flip-wrap">
+              <view
+                class="oc-flip-inner {{cardFlipped ? 'flipped' : ''}} {{cardSpinning ? 'spin-once' : ''}} {{cardAiWaiting ? 'ai-waiting' : ''}}"
+                bindanimationend="onCardSpinEnd"
+              >
+                <view class="oc-flip-back">
+                  <view class="oc-gacha-back" catchtap="onFlipBackgroundCard">
+                    <image class="oc-gacha-back-img" src="{{cardBackSrc}}" mode="aspectFill" />
+                  </view>
+                </view>
+                <view class="oc-flip-front oc-flip-front-face" wx:if="{{hasBackground || cardAiWaiting}}">
+                  <view class="oc-card-face-blank" wx:if="{{cardAiWaiting && !hasBackground}}">
+                    <text class="oc-ai-wait-quote">{{aiWaitQuote}}</text>
+                  </view>
+                  <view class="oc-result-card" wx:if="{{hasBackground}}">
+                    <text class="card-face-hint">牌面展示</text>
+                    <view class="card-title">世界观 · 身世 · 大事件</view>
+                    <view class="card-scroll">
+                      <view class="card-row card-row--dense {{lockedBackground.worldview ? 'card-row--locked' : ''}}">
+                        <text class="label">世界观</text>
+                        <input class="value-input" value="{{background.worldview}}" data-key="worldview" bindinput="onBackgroundInput" placeholder="输入" />
+                        <view class="row-lock {{lockedBackground.worldview ? 'row-lock--on' : ''}}" catchtap="onLockBackgroundToggle" hover-class="row-lock-hover" data-lock-key="worldview">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row card-row--dense {{lockedBackground.origin0 ? 'card-row--locked' : ''}}" wx:if="{{background.origins[0] !== undefined}}">
+                        <text class="label">身世1</text>
+                        <input class="value-input" value="{{background.origins[0]}}" data-key="origin" data-index="0" bindinput="onBackgroundInput" placeholder="输入" />
+                        <view class="row-lock {{lockedBackground.origin0 ? 'row-lock--on' : ''}}" catchtap="onLockBackgroundToggle" hover-class="row-lock-hover" data-lock-key="origin0">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row card-row--dense {{lockedBackground.origin1 ? 'card-row--locked' : ''}}" wx:if="{{background.origins[1] !== undefined}}">
+                        <text class="label">身世2</text>
+                        <input class="value-input" value="{{background.origins[1]}}" data-key="origin" data-index="1" bindinput="onBackgroundInput" placeholder="输入" />
+                        <view class="row-lock {{lockedBackground.origin1 ? 'row-lock--on' : ''}}" catchtap="onLockBackgroundToggle" hover-class="row-lock-hover" data-lock-key="origin1">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row card-row--dense {{lockedBackground.origin2 ? 'card-row--locked' : ''}}" wx:if="{{background.origins[2] !== undefined}}">
+                        <text class="label">身世3</text>
+                        <input class="value-input" value="{{background.origins[2]}}" data-key="origin" data-index="2" bindinput="onBackgroundInput" placeholder="输入" />
+                        <view class="row-lock {{lockedBackground.origin2 ? 'row-lock--on' : ''}}" catchtap="onLockBackgroundToggle" hover-class="row-lock-hover" data-lock-key="origin2">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row card-row--dense {{lockedBackground.lifeEvent0 ? 'card-row--locked' : ''}}" wx:if="{{background.lifeEvents[0] !== undefined}}">
+                        <text class="label">事件1</text>
+                        <input class="value-input" value="{{background.lifeEvents[0]}}" data-index="0" bindinput="onBackgroundInput" placeholder="输入" />
+                        <view class="row-lock {{lockedBackground.lifeEvent0 ? 'row-lock--on' : ''}}" catchtap="onLockBackgroundToggle" hover-class="row-lock-hover" data-lock-key="lifeEvent0">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row card-row--dense {{lockedBackground.lifeEvent1 ? 'card-row--locked' : ''}}" wx:if="{{background.lifeEvents[1] !== undefined}}">
+                        <text class="label">事件2</text>
+                        <input class="value-input" value="{{background.lifeEvents[1]}}" data-index="1" bindinput="onBackgroundInput" placeholder="输入" />
+                        <view class="row-lock {{lockedBackground.lifeEvent1 ? 'row-lock--on' : ''}}" catchtap="onLockBackgroundToggle" hover-class="row-lock-hover" data-lock-key="lifeEvent1">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row card-row--dense {{lockedBackground.lifeEvent2 ? 'card-row--locked' : ''}}" wx:if="{{background.lifeEvents[2] !== undefined}}">
+                        <text class="label">事件3</text>
+                        <input class="value-input" value="{{background.lifeEvents[2]}}" data-index="2" bindinput="onBackgroundInput" placeholder="输入" />
+                        <view class="row-lock {{lockedBackground.lifeEvent2 ? 'row-lock--on' : ''}}" catchtap="onLockBackgroundToggle" hover-class="row-lock-hover" data-lock-key="lifeEvent2">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                    </view>
+                  </view>
+                </view>
+              </view>
+              <view
+                wx:if="{{!hasBackground && !cardSpinning && !cardAiWaiting}}"
+                class="oc-gacha-tap-cover"
+                catchtap="onFlipBackgroundCard"
+                hover-class="oc-gacha-tap-cover-hover"
+              ></view>
+            </view>
+          </view>
+
+          <view class="actions-below-card actions-below-card--triple" wx:if="{{hasBackground && cardFlipped && !cardSpinning && !cardAiWaiting}}">
+            <view class="pixel-btn btn-action btn-wire-secondary" catchtap="onRedrawBackground">
+              <text class="btn-action-text">重抽</text>
+            </view>
+            <view class="pixel-btn pixel-btn-primary btn-action btn-wire-primary" catchtap="onGoAttitude">
+              <text class="btn-action-text">下一步</text>
+            </view>
+            <view class="pixel-btn btn-action btn-wire-secondary" catchtap="onGachaPrevStep">
+              <text class="btn-action-text">上一步</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 第三环节：语言与态度 -->
+    <view class="gacha-phase-pane" wx:if="{{gachaPhase == 3}}">
+      <view class="oc-page-header">
+        <text class="oc-page-title">语言与态度</text>
+        <text class="oc-page-subtitle">{{hasLayer3 ? '可编辑设定；点右侧锁锁定，重抽时保留' : '点击卡牌生成内容'}}</text>
+      </view>
+
+      <view class="oc-gacha-stage">
+        <view class="oc-gacha-card-slot">
+          <view class="oc-gacha-card-box" wx:key="phase-3">
+            <view class="oc-gacha-card-fill oc-flip-wrap">
+              <view
+                class="oc-flip-inner {{cardFlipped ? 'flipped' : ''}} {{cardSpinning ? 'spin-once' : ''}} {{cardAiWaiting ? 'ai-waiting' : ''}}"
+                bindanimationend="onCardSpinEnd"
+              >
+                <view class="oc-flip-back">
+                  <view class="oc-gacha-back" catchtap="onFlipLayer3Card">
+                    <image class="oc-gacha-back-img" src="{{cardBackSrc}}" mode="aspectFill" />
+                  </view>
+                </view>
+                <view class="oc-flip-front oc-flip-front-face" wx:if="{{hasLayer3 || cardAiWaiting}}">
+                  <view class="oc-card-face-blank" wx:if="{{cardAiWaiting && !hasLayer3}}">
+                    <text class="oc-ai-wait-quote">{{aiWaitQuote}}</text>
+                  </view>
+                  <view class="oc-result-card" wx:if="{{hasLayer3}}">
+                    <text class="card-face-hint">牌面展示</text>
+                    <view class="card-title">常用语与态度</view>
+                    <view class="card-scroll">
+                      <view class="card-row {{lockedLayer3.catchphrase0 ? 'card-row--locked' : ''}}" wx:if="{{catchphrases[0] !== undefined}}">
+                        <text class="label">常用语1</text>
+                        <input class="value-input" value="{{catchphrases[0]}}" data-index="0" bindinput="onCatchphraseInput" placeholder="输入" />
+                        <view class="row-lock {{lockedLayer3.catchphrase0 ? 'row-lock--on' : ''}}" catchtap="onLockLayer3Toggle" hover-class="row-lock-hover" data-lock-key="catchphrase0">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row {{lockedLayer3.catchphrase1 ? 'card-row--locked' : ''}}" wx:if="{{catchphrases[1] !== undefined}}">
+                        <text class="label">常用语2</text>
+                        <input class="value-input" value="{{catchphrases[1]}}" data-index="1" bindinput="onCatchphraseInput" placeholder="输入" />
+                        <view class="row-lock {{lockedLayer3.catchphrase1 ? 'row-lock--on' : ''}}" catchtap="onLockLayer3Toggle" hover-class="row-lock-hover" data-lock-key="catchphrase1">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="card-row {{lockedLayer3.catchphrase2 ? 'card-row--locked' : ''}}" wx:if="{{catchphrases[2] !== undefined}}">
+                        <text class="label">常用语3</text>
+                        <input class="value-input" value="{{catchphrases[2]}}" data-index="2" bindinput="onCatchphraseInput" placeholder="输入" />
+                        <view class="row-lock {{lockedLayer3.catchphrase2 ? 'row-lock--on' : ''}}" catchtap="onLockLayer3Toggle" hover-class="row-lock-hover" data-lock-key="catchphrase2">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="attitude-row {{lockedLayer3.attitude0 ? 'attitude-row--locked' : ''}}" wx:if="{{attitudes[0]}}">
+                        <text class="label">态度1</text>
+                        <view class="attitude-content">
+                          <text class="attitude-event">{{attitudes[0].event}}</text>
+                          <input class="value-input attitude-input" value="{{attitudes[0].attitude}}" data-index="0" bindinput="onAttitudeInput" placeholder="输入态度" />
+                        </view>
+                        <view class="row-lock {{lockedLayer3.attitude0 ? 'row-lock--on' : ''}}" catchtap="onLockLayer3Toggle" hover-class="row-lock-hover" data-lock-key="attitude0">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="attitude-row {{lockedLayer3.attitude1 ? 'attitude-row--locked' : ''}}" wx:if="{{attitudes[1]}}">
+                        <text class="label">态度2</text>
+                        <view class="attitude-content">
+                          <text class="attitude-event">{{attitudes[1].event}}</text>
+                          <input class="value-input attitude-input" value="{{attitudes[1].attitude}}" data-index="1" bindinput="onAttitudeInput" placeholder="输入态度" />
+                        </view>
+                        <view class="row-lock {{lockedLayer3.attitude1 ? 'row-lock--on' : ''}}" catchtap="onLockLayer3Toggle" hover-class="row-lock-hover" data-lock-key="attitude1">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                      <view class="attitude-row {{lockedLayer3.attitude2 ? 'attitude-row--locked' : ''}}" wx:if="{{attitudes[2]}}">
+                        <text class="label">态度3</text>
+                        <view class="attitude-content">
+                          <text class="attitude-event">{{attitudes[2].event}}</text>
+                          <input class="value-input attitude-input" value="{{attitudes[2].attitude}}" data-index="2" bindinput="onAttitudeInput" placeholder="输入态度" />
+                        </view>
+                        <view class="row-lock {{lockedLayer3.attitude2 ? 'row-lock--on' : ''}}" catchtap="onLockLayer3Toggle" hover-class="row-lock-hover" data-lock-key="attitude2">
+                          <view class="row-lock-icon"><view class="row-lock-ring"></view><view class="row-lock-bar"></view></view>
+                        </view>
+                      </view>
+                    </view>
+                  </view>
+                </view>
+              </view>
+              <view
+                wx:if="{{!hasLayer3 && !cardSpinning && !cardAiWaiting}}"
+                class="oc-gacha-tap-cover"
+                catchtap="onFlipLayer3Card"
+                hover-class="oc-gacha-tap-cover-hover"
+              ></view>
+            </view>
+          </view>
+        </view>
+
+        <view class="actions-layer3" wx:if="{{hasLayer3 && cardFlipped && !cardSpinning && !cardAiWaiting}}">
+          <view class="actions-layer3-row actions-layer3-row--primary">
+            <view class="pixel-btn btn-action btn-layer3-ghost" catchtap="onRedrawLayer3">
+              <text class="btn-action-text">重抽</text>
+            </view>
+            <view class="pixel-btn btn-action btn-layer3-save" catchtap="onSaveOrOpenNotebook">
+              <text class="btn-action-text">{{notebookSaved ? '进入设定本' : '存入设定本'}}</text>
+            </view>
+            <view class="pixel-btn btn-action btn-layer3-ghost" catchtap="onBackHome">
+              <text class="btn-action-text">返回</text>
+            </view>
+            <view class="pixel-btn btn-action btn-layer3-ghost" catchtap="onGachaPrevStep">
+              <text class="btn-action-text">上一步</text>
+            </view>
+          </view>
+          <view class="actions-layer3-row actions-layer3-row--secondary" wx:if="{{layer3Ready}}">
+            <view class="pixel-btn pixel-btn-primary btn-action" catchtap="onGoOcBio">
+              <text class="btn-action-text">OC小传</text>
+            </view>
+            <view class="pixel-btn pixel-btn-primary btn-action" catchtap="onGoOcChat">
+              <text class="btn-action-text">OC对话</text>
+            </view>
+            <view class="pixel-btn pixel-btn-primary btn-action" catchtap="onGoOcStory">
+              <text class="btn-action-text">OC故事</text>
+            </view>
+            <view class="pixel-btn pixel-btn-primary btn-action" catchtap="onGoOcGroupChat">
+              <text class="btn-action-text">OC群聊</text>
+            </view>
+          </view>
+        </view>
+      </view>
     </view>
   </view>
 
-  <oc-nav current="index" bind:home="onNavHomeScroll" />
+  <canvas
+    wx:if="{{exportCanvasOn}}"
+    type="2d"
+    id="card-canvas"
+    class="canvas-hidden"
+    style="width: 600px; height: 800px;"
+  ></canvas>
+  <canvas
+    wx:if="{{exportCanvasOn}}"
+    type="2d"
+    id="mindmap-canvas"
+    class="canvas-hidden"
+    style="width: 750px; height: 1200px;"
+  ></canvas>
+  <oc-tab-bar current="home" />
 
-  <canvas type="2d" id="card-canvas" class="canvas-hidden" style="width: 600px; height: 800px;"></canvas>
-  <canvas type="2d" id="mindmap-canvas" class="canvas-hidden" style="width: 750px; height: 1200px;"></canvas>
+  <view
+    wx:if="{{oaQrVisible}}"
+    class="index-oa-mask"
+    catchtap="onCloseOaQr"
+    catchtouchmove="preventOaMove"
+  >
+    <view class="index-oa-card" catchtap="preventOaMove">
+      <view class="index-oa-close" catchtap="onCloseOaQr">×</view>
+      <image
+        class="index-oa-qr"
+        src="/images/mp-oa-qrcode.png"
+        mode="widthFix"
+        show-menu-by-longpress="{{true}}"
+      />
+      <text class="index-oa-hint">可查看小程序版本更新说明及官方通知</text>
+    </view>
+  </view>
 </view>

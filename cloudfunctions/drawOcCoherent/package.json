@@ -1,0 +1,7 @@
+{
+  "name": "drawOcCoherent",
+  "version": "1.0.0",
+  "description": "DeepSeek 智能抽卡（逻辑自洽）",
+  "main": "index.js",
+  "dependencies": {}
+}

@@ -1,0 +1,100 @@
+.oc-share-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  /* 留出底部 Tab，避免挡住切换 */
+  bottom: calc(112rpx + env(safe-area-inset-bottom));
+  background: rgba(20, 16, 36, 0.45);
+  z-index: 1200;
+}
+
+.oc-share-sheet {
+  position: fixed;
+  left: 24rpx;
+  right: 24rpx;
+  bottom: calc(env(safe-area-inset-bottom) + 24rpx);
+  max-height: 78vh;
+  padding: 28rpx 28rpx 24rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1rpx solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  z-index: 1201;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.oc-share-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--diffuse-highlight);
+  margin-bottom: 8rpx;
+}
+
+.oc-share-hint {
+  display: block;
+  font-size: 22rpx;
+  color: var(--diffuse-subtle);
+  line-height: 1.5;
+  margin-bottom: 16rpx;
+}
+
+.oc-share-scroll {
+  flex: 1;
+  min-height: 200rpx;
+  max-height: 48vh;
+  padding: 16rpx;
+  border-radius: 16rpx;
+  background: var(--theme-fill-faint);
+  box-sizing: border-box;
+}
+
+.oc-share-body {
+  display: block;
+  font-size: 26rpx;
+  line-height: 1.65;
+  color: var(--diffuse-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.oc-share-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 20rpx;
+}
+
+.oc-share-btn {
+  min-height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 36rpx;
+}
+
+.oc-share-btn-text {
+  font-size: 28rpx;
+}
+
+.oc-share-wx-btn {
+  min-height: 72rpx;
+  line-height: 72rpx;
+  border-radius: 36rpx;
+  background: var(--theme-gradient-share);
+  color: #fff;
+  font-size: 28rpx;
+  border: none;
+  padding: 0;
+}
+
+.oc-share-wx-btn::after {
+  border: none;
+}
+
+.oc-share-wx-btn--hover {
+  opacity: 0.88;
+}

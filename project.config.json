@@ -1,7 +1,52 @@
 {
   "description": "像素风 OC 设定抽卡器",
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "value": "cloudhosting",
+        "type": "folder"
+      },
+      {
+        "value": "cloudfunctions",
+        "type": "folder"
+      },
+      {
+        "value": "scripts",
+        "type": "folder"
+      },
+      {
+        "value": ".corrupted",
+        "type": "suffix"
+      },
+      {
+        "value": ".fixed_attempt",
+        "type": "suffix"
+      },
+      {
+        "value": ".bak_im4A",
+        "type": "suffix"
+      },
+      {
+        "value": "assets",
+        "type": "folder"
+      },
+      {
+        "value": ".md",
+        "type": "suffix"
+      },
+      {
+        "value": "images/card-back.src.png",
+        "type": "file"
+      },
+      {
+        "value": "images/f3eacznEpPhSfc4e9b566e751bbcaec4f47126f689ac.png",
+        "type": "file"
+      },
+      {
+        "value": "images/kX78kAl8rlPIf417be3a16c7fdf38bfdec42a07672ca.png",
+        "type": "file"
+      }
+    ],
     "include": []
   },
   "setting": {
@@ -19,7 +64,7 @@
     "autoAudits": false,
     "newFeature": false,
     "uglifyFileName": false,
-    "uploadWithSourceMap": true,
+    "uploadWithSourceMap": false,
     "useIsolateContext": true,
     "nodeModules": false,
     "enhance": true,

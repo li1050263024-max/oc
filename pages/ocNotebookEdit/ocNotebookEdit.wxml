@@ -1,0 +1,196 @@
+<view class="page edit-page safe-bottom {{uiThemeClass}}">
+  <view class="bg-solid"></view>
+  <oc-back-btn custom bind:back="onBackToNotebook" label="返回设定本" />
+  <view class="edit-body">
+    <view class="section-card auto-parse-card">
+      <view class="section-title">自动识别</view>
+      <text class="auto-parse-hint">粘贴角色设定、小传或零散描述，将自动梳理并填入下方栏目</text>
+      <textarea
+        class="auto-parse-input"
+        value="{{autoText}}"
+        bindinput="onAutoTextInput"
+        placeholder="在此粘贴或输入 OC 设定文本…"
+        maxlength="-1"
+        auto-height
+        disabled="{{parsing}}"
+      />
+      <view class="pixel-btn pixel-btn-primary auto-parse-btn {{parsing ? 'disabled' : ''}}" bindtap="onParseSetting">
+        <text class="btn-t">{{parsing ? '识别中…' : '识别并填写'}}</text>
+      </view>
+    </view>
+
+    <text class="lead">编辑完整设定：基础、背景、语言与态度。修改后请保存，再进入小传或对话。</text>
+
+    <view class="section-card">
+      <view class="section-title">基础设定</view>
+      <view class="oc-image-block">
+        <view class="oc-image-label-row">
+          <text class="oc-image-label">OC 立绘</text>
+          <text class="oc-image-expand-btn" wx:if="{{ocImages.length}}" catchtap="onExpandOcImage">展开</text>
+        </view>
+        <view class="oc-image-swiper-wrap" wx:if="{{ocImages.length}}">
+          <swiper
+            class="oc-image-swiper"
+            current="{{ocImageIndex}}"
+            bindchange="onOcImageSwiperChange"
+            circular="{{ocImages.length > 1}}"
+            indicator-dots="{{ocImages.length > 1}}"
+            indicator-color="{{swiperIndicatorColor}}"
+            indicator-active-color="{{swiperIndicatorActiveColor}}"
+          >
+            <swiper-item wx:for="{{ocImages}}" wx:key="id">
+              <view class="oc-image-preview" bindtap="onExpandOcImage" data-index="{{index}}">
+                <image class="oc-image-img" src="{{item.path}}" mode="aspectFit" />
+                <view class="oc-image-expand-hint">
+                  <text class="oc-image-expand-hint-text">点击展开</text>
+                </view>
+              </view>
+            </swiper-item>
+          </swiper>
+          <text class="oc-image-count" wx:if="{{ocImages.length > 1}}">{{ocImageIndex + 1}} / {{ocImages.length}}</text>
+        </view>
+        <view class="oc-image-placeholder" wx:else>
+          <view class="mini-char">
+            <view class="mini-hair" style="background-color: {{hairHex}};"></view>
+            <view class="mini-face"></view>
+            <view class="mini-eyes">
+              <view class="mini-eye" style="background-color: {{eyeHex}};"></view>
+              <view class="mini-eye" style="background-color: {{eyeHex}};"></view>
+            </view>
+          </view>
+          <text class="oc-image-hint">暂未上传图片，可上传多张</text>
+        </view>
+        <view class="oc-image-actions">
+          <view class="pixel-btn pixel-btn-primary oc-image-btn {{uploadingImages ? 'disabled' : ''}}" bindtap="onChooseOcImage">
+            <text class="btn-t">{{ocImages.length ? '添加图片' : '上传图片'}}</text>
+          </view>
+          <view class="pixel-btn btn-ghost oc-image-btn" wx:if="{{ocImages.length}}" bindtap="onRemoveOcImage">
+            <text class="btn-t">移除当前</text>
+          </view>
+        </view>
+      </view>
+      <view class="form-row">
+        <text class="form-label">姓名</text>
+        <input class="form-input" value="{{result.name}}" data-key="name" bindinput="onResultInput" placeholder="姓名" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">种族</text>
+        <input class="form-input" value="{{result.race}}" data-key="race" bindinput="onResultInput" placeholder="种族" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">性别</text>
+        <input class="form-input" value="{{result.gender}}" data-key="gender" bindinput="onResultInput" placeholder="男 / 女 / 无性别" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">年龄</text>
+        <input class="form-input" value="{{result.age}}" data-key="age" bindinput="onResultInput" placeholder="幼年 / 青年等" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">发色</text>
+        <input class="form-input" value="{{result.hairColor}}" data-key="hairColor" bindinput="onResultInput" placeholder="发色" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">瞳色</text>
+        <input class="form-input" value="{{result.eyeColor}}" data-key="eyeColor" bindinput="onResultInput" placeholder="瞳色" />
+      </view>
+      <view class="form-row" wx:for="{{[0,1,2]}}" wx:key="*this">
+        <text class="form-label">性格{{index + 1}}</text>
+        <input class="form-input" value="{{result.personalities[index]}}" data-key="personalities" data-index="{{index}}" bindinput="onResultInput" placeholder="性格" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">喜欢的东西</text>
+        <input class="form-input" value="{{result.likes}}" data-key="likes" bindinput="onResultInput" placeholder="喜欢的东西" />
+      </view>
+      <view class="form-row" wx:for="{{[0,1,2]}}" wx:key="*this">
+        <text class="form-label">怪癖{{index + 1}}</text>
+        <input class="form-input" value="{{result.quirks[index]}}" data-key="quirks" data-index="{{index}}" bindinput="onResultInput" placeholder="怪癖" />
+      </view>
+    </view>
+
+    <view class="section-card">
+      <view class="section-title">背景 · 世界观 · 身世 · 大事件</view>
+      <view class="form-row block">
+        <text class="form-label">世界观</text>
+        <textarea class="form-textarea" value="{{background.worldview}}" bindinput="onBgWorldview" auto-height placeholder="世界观" maxlength="-1" />
+      </view>
+      <view class="form-row block" wx:for="{{[0,1,2]}}" wx:key="*this">
+        <text class="form-label">身世{{index + 1}}</text>
+        <textarea class="form-textarea" value="{{background.origins[index]}}" data-index="{{index}}" bindinput="onOriginInput" auto-height placeholder="身世设定" maxlength="-1" />
+      </view>
+      <view class="form-row block" wx:for="{{[0,1,2]}}" wx:key="*this">
+        <text class="form-label">事件{{index + 1}}</text>
+        <textarea class="form-textarea" value="{{background.lifeEvents[index]}}" data-index="{{index}}" bindinput="onLifeEvent" auto-height placeholder="人生大事件" maxlength="-1" />
+      </view>
+    </view>
+
+    <view class="section-card">
+      <view class="section-title">语言与态度</view>
+      <view class="form-row block" wx:for="{{[0,1,2]}}" wx:key="*this">
+        <text class="form-label">常用语{{index + 1}}</text>
+        <input class="form-input" value="{{catchphrases[index]}}" data-index="{{index}}" bindinput="onCatchphraseInput" placeholder="常用语" />
+      </view>
+      <view class="att-block" wx:for="{{[0,1,2]}}" wx:key="*this">
+        <text class="form-label">态度{{index + 1}}</text>
+        <input class="form-input sub" value="{{attitudes[index].event}}" data-index="{{index}}" bindinput="onAttitudeEventInput" placeholder="情境 / 事件" />
+        <input class="form-input sub" value="{{attitudes[index].attitude}}" data-index="{{index}}" bindinput="onAttitudeTextInput" placeholder="该情境下的态度" />
+      </view>
+    </view>
+
+    <view class="section-card" wx:if="{{generatedBio}}">
+      <view class="section-title">已生成人物小传</view>
+      <text class="bio-preview" user-select>{{generatedBio}}</text>
+    </view>
+
+    <view class="action-bar">
+      <view class="pixel-btn pixel-btn-primary" bindtap="onSaveNotebook"><text class="btn-t">保存设定</text></view>
+      <view class="pixel-btn pixel-btn-primary" bindtap="onGoOcChat"><text class="btn-t">OC 对话</text></view>
+      <view class="pixel-btn btn-ghost" bindtap="onGoOcBio"><text class="btn-t">OC 小传</text></view>
+      <view class="pixel-btn btn-ghost" bindtap="onGoOcStory"><text class="btn-t">OC 故事</text></view>
+      <view class="pixel-btn btn-wire-secondary" bindtap="onExportOcPack"><text class="btn-t">导出</text></view>
+      <view class="pixel-btn btn-wire-secondary" bindtap="onImportOcPack"><text class="btn-t">导入</text></view>
+      <view class="pixel-btn btn-wire-secondary" wx:if="{{favoriteId}}" bindtap="onShareOcSetting"><text class="btn-t">分享</text></view>
+      <view class="pixel-btn btn-ghost btn-danger" wx:if="{{favoriteId}}" bindtap="onDeleteOc"><text class="btn-t">删除此 OC</text></view>
+    </view>
+    <text class="save-hint" wx:if="{{!layer3Ready}}">补全 3 条常用语与态度后可使用 OC 对话</text>
+    <view class="bottom-spacer"></view>
+  </view>
+
+  <view
+    class="oc-image-fullscreen"
+    wx:if="{{ocImageExpanded && ocImages.length}}"
+    catchtouchmove="preventMove"
+  >
+    <view class="oc-image-fullscreen-backdrop" catchtap="onCloseOcImageExpand"></view>
+    <view class="oc-image-fullscreen-panel">
+      <view class="oc-image-fullscreen-head">
+        <text class="oc-image-fullscreen-title">OC 立绘</text>
+        <text class="oc-image-fullscreen-count" wx:if="{{ocImages.length > 1}}">{{ocImageIndex + 1}} / {{ocImages.length}}</text>
+        <view class="oc-image-fullscreen-close" catchtap="onCloseOcImageExpand" aria-role="button" aria-label="关闭">
+          <text class="oc-image-fullscreen-close-icon">×</text>
+        </view>
+      </view>
+      <swiper
+        class="oc-image-fullscreen-swiper"
+        current="{{ocImageIndex}}"
+        bindchange="onOcImageSwiperChange"
+        circular="{{ocImages.length > 1}}"
+        indicator-dots="{{ocImages.length > 1}}"
+        indicator-color="rgba(255, 255, 255, 0.35)"
+        indicator-active-color="#ffffff"
+      >
+        <swiper-item wx:for="{{ocImages}}" wx:key="id">
+          <view class="oc-image-fullscreen-item">
+            <image class="oc-image-fullscreen-img" src="{{item.path}}" mode="aspectFit" />
+          </view>
+        </swiper-item>
+      </swiper>
+      <text class="oc-image-fullscreen-tip" wx:if="{{ocImages.length > 1}}">左右滑动切换图片</text>
+    </view>
+  </view>
+  <oc-share-sheet
+    visible="{{shareSheetVisible}}"
+    title="{{shareSheetTitle}}"
+    content="{{shareSheetContent}}"
+    bind:close="onCloseShareSheet"
+  />
+</view>

@@ -1,0 +1,11 @@
+function isSelected(ids, id) {
+  if (!ids || !id) return false;
+  for (var i = 0; i < ids.length; i++) {
+    if (ids[i] === id) return true;
+  }
+  return false;
+}
+
+module.exports = {
+  isSelected: isSelected
+};

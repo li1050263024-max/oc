@@ -1,4 +1,12 @@
 {
-  "usingComponents": {},
-  "navigationBarTitleText": "我的收藏"
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "我的收藏",
+  "backgroundColor": "#c8bee4",
+  "backgroundColorTop": "#c8bee4",
+  "backgroundColorBottom": "#c4d0e8",
+  "backgroundColorContent": "#c8bee400",
+  "usingComponents": {
+    "oc-page-nav": "/components/ocPageNav/ocPageNav",
+    "oc-back-btn": "/components/ocBackBtn/ocBackBtn"
+  }
 }

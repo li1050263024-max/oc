@@ -1,82 +1,148 @@
-<view class="page safe-bottom">
+<view class="page oc-page safe-bottom has-tab-bar {{uiThemeClass}}">
   <view class="bg-solid"></view>
-  <scroll-view class="scroll" scroll-y enhanced show-scrollbar="{{false}}">
-    <text class="lead">在此手写或修改 OC：基础设定、背景世界观、语言与态度会与抽卡流程共用同一份「进行中」存档。</text>
+  <oc-page-nav />
+  <view class="notebook-toolbar-float" style="{{toolbarFloatStyle}}">
+    <view class="notebook-toolbar-inner">
+      <block wx:if="{{!manageMode}}">
+        <view class="notebook-tool-btn oc-chip-btn" catchtap="onImportNotebook">
+          <text class="oc-chip-btn-text">导入</text>
+        </view>
+        <view class="notebook-tool-btn oc-chip-btn" catchtap="onExportNotebook">
+          <text class="oc-chip-btn-text">导出全部</text>
+        </view>
+        <view class="notebook-tool-btn oc-chip-btn" catchtap="onToggleManageMode" wx:if="{{list.length}}">
+          <text class="oc-chip-btn-text">管理</text>
+        </view>
+      </block>
+      <block wx:else>
+        <view class="notebook-tool-btn oc-chip-btn" catchtap="onSelectAllOc">
+          <text class="oc-chip-btn-text">{{selectedCount >= list.length ? '取消全选' : '全选'}}</text>
+        </view>
+        <view class="notebook-tool-btn oc-chip-btn notebook-tool-btn--danger {{selectedCount ? '' : 'notebook-tool-btn--disabled'}}" catchtap="onBatchDeleteOc">
+          <text class="oc-chip-btn-text">删除{{selectedCount ? '(' + selectedCount + ')' : ''}}</text>
+        </view>
+        <view class="notebook-tool-btn oc-chip-btn" catchtap="onToggleManageMode">
+          <text class="oc-chip-btn-text">完成</text>
+        </view>
+      </block>
+    </view>
+  </view>
+  <view class="oc-page-shell notebook-shell">
+    <scroll-view class="notebook-panel" scroll-y show-scrollbar="{{false}}">
+      <view class="notebook-panel-inner">
+        <view class="nb-backup-tip">
+          <text class="nb-backup-tip-text" wx:if="{{!manageMode}}">为防止意外丢失，可使用上方「导入 / 导出」提前备份设定本数据。</text>
+          <text class="nb-backup-tip-text" wx:else>已选 {{selectedCount}} / {{list.length}}，可多选后批量删除。</text>
+        </view>
 
-    <view class="section-card">
-      <view class="section-title">基础设定</view>
-      <view class="preview-row">
-        <view class="mini-char">
-          <view class="mini-hair" style="background-color: {{hairHex}};"></view>
-          <view class="mini-face"></view>
-          <view class="mini-eyes">
-            <view class="mini-eye" style="background-color: {{eyeHex}};"></view>
-            <view class="mini-eye" style="background-color: {{eyeHex}};"></view>
+        <view class="card-grid">
+          <view class="nb-card nb-card-add" bindtap="onAddOc" wx:if="{{!manageMode}}">
+            <view class="add-icon">+</view>
+            <text class="add-title">添加你的 OC</text>
+            <text class="add-hint">粘贴文本自动识别，或从零手写创建</text>
+          </view>
+
+          <view
+            class="nb-card nb-card-oc {{expandedOcIds[item.id] ? 'nb-card-oc--expanded' : ''}} {{manageMode && selectedMap[item.id] ? 'nb-card-oc--selected' : ''}}"
+            wx:for="{{list}}"
+            wx:key="id"
+          >
+            <view
+              class="nb-card-body"
+              bindtap="onCardTap"
+              data-id="{{item.id}}"
+            >
+              <view class="nb-manage-check" wx:if="{{manageMode}}">
+                <view class="nb-manage-check-box {{selectedMap[item.id] ? 'nb-manage-check-box--on' : ''}}">
+                  <text wx:if="{{selectedMap[item.id]}}" class="nb-manage-check-mark">✓</text>
+                </view>
+              </view>
+              <view class="nb-card-title-row">
+                <view class="oc-card-top">
+                  <view class="oc-thumb" wx:if="{{item.ocImagePath}}">
+                    <image class="oc-thumb-img" src="{{item.ocImagePath}}" mode="aspectFill" />
+                  </view>
+                  <view class="oc-thumb oc-thumb-placeholder" wx:else>
+                    <image class="oc-thumb-img" src="{{portraitPlaceholder}}" mode="aspectFill" />
+                  </view>
+                  <view class="oc-card-head">
+                    <text class="oc-name">{{item.name}}</text>
+                    <text class="oc-race">{{item.race}}</text>
+                  </view>
+                </view>
+                <view class="oc-tap-hint-row" wx:if="{{!manageMode}}">
+                  <text class="oc-tap-hint">点击查看人设详情</text>
+                  <view class="oc-tap-hint-arrow"></view>
+                </view>
+              </view>
+              <view class="oc-card-main-row">
+                <view class="oc-card-main-col">
+                  <view class="oc-basic-rows">
+                    <view class="oc-row"><text class="oc-label">性别</text><text class="oc-val">{{item.gender}}</text></view>
+                    <view class="oc-row"><text class="oc-label">年龄</text><text class="oc-val">{{item.age}}</text></view>
+                    <view class="oc-row"><text class="oc-label">发色</text><text class="oc-val">{{item.hairColor}}</text></view>
+                    <view class="oc-row"><text class="oc-label">瞳色</text><text class="oc-val">{{item.eyeColor}}</text></view>
+                    <view class="oc-row"><text class="oc-label">性格</text><text class="oc-val">{{item.personality}}</text></view>
+                    <view class="oc-row"><text class="oc-label">怪癖</text><text class="oc-val">{{item.quirk}}</text></view>
+                  </view>
+                </view>
+                <view class="oc-card-portrait">
+                  <image
+                    class="oc-card-portrait-img {{item.ocImagePath ? '' : 'oc-card-portrait-img--placeholder'}}"
+                    src="{{item.ocImagePath || portraitPlaceholder}}"
+                    mode="aspectFit"
+                  />
+                </view>
+              </view>
+              <view class="nb-card-footer-row" wx:if="{{!manageMode}}">
+                <view class="nb-card-chevron-wrap" catchtap="onToggleOcCard" data-id="{{item.id}}">
+                  <view
+                    class="nb-card-chevron {{expandedOcIds[item.id] ? 'nb-card-chevron--open' : ''}}"
+                  ></view>
+                </view>
+              </view>
+            </view>
+            <view class="nb-card-actions" wx:if="{{!manageMode && expandedOcIds[item.id]}}">
+              <view class="nb-action-btn oc-chip-btn" catchtap="onOcChat" data-id="{{item.id}}">
+                <text class="oc-chip-btn-text">OC对话</text>
+              </view>
+              <view class="nb-action-btn oc-chip-btn" catchtap="onOcGroupChat" data-id="{{item.id}}">
+                <text class="oc-chip-btn-text">OC群聊</text>
+              </view>
+              <view class="nb-action-btn oc-chip-btn" catchtap="onOcBio" data-id="{{item.id}}">
+                <text class="oc-chip-btn-text">OC小传</text>
+              </view>
+              <view class="nb-action-btn oc-chip-btn" catchtap="onOcStory" data-id="{{item.id}}">
+                <text class="oc-chip-btn-text">OC故事</text>
+              </view>
+              <view class="nb-action-btn oc-chip-btn" catchtap="onExportOc" data-id="{{item.id}}">
+                <text class="oc-chip-btn-text">导出</text>
+              </view>
+              <view class="nb-action-btn oc-chip-btn" catchtap="onShareOc" data-id="{{item.id}}">
+                <text class="oc-chip-btn-text">分享</text>
+              </view>
+              <view class="nb-action-btn oc-chip-btn" catchtap="onDeleteOc" data-id="{{item.id}}">
+                <text class="oc-chip-btn-text">删除</text>
+              </view>
+            </view>
           </view>
         </view>
-      </view>
-      <view class="form-row">
-        <text class="form-label">姓名</text>
-        <input class="form-input" value="{{result.name}}" data-key="name" bindinput="onResultInput" placeholder="姓名" />
-      </view>
-      <view class="form-row">
-        <text class="form-label">种族</text>
-        <input class="form-input" value="{{result.race}}" data-key="race" bindinput="onResultInput" placeholder="种族" />
-      </view>
-      <view class="form-row">
-        <text class="form-label">发色</text>
-        <input class="form-input" value="{{result.hairColor}}" data-key="hairColor" bindinput="onResultInput" placeholder="发色" />
-      </view>
-      <view class="form-row">
-        <text class="form-label">瞳色</text>
-        <input class="form-input" value="{{result.eyeColor}}" data-key="eyeColor" bindinput="onResultInput" placeholder="瞳色" />
-      </view>
-      <view class="form-row">
-        <text class="form-label">性格</text>
-        <input class="form-input" value="{{result.personality}}" data-key="personality" bindinput="onResultInput" placeholder="性格" />
-      </view>
-      <view class="form-row">
-        <text class="form-label">怪癖</text>
-        <input class="form-input" value="{{result.quirk}}" data-key="quirk" bindinput="onResultInput" placeholder="怪癖" />
-      </view>
-    </view>
 
-    <view class="section-card">
-      <view class="section-title">背景 · 世界观与人生大事件</view>
-      <view class="form-row block">
-        <text class="form-label">世界观</text>
-        <textarea class="form-textarea" value="{{background.worldview}}" bindinput="onBgWorldview" auto-height placeholder="世界观" maxlength="-1" />
+        <view class="empty-hint" wx:if="{{list.length === 0}}">
+          <text>还没有已保存的 OC，点击上方卡片开始创建</text>
+        </view>
       </view>
-      <view class="form-row block" wx:for="{{[0,1,2]}}" wx:key="*this">
-        <text class="form-label">事件{{index + 1}}</text>
-        <textarea class="form-textarea" value="{{background.lifeEvents[index]}}" data-index="{{index}}" bindinput="onLifeEvent" auto-height placeholder="人生大事件" maxlength="-1" />
-      </view>
-    </view>
-
-    <view class="section-card">
-      <view class="section-title">语言与态度</view>
-      <view class="form-row block" wx:for="{{[0,1,2]}}" wx:key="*this">
-        <text class="form-label">常用语{{index + 1}}</text>
-        <input class="form-input" value="{{catchphrases[index]}}" data-index="{{index}}" bindinput="onCatchphraseInput" placeholder="常用语" />
-      </view>
-      <view class="att-block" wx:for="{{[0,1,2]}}" wx:key="*this">
-        <text class="form-label">态度{{index + 1}}</text>
-        <input class="form-input sub" value="{{attitudes[index].event}}" data-index="{{index}}" bindinput="onAttitudeEventInput" placeholder="情境 / 事件" />
-        <input class="form-input sub" value="{{attitudes[index].attitude}}" data-index="{{index}}" bindinput="onAttitudeTextInput" placeholder="该情境下的态度" />
-      </view>
-    </view>
-
-    <view class="section-card" wx:if="{{generatedBio}}">
-      <view class="section-title">已生成人物小传</view>
-      <text class="bio-preview" user-select>{{generatedBio}}</text>
-    </view>
-
-    <view class="action-bar">
-      <view class="pixel-btn btn-ghost" bindtap="onSaveNotebook"><text class="btn-t">保存设定</text></view>
-      <view class="pixel-btn pixel-btn-primary" bindtap="onGoMindmap"><text class="btn-t">查看人设图</text></view>
-      <view class="pixel-btn pixel-btn-primary" bindtap="onGoOcBio"><text class="btn-t">去 OC 小传</text></view>
-    </view>
-    <view class="bottom-spacer"></view>
-  </scroll-view>
-  <oc-nav current="notebook" />
+    </scroll-view>
+  </view>
+  <oc-share-sheet
+    visible="{{shareSheetVisible}}"
+    title="{{shareSheetTitle}}"
+    content="{{shareSheetContent}}"
+    bind:close="onCloseShareSheet"
+  />
+  <oc-tab-bar
+    wx:if="{{!shareSheetVisible}}"
+    current="notebook"
+    flat-top
+  />
 </view>

@@ -1,75 +1,89 @@
 /**
- * 抽卡逻辑：从各选项池等概率随机抽取 1 项，组成一张 OC 设定卡
- * 支持传入自定义选项池 pools，不传则使用默认
+ * 抽卡逻辑：从各选项池等概率随机抽取，组成 OC 设定卡
  */
 const defaultPools = require('../data/pools.js');
+const { normalizeResult, personalityBlend, quirkBlend, pad3 } = require('./ocResult.js');
+const { pickAge } = require('./coherentGacha.js');
 
 function pickOne(arr) {
   if (!arr || arr.length === 0) return '';
-  const index = Math.floor(Math.random() * arr.length);
-  return arr[index];
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
-/**
- * 执行一次抽卡
- * @param {Object} [pools] - 可选，自定义选项池，结构同 data/pools.js
- * @returns {{ name, race, hairColor, eyeColor, personality, quirk }}
- */
 function draw(pools) {
   const p = pools && pools.names ? pools : defaultPools;
+  const personalities = pad3([
+    pickOne(p.personalities),
+    pickOne(p.personalities),
+    ''
+  ]);
+  let q0 = pickOne(p.quirks);
+  let q1 = pickOne(p.quirks);
+  if (q1 === q0 && (p.quirks || []).length > 1) {
+    q1 = pickOne((p.quirks || []).filter((q) => q !== q0));
+  }
+  const quirks = pad3([q0, q1, '']);
   return {
     name: pickOne(p.names),
     race: pickOne(p.races),
+    gender: pickOne(p.genders || ['男', '女', '无性别']),
+    age: pickAge(p, new Set()),
     hairColor: pickOne(p.hairColors),
     eyeColor: pickOne(p.eyeColors),
-    personality: pickOne(p.personalities),
-    quirk: pickOne(p.quirks)
+    personalities,
+    quirks,
+    likes: pickOne(p.likes || [])
   };
 }
 
-/**
- * 对未锁定的维度重新抽卡，锁定的维度保留原值
- * @param {Object} currentResult - 当前结果
- * @param {Object} locked - 各维度是否锁定
- * @param {Object} [pools] - 可选，自定义选项池
- * @returns {{ name, race, hairColor, eyeColor, personality, quirk }}
- */
 function drawPartial(currentResult, locked, pools) {
-  if (!currentResult || !locked) return currentResult || draw(pools);
+  if (!currentResult || !locked) return normalizeResult(currentResult || draw(pools));
   const p = pools && pools.names ? pools : defaultPools;
-  const poolKeys = {
+  const next = normalizeResult(currentResult);
+  const scalarKeys = {
     name: 'names',
     race: 'races',
+    gender: 'genders',
     hairColor: 'hairColors',
-    eyeColor: 'eyeColors',
-    personality: 'personalities',
-    quirk: 'quirks'
+    eyeColor: 'eyeColors'
   };
-  const next = { ...currentResult };
-  Object.keys(poolKeys).forEach(key => {
-    if (!locked[key]) {
-      next[key] = pickOne(p[poolKeys[key]]);
+  Object.keys(scalarKeys).forEach((key) => {
+    if (locked[key] !== true) {
+      if (key === 'gender') {
+        next[key] = pickOne(p.genders || ['男', '女', '无性别']);
+      } else {
+        next[key] = pickOne(p[scalarKeys[key]]);
+      }
     }
   });
+  if (locked.age !== true) next.age = pickAge(p, new Set());
+  for (let i = 0; i < 3; i++) {
+    if (locked['personality' + i] !== true) {
+      next.personalities[i] = pickOne(p.personalities);
+    }
+    if (locked['quirk' + i] !== true) {
+      next.quirks[i] = pickOne(p.quirks);
+    }
+  }
   return next;
 }
 
-/**
- * 将抽卡结果拼接成一段可复制的文案
- * @param {Object} result - draw() 的返回值
- * @returns {string}
- */
 function toCopyText(result) {
-  if (!result) return '';
-  return [
-    `【OC 设定】`,
-    `姓名：${result.name}`,
-    `种族：${result.race}`,
-    `发色：${result.hairColor}`,
-    `瞳色：${result.eyeColor}`,
-    `性格：${result.personality}`,
-    `怪癖：${result.quirk}`
-  ].join('\n');
+  const r = normalizeResult(result);
+  if (!r.name && !r.race) return '';
+  const lines = [
+    '【OC 设定】',
+    `姓名：${r.name}`,
+    `种族：${r.race}`,
+    `性别：${r.gender}`,
+    `年龄：${r.age}`,
+    `发色：${r.hairColor}`,
+    `瞳色：${r.eyeColor}`,
+    `性格：${personalityBlend(r)}`,
+    r.likes ? `喜欢：${r.likes}` : '',
+    `怪癖：${quirkBlend(r)}`
+  ].filter(Boolean);
+  return lines.join('\n');
 }
 
 module.exports = {

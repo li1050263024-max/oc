@@ -1,0 +1,223 @@
+/** 黑白灰弥散主题：覆盖 CSS 变量与少量硬编码紫色组件 */
+.theme-mono {
+  --diffuse-bg: radial-gradient(
+      ellipse 90% 80% at 50% 22%,
+      rgba(244, 244, 245, 0.95) 0%,
+      rgba(228, 228, 231, 0.78) 24%,
+      rgba(212, 212, 216, 0.42) 50%,
+      rgba(161, 161, 170, 0.12) 72%,
+      transparent 100%
+    ),
+    linear-gradient(165deg, #f4f4f5 0%, #e4e4e7 22%, #ececee 48%, #d4d4d8 74%, #e8e8eb 100%);
+  --diffuse-accent: linear-gradient(135deg, #52525b 0%, #71717a 100%);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-bg: rgba(255, 255, 255, 0.32);
+  --diffuse-text: #18181b;
+  --diffuse-highlight: #27272a;
+  --diffuse-subtle: #71717a;
+  --oc-card-face-bg: #f4f4f5;
+  --theme-chip-bg: #52525b;
+  --theme-chip-border: #3f3f46;
+  --theme-tab-active: #27272a;
+  --theme-tab-idle: #a1a1aa;
+  --theme-bar-border: rgba(63, 63, 70, 0.14);
+  --theme-bar-shadow: rgba(24, 24, 27, 0.08);
+  --theme-mode-switch-on: #52525b;
+  --theme-mode-switch-shadow: rgba(39, 39, 42, 0.22);
+  --theme-solid-soft: rgba(113, 113, 122, 0.55);
+  --theme-solid-soft-border: rgba(82, 82, 91, 0.28);
+  --theme-settings-bg: rgba(113, 113, 122, 0.92);
+  --theme-settings-border: rgba(63, 63, 70, 0.35);
+  --theme-settings-shadow: rgba(24, 24, 27, 0.18);
+  --oc-gacha-back: #d4d4d8;
+  --theme-border-faint: rgba(63, 63, 70, 0.08);
+  --theme-border-soft: rgba(63, 63, 70, 0.1);
+  --theme-border: rgba(63, 63, 70, 0.12);
+  --theme-border-mid: rgba(63, 63, 70, 0.18);
+  --theme-border-mid2: rgba(63, 63, 70, 0.2);
+  --theme-border-strong: rgba(63, 63, 70, 0.25);
+  --theme-border-bold: rgba(63, 63, 70, 0.35);
+  --theme-border-heavy: rgba(63, 63, 70, 0.45);
+  --theme-fill-faint: rgba(113, 113, 122, 0.08);
+  --theme-fill-soft2: rgba(113, 113, 122, 0.12);
+  --theme-fill-soft: rgba(113, 113, 122, 0.15);
+  --theme-fill-soft3: rgba(113, 113, 122, 0.18);
+  --theme-fill-mid2: rgba(113, 113, 122, 0.22);
+  --theme-fill-mid: rgba(113, 113, 122, 0.28);
+  --theme-fill-mid3: rgba(113, 113, 122, 0.35);
+  --theme-fill-strong: rgba(113, 113, 122, 0.55);
+  --theme-fill-solid: rgba(82, 82, 91, 0.88);
+  --theme-fill-solid-dim: rgba(113, 113, 122, 0.42);
+  --theme-fill-solid-bg: rgba(113, 113, 122, 0.92);
+  --theme-accent-deep: #3f3f46;
+  --theme-accent-light: #a1a1aa;
+  --theme-accent-pale: #d4d4d8;
+  --theme-highlight-soft: rgba(39, 39, 42, 0.75);
+  --theme-nav-ring: rgba(24, 24, 27, 0.35);
+  --theme-nav-ring-soft: rgba(24, 24, 27, 0.2);
+  --theme-shadow-sm: rgba(24, 24, 27, 0.06);
+  --theme-shadow-md: rgba(24, 24, 27, 0.12);
+  --theme-shadow-lg: rgba(24, 24, 27, 0.14);
+  --theme-shadow-xl: rgba(39, 39, 42, 0.32);
+  --theme-shadow-btn: rgba(39, 39, 42, 0.18);
+  --theme-shadow-btn2: rgba(39, 39, 42, 0.25);
+  --theme-shadow-btn3: rgba(39, 39, 42, 0.28);
+  --theme-shadow-focus: rgba(82, 82, 91, 0.55);
+  --theme-gradient-primary: linear-gradient(135deg, #3f3f46 0%, #71717a 100%);
+  --theme-gradient-primary-3: linear-gradient(135deg, #3f3f46 0%, #71717a 45%, #a1a1aa 100%);
+  --theme-gradient-soft: linear-gradient(145deg, #a1a1aa, #71717a);
+  --theme-gradient-avatar: linear-gradient(145deg, #d4d4d8, #71717a);
+  --theme-gradient-share: linear-gradient(135deg, #52525b, #27272a);
+  --theme-secondary-wire: rgba(212, 212, 216, 0.8);
+  --theme-card-drop: rgba(24, 24, 27, 0.28);
+  --theme-shadow-card: rgba(24, 24, 27, 0.14);
+  --theme-shadow-card-sm: rgba(24, 24, 27, 0.12);
+  --theme-shadow-card-md: rgba(24, 24, 27, 0.2);
+  --theme-shadow-card-bold: rgba(24, 24, 27, 0.35);
+  --theme-indicator: rgba(39, 39, 42, 0.25);
+  --theme-locked-bg: rgba(39, 39, 42, 0.12);
+  --theme-modal-confirm: #27272a;
+  --oc-card-shadow-back: 0 44rpx 104rpx rgba(24, 24, 27, 0.22),
+    0 28rpx 64rpx rgba(0, 0, 0, 0.12),
+    0 12rpx 28rpx rgba(39, 39, 42, 0.2);
+  --oc-card-shadow-face: 0 44rpx 104rpx rgba(24, 24, 27, 0.18),
+    0 28rpx 64rpx rgba(0, 0, 0, 0.1),
+    0 12rpx 28rpx rgba(63, 63, 70, 0.18);
+}
+
+.theme-mono .oc-tab-bar {
+  border-top-color: var(--theme-bar-border);
+  box-shadow: 0 -8rpx 24rpx var(--theme-bar-shadow);
+}
+
+.theme-mono .oc-tab-item--active .oc-tab-icon,
+.theme-mono .oc-tab-item--active .oc-tab-label {
+  color: var(--theme-tab-active);
+}
+
+.theme-mono .oc-chat-mode-switch {
+  border-color: rgba(63, 63, 70, 0.18);
+  box-shadow: 0 4rpx 16rpx var(--theme-bar-shadow);
+}
+
+.theme-mono .oc-chat-mode-opt--on {
+  background: var(--theme-mode-switch-on);
+  box-shadow: 0 4rpx 12rpx var(--theme-mode-switch-shadow);
+}
+
+.theme-mono .index-settings-btn {
+  background: var(--theme-settings-bg);
+  border-color: var(--theme-settings-border);
+  box-shadow: 0 4rpx 12rpx var(--theme-settings-shadow);
+}
+
+.theme-mono .index-pools-guide-btn {
+  background: var(--theme-solid-soft);
+  border-color: var(--theme-solid-soft-border);
+  box-shadow: 0 4rpx 12rpx var(--theme-bar-shadow);
+}
+
+.theme-mono .index-scope-apply-btn,
+.theme-mono .index-known-create-btn,
+.theme-mono .pixel-btn-primary {
+  background: var(--theme-chip-bg) !important;
+  border-color: var(--theme-chip-border) !important;
+  box-shadow: 0 8rpx 20rpx var(--theme-bar-shadow) !important;
+}
+
+.theme-mono .nb-card-chevron {
+  border-right-color: var(--diffuse-highlight);
+  border-bottom-color: var(--diffuse-highlight);
+}
+
+.theme-mono .chat-list-icon-line {
+  background: var(--diffuse-highlight);
+}
+
+.theme-mono .oc-gacha-back {
+  background: var(--oc-gacha-back);
+}
+
+.theme-mono .oc-segment-item--active {
+  color: var(--diffuse-highlight);
+}
+
+.theme-mono .oc-nav-item--active {
+  color: var(--diffuse-highlight);
+}
+
+/* 设定本详情：灰主题 --p-* 色板 */
+.theme-mono.profile-page,
+.theme-mono .profile-page {
+  background-color: #e4e4e7;
+  --p-bg: #e4e4e7;
+  --p-accent: #27272a;
+  --p-deep: #3f3f46;
+  --p-text: #3f3f46;
+  --p-muted: #71717a;
+  --p-a04: rgba(63, 63, 70, 0.04);
+  --p-a05: rgba(63, 63, 70, 0.05);
+  --p-a10: rgba(63, 63, 70, 0.1);
+  --p-a12: rgba(63, 63, 70, 0.12);
+  --p-a14: rgba(63, 63, 70, 0.14);
+  --p-a15: rgba(63, 63, 70, 0.15);
+  --p-a16: rgba(63, 63, 70, 0.16);
+  --p-a18: rgba(63, 63, 70, 0.18);
+  --p-a20: rgba(63, 63, 70, 0.2);
+  --p-a22: rgba(63, 63, 70, 0.22);
+  --p-a25: rgba(63, 63, 70, 0.25);
+  --p-a28: rgba(63, 63, 70, 0.28);
+  --p-a32: rgba(63, 63, 70, 0.32);
+  --p-a34: rgba(63, 63, 70, 0.34);
+  --p-a35: rgba(63, 63, 70, 0.35);
+  --p-a38: rgba(63, 63, 70, 0.38);
+  --p-a42: rgba(63, 63, 70, 0.42);
+  --p-a45: rgba(63, 63, 70, 0.45);
+  --p-a55: rgba(63, 63, 70, 0.55);
+  --p-a85: rgba(39, 39, 42, 0.72);
+  --p-m15: rgba(113, 113, 122, 0.15);
+  --p-m20: rgba(113, 113, 122, 0.2);
+  --p-m25: rgba(113, 113, 122, 0.25);
+  --p-m28: rgba(113, 113, 122, 0.28);
+  --p-m30: rgba(113, 113, 122, 0.3);
+  --p-m35: rgba(113, 113, 122, 0.35);
+  --p-m45: rgba(113, 113, 122, 0.45);
+  --p-l28: rgba(161, 161, 170, 0.28);
+  --p-l35: rgba(161, 161, 170, 0.35);
+  --p-l38: rgba(161, 161, 170, 0.38);
+  --p-l42: rgba(113, 113, 122, 0.42);
+  --p-ll28: rgba(212, 212, 216, 0.28);
+  --p-ll32: rgba(212, 212, 216, 0.32);
+  --p-s08: rgba(24, 24, 27, 0.08);
+  --p-s10: rgba(24, 24, 27, 0.1);
+  --p-s12: rgba(24, 24, 27, 0.12);
+  --p-s18: rgba(24, 24, 27, 0.18);
+  --p-card-end: rgba(228, 228, 231, 0.92);
+  --p-wash-soft: rgba(244, 244, 245, 0.85);
+  --profile-card-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.96), var(--p-card-end));
+  --profile-card-border: 2rpx solid var(--p-a14);
+  --profile-card-shadow: 0 8rpx 32rpx var(--p-s08);
+}
+
+@keyframes oc-card-ai-wait-face-color-mono {
+  0% {
+    background-color: #52525b;
+  }
+  100% {
+    background-color: #f4f4f5;
+  }
+}
+
+.theme-mono .oc-flip-inner.ai-waiting .oc-flip-front.oc-flip-front-face,
+.theme-mono .oc-flip-inner.ai-waiting .oc-card-face-blank {
+  animation: oc-card-ai-wait-face-color-mono 3s ease forwards;
+}
+
+.theme-mono .oc-flip-inner.ai-waiting.layer1-waiting .oc-flip-front.oc-flip-front-face,
+.theme-mono .oc-flip-inner.ai-waiting.layer1-waiting .oc-card-face-blank {
+  animation: oc-card-ai-wait-face-color-mono 1.5s ease forwards;
+}
+
+.theme-mono .story-quill-img {
+  filter: invert(42%) sepia(6%) saturate(420%) hue-rotate(202deg) brightness(94%) contrast(90%);
+}

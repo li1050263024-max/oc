@@ -1,0 +1,7 @@
+{
+  "name": "parseOcSetting",
+  "version": "1.0.0",
+  "description": "DeepSeek 解析 OC 设定文本",
+  "main": "index.js",
+  "dependencies": {}
+}

@@ -1,0 +1,30 @@
+<view class="page redeem-page safe-bottom {{uiThemeClass}}">
+  <view class="bg-solid"></view>
+  <view class="redeem-page-head">
+    <oc-back-btn />
+    <text class="redeem-page-title">兑换码</text>
+  </view>
+
+  <view class="redeem-page-body">
+    <view class="redeem-card">
+      <text class="redeem-balance">通用额度剩余 <text class="redeem-balance-num">{{extraRounds}}</text> 轮</text>
+      <text class="redeem-balance-sub">单聊 / 群聊共用，无有效期限制</text>
+      <input
+        class="redeem-input"
+        value="{{redeemCode}}"
+        bindinput="onRedeemInput"
+        placeholder="请输入兑换码"
+        maxlength="24"
+        confirm-type="done"
+        bindconfirm="onSubmitRedeem"
+      />
+      <view
+        class="redeem-btn {{redeeming ? 'redeem-btn--disabled' : ''}}"
+        bindtap="onSubmitRedeem"
+      >
+        <text class="redeem-btn-text">{{redeeming ? '兑换中…' : '兑换'}}</text>
+      </view>
+    </view>
+    <text class="redeem-tip">关注公众号可获取兑换码。本周免费额度（单聊群聊共 30 轮）用尽后，可用分享续期或兑换码继续。</text>
+  </view>
+</view>

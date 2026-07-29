@@ -1,0 +1,9 @@
+function avatarLetter(name, fallback) {
+  var n = name || '';
+  if (!n) return fallback || '角';
+  return n.slice(0, 1);
+}
+
+module.exports = {
+  avatarLetter: avatarLetter
+};

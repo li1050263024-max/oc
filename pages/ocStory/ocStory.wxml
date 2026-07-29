@@ -1,0 +1,297 @@
+<view class="page oc-page safe-bottom has-tab-bar {{uiThemeClass}}">
+  <view class="bg-solid"></view>
+  <oc-page-nav />
+  <view class="oc-segment-nav-float" style="{{segmentNavStyle}}">
+    <view class="oc-segment-nav-inner">
+      <oc-segment-bar current="story" options="{{storySegmentOptions}}" bind:change="onStorySegmentChange" />
+    </view>
+  </view>
+  <view class="oc-page-shell story-shell">
+    <view class="story-header">
+      <view class="story-header-row" wx:if="{{ocList.length}}">
+        <text class="story-subtitle story-subtitle--inline">上方滑动切换 OC，点击卡片展开更多设定</text>
+        <view class="story-toolbar" wx:if="{{currentOc}}">
+          <view class="story-tool-btn oc-chip-btn" catchtap="onImportStories">
+            <text class="oc-chip-btn-text">导入</text>
+          </view>
+          <view class="story-tool-btn oc-chip-btn" catchtap="onExportStories">
+            <text class="oc-chip-btn-text">导出</text>
+          </view>
+          <view class="story-tool-btn oc-chip-btn" catchtap="onShareStories">
+            <text class="oc-chip-btn-text">分享</text>
+          </view>
+        </view>
+      </view>
+      <text class="story-subtitle" wx:else>请先在设定本中保存 OC，并生成小传</text>
+    </view>
+
+    <scroll-view class="story-panel" scroll-y show-scrollbar="{{false}}">
+      <view class="story-panel-inner">
+        <view class="story-oc-block" wx:if="{{ocList.length && currentOc}}">
+          <scroll-view
+            class="story-oc-switcher"
+            scroll-x
+            show-scrollbar="{{true}}"
+            scroll-with-animation
+            scroll-into-view="{{switchScrollId}}"
+          >
+            <view class="story-oc-switcher-inner">
+              <view
+                id="story-switch-{{index}}"
+                class="story-oc-chip {{swiperIndex === index ? 'story-oc-chip--active' : ''}}"
+                wx:for="{{ocList}}"
+                wx:key="id"
+                wx:for-index="index"
+                data-index="{{index}}"
+                bindtap="onSwitchOc"
+              >
+                <text class="story-oc-chip-text">{{item.name}}</text>
+              </view>
+            </view>
+          </scroll-view>
+
+          <view class="section-card biohub-merged-card" wx:if="{{currentOc}}">
+            <view class="biohub-merged-head" bindtap="onToggleSettings">
+              <view class="biohub-merged-head-main">
+                <view class="biohub-name-row">
+                  <text class="biohub-oc-name">{{currentOc.name}}</text>
+                  <text class="biohub-oc-tag" wx:if="{{currentOc.hasBio}}">已有小传</text>
+                </view>
+                <text class="biohub-expand-hint">{{settingsExpanded ? '收起 ▲' : '展开 ▼'}}</text>
+              </view>
+            </view>
+            <view class="oc-card-main-row">
+              <view class="oc-card-main-col">
+                <view class="biohub-oc-basic">
+                  <view class="biohub-oc-row">
+                    <text class="lab">种族</text><text class="val">{{currentOc.race}}</text>
+                  </view>
+                  <view class="biohub-oc-row">
+                    <text class="lab">性别</text><text class="val">{{currentOc.gender}}</text>
+                  </view>
+                  <view class="biohub-oc-row">
+                    <text class="lab">年龄</text><text class="val">{{currentOc.age}}</text>
+                  </view>
+                  <view class="biohub-oc-row">
+                    <text class="lab">发色</text><text class="val">{{currentOc.hairColor}}</text>
+                  </view>
+                  <view class="biohub-oc-row">
+                    <text class="lab">瞳色</text><text class="val">{{currentOc.eyeColor}}</text>
+                  </view>
+                  <view class="biohub-oc-row">
+                    <text class="lab">性格</text><text class="val">{{currentOc.personalityText}}</text>
+                  </view>
+                  <view class="biohub-oc-row">
+                    <text class="lab">怪癖</text><text class="val">{{currentOc.quirkText}}</text>
+                  </view>
+                </view>
+              </view>
+              <view class="oc-card-portrait">
+                <image
+                  class="oc-card-portrait-img {{currentOc.ocImagePath ? '' : 'oc-card-portrait-img--placeholder'}}"
+                  src="{{currentOc.ocImagePath || portraitPlaceholder}}"
+                  mode="aspectFit"
+                />
+              </view>
+            </view>
+            <view class="biohub-extra" wx:if="{{settingsExpanded}}">
+              <text class="biohub-extra-block" wx:if="{{currentOc.backgroundText}}">{{currentOc.backgroundText}}</text>
+              <text class="biohub-extra-block" wx:if="{{currentOc.layer3Text}}">{{currentOc.layer3Text}}</text>
+              <text class="biohub-extra-block" wx:if="{{currentOc.summary}}">{{currentOc.summary}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="section-card">
+          <view class="field-label">故事方向</view>
+          <textarea
+            class="story-input"
+            placeholder="例如：雨夜码头重逢；写一段与宿敌的短对话；基调偏治愈……"
+            maxlength="1200"
+            value="{{userInput}}"
+            bindinput="onUserInput"
+            show-confirm-bar="{{false}}"
+            auto-height
+            cursor-spacing="24"
+          />
+          <view
+            class="pixel-btn pixel-btn-primary gen-btn {{loading ? 'gen-btn--disabled' : ''}}"
+            catchtap="onGenerate"
+          >
+            <text class="gen-btn-text">{{loading ? '生成中…' : '生成 OC 故事'}}</text>
+          </view>
+        </view>
+
+        <view class="section-card" wx:if="{{ocList.length && currentOc}}">
+          <view class="field-label">上传已有故事</view>
+          <text class="story-paste-hint">将完整故事粘贴到下方，保存至当前 OC</text>
+          <input
+            class="story-title-input"
+            placeholder="故事题目（必填）"
+            maxlength="80"
+            value="{{pasteStoryTitle}}"
+            bindinput="onPasteStoryTitleInput"
+          />
+          <textarea
+            class="story-paste-input"
+            placeholder="粘贴故事正文…"
+            maxlength="-1"
+            value="{{pasteStoryContent}}"
+            bindinput="onPasteStoryContentInput"
+            show-confirm-bar="{{false}}"
+            auto-height
+            cursor-spacing="24"
+          />
+          <view class="pixel-btn pixel-btn-primary gen-btn" catchtap="onSavePastedStory">
+            <text class="gen-btn-text">保存上传的故事</text>
+          </view>
+        </view>
+
+        <view class="section-card" wx:if="{{story}}">
+          <view class="field-label">故事题目</view>
+          <input
+            class="story-title-input"
+            placeholder="请先填写故事题目（保存/继续必填）"
+            maxlength="80"
+            value="{{storyTitle}}"
+            bindinput="onStoryTitleInput"
+          />
+          <view class="field-label field-label--sub">正文</view>
+          <textarea
+            class="story-result story-result-edit"
+            value="{{story}}"
+            bindinput="onStoryInput"
+            maxlength="-1"
+            auto-height
+            show-confirm-bar="{{false}}"
+            cursor-spacing="24"
+          />
+          <view class="story-actions">
+            <view class="pixel-btn btn-action btn-wire-secondary story-act-btn" catchtap="onSaveStory">
+              <text class="btn-action-text">保存</text>
+            </view>
+            <view class="pixel-btn btn-action btn-wire-secondary story-act-btn" catchtap="onCopyStory">
+              <text class="btn-action-text">复制</text>
+            </view>
+            <view class="pixel-btn btn-action btn-wire-secondary story-act-btn" catchtap="onDeleteStory">
+              <text class="btn-action-text">删除</text>
+            </view>
+            <view class="pixel-btn pixel-btn-primary btn-action story-act-btn" catchtap="onContinueStory">
+              <text class="btn-action-text">继续</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="section-card" wx:if="{{savedStories.length}}">
+          <view class="field-label">已保存的故事</view>
+          <view
+            class="saved-story-card {{expandedStoryIds[item.id] ? 'saved-story-card--expanded' : ''}}"
+            wx:for="{{savedStories}}"
+            wx:key="id"
+            data-id="{{item.id}}"
+          >
+            <view
+              class="saved-story-head"
+              data-id="{{item.id}}"
+              catchtap="onToggleSavedStory"
+            >
+              <text class="saved-story-title">{{item.title || '未命名故事'}}</text>
+              <view class="saved-story-chevron {{expandedStoryIds[item.id] ? 'saved-story-chevron--open' : ''}}"></view>
+            </view>
+            <view
+              class="saved-story-body"
+              wx:if="{{expandedStoryIds[item.id]}}"
+              data-id="{{item.id}}"
+              catchtap="onOpenChapter"
+            >
+              <text class="saved-story-first">{{item.preview}}</text>
+              <text class="saved-story-open-hint">点击查看全文</text>
+            </view>
+            <view class="saved-story-actions">
+              <view class="saved-story-actions-main">
+                <text
+                  class="saved-story-continue"
+                  data-id="{{item.id}}"
+                  catchtap="onContinueSavedStory"
+                >续写</text>
+                <text
+                  class="saved-story-edit"
+                  data-id="{{item.id}}"
+                  catchtap="onEditStory"
+                >修改</text>
+                <text
+                  class="saved-story-roleplay"
+                  data-id="{{item.id}}"
+                  catchtap="onRoleplayStory"
+                >情景演绎</text>
+              </view>
+              <text
+                class="saved-story-delete"
+                data-id="{{item.id}}"
+                catchtap="onDeleteSavedStory"
+              >删除</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+  <oc-tab-bar
+    wx:if="{{!continuing && !storyWritingExiting && !continueSheetVisible && !shareSheetVisible}}"
+    current="story"
+  />
+
+  <view
+    class="story-writing-overlay"
+    wx:if="{{continuing || storyWritingExiting}}"
+    catchtouchmove="noop"
+  >
+    <view class="story-writing-card">
+      <view class="story-writing-stage">
+        <view class="story-writing-pen-wrap {{storyWritingExiting ? 'story-writing-pen-wrap--exit' : 'story-writing-pen-wrap--active'}}">
+          <image
+            class="story-quill-img"
+            src="/images/story-quill-line.png"
+            mode="aspectFit"
+          />
+        </view>
+        <view class="story-writing-ink {{storyWritingExiting ? 'story-writing-ink--exit' : ''}}">
+          <view class="sw-ink-path sw-ink-path-1"></view>
+          <view class="sw-ink-path sw-ink-path-2"></view>
+          <view class="sw-ink-path sw-ink-path-3"></view>
+        </view>
+      </view>
+      <text class="story-writing-tip" wx:if="{{!storyWritingExiting}}">{{storyWritingTip || '正在续写故事…'}}</text>
+    </view>
+  </view>
+
+  <view class="story-sheet-mask" wx:if="{{continueSheetVisible}}" catchtap="onCancelContinue"></view>
+  <view class="story-sheet" wx:if="{{continueSheetVisible}}">
+    <text class="story-sheet-title">继续创作</text>
+    <text class="story-sheet-sub">将整理上文梗概并结合你的方向续写，保存为新章节（标题自动追加【2】等），生成后进入章节页</text>
+    <textarea
+      class="story-sheet-input"
+      value="{{continueInput}}"
+      bindinput="onContinueInput"
+      placeholder="例如：揭开雨夜重逢后的误会；写一场和解对话……"
+      maxlength="1200"
+      auto-height
+      focus="{{continueSheetVisible}}"
+      show-confirm-bar="{{false}}"
+    />
+    <view class="story-sheet-actions">
+      <view class="pixel-btn btn-wire-secondary story-sheet-btn" catchtap="onCancelContinue">
+        <text class="btn-action-text">取消</text>
+      </view>
+      <view class="pixel-btn pixel-btn-primary story-sheet-btn" catchtap="onConfirmContinue">
+        <text class="btn-action-text">{{continuing ? '生成中…' : '开始续写'}}</text>
+      </view>
+    </view>
+  </view>
+  <oc-share-sheet
+    visible="{{shareSheetVisible}}"
+    title="{{shareSheetTitle}}"
+    content="{{shareSheetContent}}"
+    bind:close="onCloseShareSheet"
+  />
+</view>

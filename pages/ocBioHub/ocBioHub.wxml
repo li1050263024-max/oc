@@ -1,0 +1,110 @@
+<view class="page oc-page safe-bottom has-tab-bar {{uiThemeClass}}">
+  <view class="bg-solid"></view>
+  <oc-page-nav />
+  <view class="oc-segment-nav-float" style="{{segmentNavStyle}}">
+    <view class="oc-segment-nav-inner">
+      <oc-segment-bar current="bio" options="{{storySegmentOptions}}" bind:change="onStorySegmentChange" />
+    </view>
+  </view>
+  <view class="oc-page-shell biohub-shell">
+    <view class="biohub-header">
+      <text class="biohub-subtitle" wx:if="{{ocList.length}}">上方滑动切换 OC，点击卡片展开更多设定</text>
+      <text class="biohub-subtitle" wx:else>请先在设定本中保存至少一名 OC</text>
+    </view>
+
+    <scroll-view class="biohub-panel" scroll-y show-scrollbar="{{false}}" wx:if="{{ocList.length}}">
+      <view class="biohub-panel-inner">
+        <scroll-view
+          class="story-oc-switcher"
+          scroll-x
+          show-scrollbar="{{true}}"
+          scroll-with-animation
+          scroll-into-view="{{switchScrollId}}"
+        >
+          <view class="story-oc-switcher-inner">
+            <view
+              id="story-switch-{{index}}"
+              class="story-oc-chip {{swiperIndex === index ? 'story-oc-chip--active' : ''}}"
+              wx:for="{{ocList}}"
+              wx:key="id"
+              wx:for-index="index"
+              data-index="{{index}}"
+              bindtap="onSwitchOc"
+            >
+              <text class="story-oc-chip-text">{{item.name}}</text>
+            </view>
+          </view>
+        </scroll-view>
+
+        <view class="section-card biohub-merged-card" wx:if="{{currentOc}}">
+          <view class="biohub-merged-head" bindtap="onToggleSettings">
+            <view class="biohub-merged-head-main">
+              <view class="biohub-name-row">
+                <text class="biohub-oc-name">{{currentOc.name}}</text>
+                <text class="biohub-oc-tag" wx:if="{{currentOc.hasBio}}">已有小传</text>
+              </view>
+              <text class="biohub-expand-hint">{{settingsExpanded ? '收起 ▲' : '展开 ▼'}}</text>
+            </view>
+          </view>
+          <view class="oc-card-main-row">
+            <view class="oc-card-main-col">
+              <view class="biohub-oc-basic">
+                <view class="biohub-oc-row">
+                  <text class="lab">种族</text><text class="val">{{currentOc.race}}</text>
+                </view>
+                <view class="biohub-oc-row">
+                  <text class="lab">性别</text><text class="val">{{currentOc.gender}}</text>
+                </view>
+                <view class="biohub-oc-row">
+                  <text class="lab">年龄</text><text class="val">{{currentOc.age}}</text>
+                </view>
+                <view class="biohub-oc-row">
+                  <text class="lab">发色</text><text class="val">{{currentOc.hairColor}}</text>
+                </view>
+                <view class="biohub-oc-row">
+                  <text class="lab">瞳色</text><text class="val">{{currentOc.eyeColor}}</text>
+                </view>
+                <view class="biohub-oc-row">
+                  <text class="lab">性格</text><text class="val">{{currentOc.personalityText}}</text>
+                </view>
+                <view class="biohub-oc-row">
+                  <text class="lab">怪癖</text><text class="val">{{currentOc.quirkText}}</text>
+                </view>
+              </view>
+            </view>
+            <view class="oc-card-portrait">
+              <image
+                class="oc-card-portrait-img {{currentOc.ocImagePath ? '' : 'oc-card-portrait-img--placeholder'}}"
+                src="{{currentOc.ocImagePath || portraitPlaceholder}}"
+                mode="aspectFit"
+              />
+            </view>
+          </view>
+          <view class="biohub-extra" wx:if="{{settingsExpanded}}">
+            <text class="biohub-extra-block" wx:if="{{currentOc.backgroundText}}">{{currentOc.backgroundText}}</text>
+            <text class="biohub-extra-block" wx:if="{{currentOc.layer3Text}}">{{currentOc.layer3Text}}</text>
+            <text class="biohub-extra-block" wx:if="{{currentOc.summary}}">{{currentOc.summary}}</text>
+          </view>
+        </view>
+
+        <view
+          class="biohub-preview section-card"
+          wx:if="{{currentHasBio}}"
+          bindtap="onReadBio"
+        >
+          <view class="biohub-preview-label">人物小传</view>
+          <text class="biohub-preview-text" user-select>{{currentBioPreview}}</text>
+          <text class="biohub-preview-more">点击查看全文</text>
+        </view>
+
+        <view class="biohub-gen-wrap">
+          <view class="pixel-btn pixel-btn-primary gen-btn" bindtap="onGoGenerate">
+            <text class="gen-btn-text">{{currentHasBio ? '编辑 / 上传小传' : '生成或上传小传'}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="scroll-bottom"></view>
+    </scroll-view>
+  </view>
+  <oc-tab-bar current="story" />
+</view>

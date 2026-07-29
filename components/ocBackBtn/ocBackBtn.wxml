@@ -1,0 +1,9 @@
+<view
+  class="oc-back-btn"
+  style="{{railStyle}}"
+  catchtap="onTap"
+  aria-role="button"
+  aria-label="{{label}}"
+>
+  <view class="oc-back-chevron"></view>
+</view>

@@ -1,0 +1,64 @@
+<view class="oc-tab-bar-root {{uiThemeClass}}">
+  <view wx:if="{{chatPickerOpen}}" class="oc-chat-mode-float">
+    <view class="oc-chat-mode-float-cell" wx:for="{{tabs}}" wx:key="key">
+      <view wx:if="{{item.key === 'chat'}}" class="oc-chat-mode-switch">
+        <view
+          class="oc-chat-mode-opt {{chatMode === 'dm' && current === 'chat' ? 'oc-chat-mode-opt--on' : ''}}"
+          data-mode="dm"
+          catchtap="onChatModeTap"
+        >
+          <text>对话</text>
+          <view wx:if="{{badgeChatDm}}" class="oc-chat-mode-badge"></view>
+        </view>
+        <view
+          class="oc-chat-mode-opt {{chatMode === 'group' && current === 'chat' ? 'oc-chat-mode-opt--on' : ''}}"
+          data-mode="group"
+          catchtap="onChatModeTap"
+        >
+          <text>群聊</text>
+          <view wx:if="{{badgeChatGroup}}" class="oc-chat-mode-badge"></view>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view class="oc-tab-bar {{flatTop ? 'oc-tab-bar--flat' : ''}}">
+    <view
+      class="oc-tab-item {{(current === item.key || (item.key === 'chat' && chatPickerOpen)) ? 'oc-tab-item--active' : ''}}"
+      wx:for="{{tabs}}"
+      wx:key="key"
+      data-key="{{item.key}}"
+      catchtap="onTabTap"
+    >
+      <view class="oc-tab-icon-wrap">
+        <view class="oc-tab-icon oc-tab-icon--{{item.icon}}"></view>
+        <view wx:if="{{item.key === 'chat' && badgeChat}}" class="oc-tab-badge"></view>
+      </view>
+      <text class="oc-tab-label">{{item.label}}</text>
+    </view>
+  </view>
+
+  <!-- 透明热区：盖住原生组件，保证可点；视觉仍用上方 CSS 图标 -->
+  <cover-view class="oc-tab-hit-root">
+    <cover-view wx:if="{{chatPickerOpen}}" class="oc-chat-mode-hit-float">
+      <cover-view
+        class="oc-chat-mode-hit-cell"
+        wx:for="{{tabs}}"
+        wx:key="key"
+      >
+        <cover-view wx:if="{{item.key === 'chat'}}" class="oc-chat-mode-hit-switch">
+          <cover-view class="oc-chat-mode-hit-opt" catchtap="onChatModeDm">对话</cover-view>
+          <cover-view class="oc-chat-mode-hit-opt" catchtap="onChatModeGroup">群聊</cover-view>
+        </cover-view>
+      </cover-view>
+    </cover-view>
+    <cover-view class="oc-tab-hit-bar">
+      <cover-view
+        class="oc-tab-hit-item"
+        wx:for="{{tabs}}"
+        wx:key="key"
+        data-key="{{item.key}}"
+        catchtap="onTabTap"
+      ></cover-view>
+    </cover-view>
+  </cover-view>
+</view>

@@ -1,0 +1,939 @@
+<view class="page profile-page safe-bottom {{uiThemeClass}}">
+  <view class="bg-solid">
+    <view class="profile-bg-sparkles" aria-hidden="true">
+      <text class="profile-sparkle profile-sparkle--1">✦</text>
+      <text class="profile-sparkle profile-sparkle--2">✦</text>
+      <text class="profile-sparkle profile-sparkle--3">✦</text>
+      <text class="profile-sparkle profile-sparkle--4">·</text>
+      <text class="profile-sparkle profile-sparkle--5">·</text>
+    </view>
+  </view>
+  <oc-back-btn custom bind:back="onBack" label="返回设定本" />
+
+  <view class="profile-collapse-float" style="{{collapseBarStyle}}">
+    <view class="profile-collapse-toggle" catchtap="onToggleTabRail">
+      <text class="profile-collapse-text">{{tabRailCollapsed ? '展开' : '收起'}}</text>
+      <view class="profile-collapse-icon {{tabRailCollapsed ? 'profile-collapse-icon--open' : ''}}"></view>
+    </view>
+  </view>
+
+  <scroll-view class="profile-scroll" scroll-y show-scrollbar="{{false}}" style="{{scrollPadStyle}}" bindscroll="onProfileScroll">
+    <view class="profile-scroll-inner">
+      <view class="profile-layout">
+        <view class="profile-layout-main">
+          <view class="profile-card profile-card--ornate" wx:if="{{activeTab === 'basic'}}">
+            <view class="profile-corner profile-corner--bl" aria-hidden="true"></view>
+            <view class="profile-corner profile-corner--br" aria-hidden="true"></view>
+            <view class="profile-card-top">
+              <view class="profile-card-left">
+                <view class="profile-script-wrap">
+                  <view class="profile-script-wash"></view>
+                  <text class="profile-script-label">Profile</text>
+                </view>
+                <view class="profile-portrait-wrap">
+                  <view class="profile-portrait-glow" aria-hidden="true"></view>
+                  <view class="profile-portrait-frame">
+                    <image
+                      class="profile-portrait-img"
+                      src="{{ocImagePath || portraitPlaceholder}}"
+                      mode="aspectFill"
+                    />
+                  </view>
+                  <view class="profile-portrait-ornament" aria-hidden="true">
+                    <view class="profile-portrait-vine profile-portrait-vine--l"></view>
+                    <view class="profile-portrait-star"><text>✦</text></view>
+                    <view class="profile-portrait-vine profile-portrait-vine--r"></view>
+                  </view>
+                </view>
+              </view>
+              <view class="profile-card-right">
+                <view class="profile-section-title-wrap profile-section-title-wrap--with-action">
+                  <view class="profile-script-side">
+                    <view class="profile-section-wash"></view>
+                    <view class="profile-section-title">✦ 基础信息 ✦</view>
+                  </view>
+                  <view class="profile-basic-actions" wx:if="{{!basicEditing}}">
+                    <view class="profile-head-mini-btn" catchtap="onStartEditBasic">修改</view>
+                  </view>
+                  <view class="profile-basic-actions" wx:else>
+                    <view class="profile-head-mini-btn profile-head-mini-btn--ghost" catchtap="onCancelEditBasic">取消</view>
+                    <view class="profile-head-mini-btn" catchtap="onSaveBasicInfo">{{saving ? '保存中…' : '保存'}}</view>
+                  </view>
+                </view>
+
+                <block wx:if="{{!basicEditing}}">
+                  <view class="profile-field"><text class="pf-label">姓名</text><text class="pf-val">{{result.name || '—'}}</text></view>
+                  <view class="profile-field"><text class="pf-label">种族</text><text class="pf-val">{{result.race || '—'}}</text></view>
+                  <view class="profile-field"><text class="pf-label">性别</text><text class="pf-val">{{result.gender || '—'}}</text></view>
+                  <view class="profile-field"><text class="pf-label">年龄</text><text class="pf-val">{{result.age || '—'}}</text></view>
+                  <view class="profile-field"><text class="pf-label">发色</text><text class="pf-val">{{result.hairColor || '—'}}</text></view>
+                  <view class="profile-field"><text class="pf-label">瞳色</text><text class="pf-val">{{result.eyeColor || '—'}}</text></view>
+                  <view class="profile-field"><text class="pf-label">性格</text><text class="pf-val">{{personalityText || '—'}}</text></view>
+                  <view class="profile-field"><text class="pf-label">喜欢的东西</text><text class="pf-val">{{likeText || '—'}}</text></view>
+                  <view class="profile-field"><text class="pf-label">怪癖</text><text class="pf-val">{{quirkText || '—'}}</text></view>
+                </block>
+                <block wx:else>
+                  <view class="profile-field profile-field--edit">
+                    <text class="pf-label">姓名</text>
+                    <input class="pf-input" value="{{basicDraft.name}}" data-key="name" bindinput="onBasicDraftInput" placeholder="姓名" maxlength="24" />
+                  </view>
+                  <view class="profile-field profile-field--edit">
+                    <text class="pf-label">种族</text>
+                    <input class="pf-input" value="{{basicDraft.race}}" data-key="race" bindinput="onBasicDraftInput" placeholder="种族" maxlength="24" />
+                  </view>
+                  <view class="profile-field profile-field--edit">
+                    <text class="pf-label">性别</text>
+                    <input class="pf-input" value="{{basicDraft.gender}}" data-key="gender" bindinput="onBasicDraftInput" placeholder="性别" maxlength="12" />
+                  </view>
+                  <view class="profile-field profile-field--edit">
+                    <text class="pf-label">年龄</text>
+                    <input class="pf-input" value="{{basicDraft.age}}" data-key="age" bindinput="onBasicDraftInput" placeholder="年龄" maxlength="24" />
+                  </view>
+                  <view class="profile-field profile-field--edit">
+                    <text class="pf-label">发色</text>
+                    <input class="pf-input" value="{{basicDraft.hairColor}}" data-key="hairColor" bindinput="onBasicDraftInput" placeholder="发色" maxlength="24" />
+                  </view>
+                  <view class="profile-field profile-field--edit">
+                    <text class="pf-label">瞳色</text>
+                    <input class="pf-input" value="{{basicDraft.eyeColor}}" data-key="eyeColor" bindinput="onBasicDraftInput" placeholder="瞳色" maxlength="24" />
+                  </view>
+                  <view class="profile-field profile-field--edit">
+                    <text class="pf-label">性格</text>
+                    <input class="pf-input" value="{{basicDraft.personalityText}}" data-key="personalityText" bindinput="onBasicDraftInput" placeholder="可用 / 分隔，最多三项" maxlength="64" />
+                  </view>
+                  <view class="profile-field profile-field--edit">
+                    <text class="pf-label">喜欢的东西</text>
+                    <input class="pf-input" value="{{basicDraft.likeText}}" data-key="likeText" bindinput="onBasicDraftInput" placeholder="喜欢的东西" maxlength="64" />
+                  </view>
+                  <view class="profile-field profile-field--edit">
+                    <text class="pf-label">怪癖</text>
+                    <input class="pf-input" value="{{basicDraft.quirkText}}" data-key="quirkText" bindinput="onBasicDraftInput" placeholder="可用 / 分隔，最多三项" maxlength="64" />
+                  </view>
+                </block>
+              </view>
+            </view>
+            <view class="profile-notes-ornate">
+              <view class="profile-notes-deco" aria-hidden="true">
+                <view class="profile-deco-moon"></view>
+                <text class="profile-deco-star profile-deco-star--1">✦</text>
+                <text class="profile-deco-star profile-deco-star--2">✦</text>
+              </view>
+              <view class="profile-script-wrap profile-script-wrap--sm">
+                <view class="profile-script-wash profile-script-wash--sm"></view>
+                <text class="profile-script-label">Notes</text>
+              </view>
+              <text class="profile-notes-text" wx:if="{{generatedBio}}">{{generatedBio}}</text>
+              <text class="profile-notes-placeholder" wx:else>—</text>
+            </view>
+          </view>
+
+          <view class="profile-parse-block profile-card--ornate" wx:if="{{activeTab === 'basic'}}">
+            <text class="profile-parse-title">粘贴设定，自动识别填写</text>
+            <text class="profile-parse-hint">支持零散描述、角色卡文本，识别后将填入各栏目</text>
+            <textarea
+              class="profile-parse-input"
+              value="{{autoText}}"
+              bindinput="onAutoTextInput"
+              placeholder="在此粘贴或输入 OC 设定…"
+              maxlength="-1"
+              auto-height
+              disabled="{{parsing}}"
+            />
+            <view class="profile-parse-btn {{parsing ? 'profile-parse-btn--disabled' : ''}}" catchtap="onParseSetting">
+              <text>{{parsing ? '填写中…' : '智能填写'}}</text>
+            </view>
+          </view>
+
+          <block wx:if="{{activeTab === 'timeline'}}">
+            <view class="profile-panel profile-card--ornate">
+            <view class="profile-corner profile-corner--bl" aria-hidden="true"></view>
+            <view class="profile-corner profile-corner--br" aria-hidden="true"></view>
+            <view class="profile-panel-head profile-panel-head--with-actions">
+              <view class="profile-panel-head-text profile-panel-head-text--row" style="{{panelHeadStyle}}">
+                <text class="profile-panel-title">{{activeTabLabel}}</text>
+                <text class="profile-panel-sub">{{activeTabSub}}</text>
+              </view>
+              <view class="profile-panel-head-actions">
+                <view class="profile-head-mini-btn profile-head-mini-btn--ghost" catchtap="onOpenTimelineStyleSettings">样式设置</view>
+                <view class="profile-head-mini-btn profile-head-mini-btn--ghost" catchtap="onExportTimeline">下载</view>
+                <view class="profile-head-mini-btn" catchtap="onAddWorldTimeline">+ 添加</view>
+              </view>
+            </view>
+            <view class="profile-panel-body profile-panel-body--timeline">
+              <view class="profile-scene-inner vintage-timeline-stage-wrap">
+              <view class="vintage-timeline-stage {{worldTimelineBgDisplay ? 'vintage-timeline-stage--has-bg' : ''}}">
+                <view wx:if="{{worldTimelineBgDisplay}}" class="vintage-timeline-bg-wrap" wx:key="{{worldTimelineBgKey}}">
+                  <image
+                    class="vintage-timeline-bg-img"
+                    src="{{worldTimelineBgSrc || worldTimelineBgDisplay}}"
+                    mode="aspectFill"
+                  />
+                </view>
+                <view class="vintage-timeline-inner">
+                  <view
+                    wx:for="{{timelineSpineLinks}}"
+                    wx:key="key"
+                    class="vintage-spine-link"
+                    style="{{item.style}}"
+                  ></view>
+                  <view
+                    wx:if="{{timelineCurveEditMode}}"
+                    wx:for="{{timelineCurveHandles}}"
+                    wx:key="key"
+                    class="vintage-curve-handle"
+                    style="{{item.style}}"
+                    data-seg-index="{{item.segIndex}}"
+                    catchtouchstart="onCurveHandleTouchStart"
+                    catchtouchmove="onCurveHandleTouchMove"
+                    catchtouchend="onCurveHandleTouchEnd"
+                    catchtouchcancel="onCurveHandleTouchEnd"
+                  ></view>
+                  <view
+                    class="vintage-timeline-node {{expandedTimelineCards[item.id] ? 'vintage-timeline-node--expanded' : ''}} {{item.detailExpandDown && expandedTimelineCards[item.id] ? 'vintage-timeline-node--expand-down-active' : ''}} {{item.detailHeaderClearance && expandedTimelineCards[item.id] ? 'vintage-timeline-node--header-clearance' : ''}}"
+                    wx:for="{{worldTimelineView}}"
+                    wx:key="id"
+                    style="{{item.rowStyle}}"
+                  >
+                    <view
+                      class="vintage-node-row {{timelineCurveEditMode ? 'vintage-node-row--draggable' : ''}}"
+                      style="{{item.nodeRowStyle}}"
+                    >
+                      <view class="vintage-node-side vintage-node-side--left">
+                        <view class="vintage-node-side-inner vintage-node-side-inner--left" wx:if="{{item.labelSide === 'left'}}">
+                          <block wx:if="{{!expandedTimelineCards[item.id]}}">
+                            <view class="vintage-node-detail-stack vintage-node-detail-stack--left">
+                              <view
+                                wx:if="{{!item.hasContent}}"
+                                class="vintage-node-card-btn vintage-node-card-btn--left"
+                                data-id="{{item.id}}"
+                                catchtap="onToggleTimelineCard"
+                              >
+                                <text class="vintage-node-card-btn-label">详情</text>
+                                <text class="vintage-node-card-btn-plus">+</text>
+                              </view>
+                              <block wx:else>
+                                <view
+                                  class="vintage-summary-expand-hit vintage-summary-expand-hit--left"
+                                  data-id="{{item.id}}"
+                                  catchtap="onExpandTimelineFromSummary"
+                                >
+                                  <view class="vintage-summary-arrow-icon"></view>
+                                </view>
+                                <view class="vintage-node-summary vintage-node-summary--left" style="{{item.cardTextStyle}}">
+                                  <text class="vintage-summary-bold vintage-summary-line vintage-summary-line--title">{{item.dateLabel || '—'}} · {{item.title || '—'}}</text>
+                                  <text class="vintage-summary-line vintage-summary-line--desc" wx:if="{{item.summaryPreview}}">{{item.summaryPreview}}</text>
+                                </view>
+                              </block>
+                            </view>
+                          </block>
+                          <block wx:else>
+                            <view class="vintage-node-detail-slot">
+                              <view
+                                class="vintage-node-card-btn vintage-node-card-btn--left vintage-node-card-btn--open"
+                                data-id="{{item.id}}"
+                                catchtap="onToggleTimelineCard"
+                              >
+                                <text class="vintage-node-card-btn-label">收起详情</text>
+                              </view>
+                              <view class="vintage-node-card {{item.detailExpandDown ? 'vintage-node-card--expand-down' : 'vintage-node-card--floating'}}" style="{{item.cardTextStyle}}{{item.cardBoxStyle}}" catchtap="preventMove">
+                                <input class="vintage-card-date" value="{{item.dateLabel}}" data-id="{{item.id}}" data-field="dateLabel" bindinput="onTimelineInput" bindblur="onTimelineInputBlur" placeholder="时间 / 年代" />
+                                <input class="vintage-card-title" value="{{item.title}}" data-id="{{item.id}}" data-field="title" bindinput="onTimelineInput" bindblur="onTimelineInputBlur" placeholder="事件标题" />
+                                <textarea class="vintage-card-desc" value="{{item.description}}" data-id="{{item.id}}" data-field="description" bindinput="onTimelineInput" bindblur="onTimelineInputBlur" placeholder="事件描述" auto-height maxlength="-1" />
+                                <view class="vintage-card-actions">
+                                  <view class="profile-mini-btn profile-mini-btn--ghost" data-id="{{item.id}}" catchtap="onRemoveTimeline">删除节点</view>
+                                </view>
+                              </view>
+                            </view>
+                          </block>
+                        </view>
+                      </view>
+                      <view
+                        class="vintage-node-star-wrap {{timelineCurveEditMode ? 'vintage-node-star-wrap--draggable' : ''}}"
+                        data-id="{{item.id}}"
+                        catchtouchstart="onTimelineNodeTouchStart"
+                        catchtouchmove="onTimelineNodeTouchMove"
+                        catchtouchend="onTimelineNodeTouchEnd"
+                        catchtouchcancel="onTimelineNodeTouchEnd"
+                      >
+                        <view class="vintage-node-star" style="{{item.nodeStyle}}"></view>
+                      </view>
+                      <view class="vintage-node-side vintage-node-side--right">
+                        <view class="vintage-node-side-inner vintage-node-side-inner--right" wx:if="{{item.labelSide === 'right'}}">
+                          <block wx:if="{{!expandedTimelineCards[item.id]}}">
+                            <view class="vintage-node-detail-stack vintage-node-detail-stack--right">
+                              <view
+                                wx:if="{{!item.hasContent}}"
+                                class="vintage-node-card-btn vintage-node-card-btn--right"
+                                data-id="{{item.id}}"
+                                catchtap="onToggleTimelineCard"
+                              >
+                                <text class="vintage-node-card-btn-plus">+</text>
+                                <text class="vintage-node-card-btn-label">详情</text>
+                              </view>
+                              <block wx:else>
+                                <view
+                                  class="vintage-summary-expand-hit vintage-summary-expand-hit--right"
+                                  data-id="{{item.id}}"
+                                  catchtap="onExpandTimelineFromSummary"
+                                >
+                                  <view class="vintage-summary-arrow-icon"></view>
+                                </view>
+                                <view class="vintage-node-summary vintage-node-summary--right" style="{{item.cardTextStyle}}">
+                                  <text class="vintage-summary-bold vintage-summary-line vintage-summary-line--title">{{item.dateLabel || '—'}} · {{item.title || '—'}}</text>
+                                  <text class="vintage-summary-line vintage-summary-line--desc" wx:if="{{item.summaryPreview}}">{{item.summaryPreview}}</text>
+                                </view>
+                              </block>
+                            </view>
+                          </block>
+                          <block wx:else>
+                            <view class="vintage-node-detail-slot">
+                              <view
+                                class="vintage-node-card-btn vintage-node-card-btn--right vintage-node-card-btn--open"
+                                data-id="{{item.id}}"
+                                catchtap="onToggleTimelineCard"
+                              >
+                                <text class="vintage-node-card-btn-label">收起详情</text>
+                              </view>
+                              <view class="vintage-node-card {{item.detailExpandDown ? 'vintage-node-card--expand-down' : 'vintage-node-card--floating'}}" style="{{item.cardTextStyle}}{{item.cardBoxStyle}}" catchtap="preventMove">
+                                <input class="vintage-card-date" value="{{item.dateLabel}}" data-id="{{item.id}}" data-field="dateLabel" bindinput="onTimelineInput" bindblur="onTimelineInputBlur" placeholder="时间 / 年代" />
+                                <input class="vintage-card-title" value="{{item.title}}" data-id="{{item.id}}" data-field="title" bindinput="onTimelineInput" bindblur="onTimelineInputBlur" placeholder="事件标题" />
+                                <textarea class="vintage-card-desc" value="{{item.description}}" data-id="{{item.id}}" data-field="description" bindinput="onTimelineInput" bindblur="onTimelineInputBlur" placeholder="事件描述" auto-height maxlength="-1" />
+                                <view class="vintage-card-actions">
+                                  <view class="profile-mini-btn profile-mini-btn--ghost" data-id="{{item.id}}" catchtap="onRemoveTimeline">删除节点</view>
+                                </view>
+                              </view>
+                            </view>
+                          </block>
+                        </view>
+                      </view>
+                    </view>
+                  </view>
+                  <text class="profile-empty-hint vintage-empty-hint" wx:if="{{!worldTimelineView.length}}">暂无时间节点，点击「添加」开始记录。</text>
+                </view>
+              </view>
+              </view>
+            </view>
+            <view class="profile-panel-smart-footer">
+              <view class="profile-tab-action-row">
+                <view class="profile-save-btn profile-save-btn--inline profile-save-btn--full" catchtap="onSaveActiveTab">{{saving ? '保存中…' : '保存'}}</view>
+              </view>
+            </view>
+            </view>
+          </block>
+
+          <block wx:elif="{{activeTab === 'relation'}}">
+            <view class="profile-panel profile-card--ornate">
+            <view class="profile-corner profile-corner--bl" aria-hidden="true"></view>
+            <view class="profile-corner profile-corner--br" aria-hidden="true"></view>
+            <view class="profile-panel-head profile-panel-head--with-actions">
+              <view class="profile-panel-head-text profile-panel-head-text--row" style="{{panelHeadStyle}}">
+                <text class="profile-panel-title">{{activeTabLabel}}</text>
+                <text class="profile-panel-sub">{{activeTabSub}}</text>
+              </view>
+              <view class="profile-panel-head-actions">
+                <view wx:if="{{relationLinkMode}}" class="profile-head-mini-btn" catchtap="onSaveRelationLinkMode">保存</view>
+                <view wx:if="{{relationLinkMode}}" class="profile-head-mini-btn profile-head-mini-btn--ghost" catchtap="onCancelRelationLinkMode">取消连线</view>
+                <view class="profile-head-mini-btn profile-head-mini-btn--ghost" catchtap="onOpenRelationStyleSettings">样式设置</view>
+                <view class="profile-head-mini-btn" catchtap="onChooseRelationGraphBg">更换背景</view>
+                <view class="profile-head-mini-btn profile-head-mini-btn--ghost" wx:if="{{relationGraphBgDisplay}}" catchtap="onClearRelationGraphBg">清除</view>
+                <view class="profile-head-mini-btn profile-head-mini-btn--ghost" catchtap="onExportRelation">下载</view>
+              </view>
+            </view>
+            <view class="profile-panel-body profile-panel-body--relation">
+              <text class="profile-relation-desc">主人物为中心，周围为次人物。拖动调整位置；长按头像进入连线模式；点击头像或 + 编辑关系。</text>
+              <view class="profile-scene-inner relation-graph-stage">
+                <view
+                  class="relation-graph {{relationGraphBgDisplay ? 'relation-graph--has-bg' : ''}} {{relationLinkMode ? 'relation-graph--link-mode' : ''}} {{relationNodeDense ? 'relation-graph--dense' : ''}}"
+                >
+                  <view wx:if="{{relationGraphBgDisplay}}" class="relation-graph-bg-wrap" wx:key="{{relationGraphBgKey}}">
+                    <image
+                      class="relation-graph-bg-img"
+                      src="{{relationGraphBgSrc || relationGraphBgDisplay}}"
+                      mode="aspectFill"
+                    />
+                  </view>
+                  <view wx:if="{{relationLinkMode}}" class="relation-link-overlay">
+                    <view class="relation-link-bar">
+                      <text class="relation-link-hint">再点击另一个头像完成连线</text>
+                      <view class="relation-link-save-btn profile-head-mini-btn" catchtap="onSaveRelationLinkMode">保存</view>
+                    </view>
+                  </view>
+                  <view
+                    class="relation-line"
+                    wx:for="{{graphLines}}"
+                    wx:key="key"
+                    style="{{item.style}}"
+                  ></view>
+                  <view
+                    class="relation-line-label"
+                    wx:for="{{graphLines}}"
+                    wx:key="key"
+                    wx:if="{{item.label}}"
+                    style="{{item.midStyle}}"
+                  >{{item.label}}</view>
+                  <view
+                    class="relation-line-note"
+                    wx:for="{{graphLines}}"
+                    wx:key="key"
+                    wx:if="{{item.note}}"
+                    style="{{item.noteStyle}}"
+                  >{{item.note}}</view>
+                  <view
+                    class="relation-node relation-node--center {{relationLinkPickId === 'center' ? 'relation-node--glow' : ''}}"
+                    style="{{relationGraph.center.style}}"
+                    catchtouchstart="onRelationCenterTouchStart"
+                    catchtouchend="onRelationCenterTouchEnd"
+                    catchtouchcancel="onRelationCenterTouchEnd"
+                  >
+                    <view
+                      class="relation-avatar {{relationLinkPickId === 'center' ? 'relation-avatar--glow' : ''}}"
+                      catchtap="onRelationCenterTap"
+                    >
+                      <image
+                        class="relation-avatar-img"
+                        src="{{relationGraph.center.avatarUrl || portraitPlaceholder}}"
+                        mode="aspectFill"
+                        catchtap="onRelationCenterTap"
+                      />
+                    </view>
+                    <text class="relation-name" style="{{relationGraph.center.nameStyle}}">{{relationGraph.center.name}}</text>
+                  </view>
+                  <view
+                    class="relation-node relation-node--draggable {{relationLinkPickId === item.id ? 'relation-node--glow' : ''}}"
+                    wx:for="{{relationGraph.nodes}}"
+                    wx:key="id"
+                    style="{{item.style}}"
+                    data-id="{{item.id}}"
+                    catchtouchstart="onRelationNodeTouchStart"
+                    catchtouchmove="onRelationNodeTouchMove"
+                    catchtouchend="onRelationNodeTouchEnd"
+                    catchtouchcancel="onRelationNodeTouchEnd"
+                  >
+                    <view
+                      class="relation-avatar relation-avatar--sm {{relationLinkPickId === item.id ? 'relation-avatar--glow' : ''}}"
+                      catchtap="onRelationNodeTap"
+                      data-id="{{item.id}}"
+                    >
+                      <image
+                        wx:if="{{item.avatarUrl}}"
+                        class="relation-avatar-img"
+                        src="{{item.avatarUrl}}"
+                        mode="aspectFill"
+                        catchtap="onRelationNodeTap"
+                        data-id="{{item.id}}"
+                      />
+                      <text
+                        wx:else
+                        class="relation-avatar-letter"
+                        catchtap="onRelationNodeTap"
+                        data-id="{{item.id}}"
+                      >{{item.name[0] || '?'}}</text>
+                    </view>
+                    <text class="relation-name" style="{{item.nameStyle}}">{{item.name}}</text>
+                    <text class="relation-title" wx:if="{{item.title}}" style="{{item.titleStyle}}">{{item.title}}</text>
+                  </view>
+                  <view
+                    class="relation-add-node"
+                    wx:if="{{relationGraph.nodes.length < 6 && !relationLinkMode}}"
+                    style="{{relationAddStyle}}"
+                    catchtouchstart="onRelationAddTouchStart"
+                    catchtouchmove="onRelationAddTouchMove"
+                    catchtouchend="onRelationAddTouchEnd"
+                    catchtouchcancel="onRelationAddTouchEnd"
+                  >
+                    <text class="relation-add-plus">+</text>
+                  </view>
+                </view>
+                <view
+                  class="relation-float-form"
+                  wx:if="{{relationEditorVisible && relationEditIndex >= 0 && relationships[relationEditIndex]}}"
+                >
+                  <view class="relation-float-form-inner">
+                    <view class="relation-float-head">
+                      <text class="relation-float-title">{{relationships[relationEditIndex].name ? '编辑关系' : '添加关系'}}</text>
+                      <view class="relation-float-close" catchtap="onCloseRelationForm">×</view>
+                    </view>
+                    <view class="relation-form-portrait-row">
+                      <view class="relation-form-portrait" bindtap="onChooseRelationPortrait">
+                        <image
+                          wx:if="{{relationships[relationEditIndex].avatarUrl}}"
+                          class="relation-form-portrait-img"
+                          src="{{relationships[relationEditIndex].avatarUrl}}"
+                          mode="aspectFill"
+                        />
+                        <image
+                          wx:else
+                          class="relation-form-portrait-img relation-form-portrait-img--placeholder"
+                          src="{{portraitPlaceholder}}"
+                          mode="aspectFill"
+                        />
+                      </view>
+                      <view class="relation-form-portrait-meta">
+                        <text class="relation-form-portrait-label">立绘</text>
+                        <text class="relation-form-portrait-hint">点击上传，或从设定本选择人物</text>
+                      </view>
+                    </view>
+                    <view class="relation-form-row relation-form-row--name">
+                      <text class="relation-form-label">姓名</text>
+                      <view class="relation-form-name-col">
+                        <input
+                          class="relation-form-input"
+                          value="{{relationships[relationEditIndex].name}}"
+                          data-field="name"
+                          bindinput="onRelationInput"
+                          placeholder="人物名"
+                        />
+                        <picker
+                          mode="selector"
+                          range="{{notebookOcNames}}"
+                          bindchange="onPickRelationOc"
+                          disabled="{{!notebookOcNames.length}}"
+                        >
+                          <view class="relation-pick-oc-btn {{notebookOcNames.length ? '' : 'relation-pick-oc-btn--disabled'}}">设定本</view>
+                        </picker>
+                      </view>
+                    </view>
+                    <view class="relation-form-row">
+                      <text class="relation-form-label">身份</text>
+                      <input class="relation-form-input" value="{{relationships[relationEditIndex].title}}" data-field="title" bindinput="onRelationInput" placeholder="如：骑士团长" />
+                    </view>
+                    <view class="relation-form-row">
+                      <text class="relation-form-label">关系</text>
+                      <picker mode="selector" range="{{relationTypes}}" value="{{relationTypePickerIndex}}" bindchange="onRelationTypePick">
+                        <view class="relation-form-picker">{{relationPickerLabel}}</view>
+                      </picker>
+                    </view>
+                    <view class="relation-form-row" wx:if="{{relationTypePickerIndex === 0}}">
+                      <text class="relation-form-label">自定义</text>
+                      <input
+                        class="relation-form-input"
+                        value="{{relationCustomDraft}}"
+                        bindinput="onRelationCustomTypeInput"
+                        placeholder="输入关系类型，如：青梅竹马"
+                      />
+                    </view>
+                    <view class="relation-form-row">
+                      <text class="relation-form-label">备注</text>
+                      <input class="relation-form-input" value="{{relationships[relationEditIndex].note}}" data-field="note" bindinput="onRelationInput" placeholder="补充说明" />
+                    </view>
+                    <view class="relation-form-actions">
+                      <view class="profile-mini-btn profile-mini-btn--ghost" bindtap="onRemoveActiveRelation">删除</view>
+                      <view class="profile-mini-btn" bindtap="onSaveRelations">保存</view>
+                    </view>
+                  </view>
+                </view>
+              </view>
+              <view class="relation-text-list-card" wx:if="{{relationTextList.length}}">
+                <text class="relation-text-list-title">关系一览</text>
+                <view class="relation-text-list-item" wx:for="{{relationTextList}}" wx:key="key">
+                  <text class="relation-text-list-line">{{item.text}}</text>
+                </view>
+              </view>
+            </view>
+            </view>
+          </block>
+
+          <view class="profile-panel profile-card--ornate" wx:if="{{activeTab !== 'basic' && activeTab !== 'timeline' && activeTab !== 'relation'}}">
+            <view class="profile-corner profile-corner--bl" aria-hidden="true"></view>
+            <view class="profile-corner profile-corner--br" aria-hidden="true"></view>
+            <view class="profile-panel-head profile-panel-head--with-actions">
+              <view class="profile-panel-head-text profile-panel-head-text--row" style="{{panelHeadStyle}}">
+                <text class="profile-panel-title">{{activeTabLabel}}</text>
+                <text class="profile-panel-sub">{{activeTabSub}}</text>
+              </view>
+              <view class="profile-panel-head-actions" wx:if="{{activeTab === 'art'}}">
+                <view class="profile-head-mini-btn {{uploadingImages ? 'profile-head-mini-btn--disabled' : ''}}" catchtap="onChooseOcImage">+ 上传</view>
+              </view>
+            </view>
+
+            <!-- 小传故事 -->
+            <view wx:if="{{activeTab === 'bioStory'}}" class="profile-panel-body profile-panel-body--bio-story">
+              <view class="profile-fold-block">
+                <view class="profile-fold-head" bindtap="onToggleBioExpanded">
+                  <text class="profile-fold-title">小传</text>
+                  <text class="profile-fold-hint">{{bioExpanded ? '收起 ▲' : '展开 ▼'}}</text>
+                </view>
+                <view wx:if="{{bioExpanded}}" class="profile-fold-body">
+                  <text class="profile-text-block">{{generatedBio || '暂无小传，可在编辑页生成或粘贴设定后智能填写。'}}</text>
+                </view>
+              </view>
+              <view class="profile-fold-block">
+                <view class="profile-fold-head" bindtap="onToggleStoryExpanded">
+                  <text class="profile-fold-title">故事</text>
+                  <text class="profile-fold-hint">{{storyExpanded ? '收起 ▲' : '展开 ▼'}}</text>
+                </view>
+                <view wx:if="{{storyExpanded}}" class="profile-fold-body">
+                  <view wx:if="{{ocStoriesDisplay.length}}" class="profile-story-list">
+                    <view wx:for="{{ocStoriesDisplay}}" wx:key="id" class="profile-story-item">
+                      <text class="profile-story-title">{{item.title || '未命名故事'}}</text>
+                      <text wx:if="{{item.content}}" class="profile-text-block">{{storyFullExpanded[item.id] ? item.content : item.previewText}}</text>
+                      <text wx:else class="profile-text-block profile-text-block--muted">（暂无正文）</text>
+                      <view
+                        wx:if="{{item.hasMoreParagraphs}}"
+                        class="profile-story-more"
+                        data-id="{{item.id}}"
+                        catchtap="onToggleStoryItemFull"
+                      >{{storyFullExpanded[item.id] ? '收起 ▲' : '展开全文 ▼'}}</view>
+                    </view>
+                  </view>
+                  <text wx:else class="profile-text-block profile-text-block--muted">暂无故事，可在故事页创作。</text>
+                </view>
+              </view>
+            </view>
+
+            <!-- 世界观 -->
+            <view wx:elif="{{activeTab === 'world'}}" class="profile-panel-body">
+              <textarea
+                class="profile-editable-area"
+                value="{{background.worldview}}"
+                bindinput="onWorldviewInput"
+                placeholder="填写世界观设定…"
+                maxlength="-1"
+                auto-height
+              />
+              <view class="profile-tab-smart-block profile-tab-smart-block--above-timeline">
+                <textarea
+                  class="profile-tab-smart-input"
+                  value="{{tabSmartText}}"
+                  bindinput="onTabSmartTextInput"
+                  placeholder="粘贴描述文本，可用于智能填写世界观…"
+                  maxlength="-1"
+                  auto-height
+                  disabled="{{parsing}}"
+                />
+                <view class="profile-tab-action-row">
+                  <view class="profile-smart-btn {{parsing ? 'profile-smart-btn--disabled' : ''}}" catchtap="onSmartFillActiveTab">智能填写</view>
+                </view>
+              </view>
+            </view>
+
+            <!-- 身世背景 -->
+            <view wx:elif="{{activeTab === 'events'}}" class="profile-panel-body">
+              <view class="profile-sub-block">
+                <text class="profile-sub-title">身世设定</text>
+                <input
+                  class="profile-editable-input"
+                  wx:for="{{background.origins}}"
+                  wx:key="*this"
+                  wx:for-index="oi"
+                  value="{{item}}"
+                  data-index="{{oi}}"
+                  data-kind="origin"
+                  bindinput="onEventSlotInput"
+                  placeholder="身世条目 {{oi + 1}}"
+                />
+              </view>
+              <view class="profile-sub-block">
+                <text class="profile-sub-title">人生大事件</text>
+                <input
+                  class="profile-editable-input"
+                  wx:for="{{background.lifeEvents}}"
+                  wx:key="*this"
+                  wx:for-index="li"
+                  value="{{item}}"
+                  data-index="{{li}}"
+                  data-kind="life"
+                  bindinput="onEventSlotInput"
+                  placeholder="大事件 {{li + 1}}"
+                />
+              </view>
+            </view>
+
+            <!-- 语言态度 -->
+            <view wx:elif="{{activeTab === 'language'}}" class="profile-panel-body">
+              <view class="profile-sub-block">
+                <text class="profile-sub-title">口头禅</text>
+                <input
+                  class="profile-editable-input"
+                  wx:for="{{catchphrases}}"
+                  wx:key="*this"
+                  wx:for-index="ci"
+                  value="{{item}}"
+                  data-index="{{ci}}"
+                  bindinput="onCatchphraseInput"
+                  placeholder="口头禅 {{ci + 1}}"
+                />
+              </view>
+              <view class="profile-sub-block">
+                <text class="profile-sub-title">态度</text>
+                <view class="profile-attitude-edit" wx:for="{{attitudes}}" wx:key="index" wx:for-index="ai">
+                  <input class="profile-editable-input" value="{{item.event}}" data-index="{{ai}}" data-field="event" bindinput="onAttitudeInput" placeholder="话题 / 情境" />
+                  <textarea class="profile-editable-area profile-editable-area--sm" value="{{item.attitude}}" data-index="{{ai}}" data-field="attitude" bindinput="onAttitudeInput" placeholder="态度描述" auto-height maxlength="-1" />
+                </view>
+              </view>
+            </view>
+
+            <!-- 立绘 · 图册 -->
+            <view wx:elif="{{activeTab === 'art'}}" class="profile-panel-body profile-panel-body--art">
+              <view class="album-toolbar">
+                <text class="album-toolbar-hint">图册 · 每个最多 50 张 · 3:4</text>
+                <view class="album-toolbar-add" catchtap="onCreateAlbum">+ 新建图册</view>
+              </view>
+
+              <view class="album-board" wx:if="{{featuredAlbum || gridAlbums.length}}">
+                <!-- 立绘：置顶全宽，与面板同宽，左右 5px 边距 -->
+                <view
+                  wx:if="{{featuredAlbum}}"
+                  class="album-card album-card--featured"
+                  data-id="{{featuredAlbum.id}}"
+                  bindtap="onOpenAlbumDetail"
+                >
+                  <view class="album-card-frame">
+                    <swiper
+                      wx:if="{{featuredAlbum.previewImages.length}}"
+                      class="album-card-swiper"
+                      circular="{{featuredAlbum.previewCount > 1}}"
+                      indicator-dots="{{featuredAlbum.previewCount > 1}}"
+                      indicator-color="rgba(255,255,255,0.35)"
+                      indicator-active-color="#ffffff"
+                    >
+                      <swiper-item wx:for="{{featuredAlbum.previewImages}}" wx:for-item="img" wx:key="id">
+                        <image class="album-card-cover" src="{{img.path}}" mode="aspectFill" />
+                      </swiper-item>
+                    </swiper>
+                    <view class="album-card-empty-frame" wx:else>
+                      <text class="album-card-empty-plus">+</text>
+                      <text class="album-card-empty-text">上传立绘</text>
+                    </view>
+                    <view class="album-card-caption">
+                      <text class="album-card-name">{{featuredAlbum.name}}</text>
+                      <text class="album-card-count">{{featuredAlbum.count}} / 50</text>
+                    </view>
+                  </view>
+                </view>
+
+                <!-- 其余图册：一排两个 -->
+                <view class="album-grid" wx:if="{{gridAlbums.length}}">
+                  <view
+                    class="album-card album-card--grid"
+                    wx:for="{{gridAlbums}}"
+                    wx:key="id"
+                    data-id="{{item.id}}"
+                    bindtap="onOpenAlbumDetail"
+                  >
+                    <view class="album-card-frame">
+                      <swiper
+                        wx:if="{{item.previewImages.length}}"
+                        class="album-card-swiper"
+                        circular="{{item.previewCount > 1}}"
+                        indicator-dots="{{item.previewCount > 1}}"
+                        indicator-color="rgba(255,255,255,0.35)"
+                        indicator-active-color="#ffffff"
+                      >
+                        <swiper-item wx:for="{{item.previewImages}}" wx:for-item="img" wx:key="id">
+                          <image class="album-card-cover" src="{{img.path}}" mode="aspectFill" />
+                        </swiper-item>
+                      </swiper>
+                      <view class="album-card-empty-frame" wx:else>
+                        <text class="album-card-empty-plus">+</text>
+                        <text class="album-card-empty-text">上传图片</text>
+                      </view>
+                      <view class="album-card-caption">
+                        <view class="album-card-caption-main">
+                          <text class="album-card-name">{{item.name}}</text>
+                          <text class="album-card-count">{{item.count}} / 50</text>
+                        </view>
+                        <text
+                          class="album-card-del"
+                          wx:if="{{!item.preset}}"
+                          data-id="{{item.id}}"
+                          catchtap="onDeleteAlbum"
+                        >删</text>
+                      </view>
+                    </view>
+                  </view>
+                </view>
+              </view>
+
+              <view class="album-empty" wx:else>
+                <text class="album-empty-text">暂无图册</text>
+                <view class="album-empty-btn" catchtap="onCreateAlbum">创建图册</view>
+              </view>
+            </view>
+
+            <view wx:if="{{activeTab === 'world'}}" class="profile-panel-smart-footer">
+              <view class="profile-tab-action-row">
+                <view class="profile-save-btn profile-save-btn--inline profile-save-btn--full" catchtap="onSaveActiveTab">{{saving ? '保存中…' : '保存'}}</view>
+              </view>
+            </view>
+
+            <view wx:elif="{{activeTab === 'events' || activeTab === 'language' || activeTab === 'art'}}" class="profile-panel-smart-footer">
+              <view class="profile-tab-action-row">
+                <view class="profile-save-btn profile-save-btn--inline profile-save-btn--full" catchtap="onSaveActiveTab">{{saving ? '保存中…' : '保存'}}</view>
+              </view>
+            </view>
+          </view>
+        </view>
+        <view wx:if="{{!tabRailCollapsed}}" class="profile-tab-rail-slot"></view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{!tabRailCollapsed}}" class="profile-tab-rail profile-tab-rail--fixed" style="{{tabRailStyle}}">
+    <block wx:for="{{profileTabs}}" wx:key="key">
+      <view
+        class="profile-tab-item profile-tab-item--ornate {{activeTab === item.key ? 'profile-tab-item--active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="onTabChange"
+      >
+        <text class="profile-tab-glyph" aria-hidden="true">{{item.glyph || '✦'}}</text>
+        <text class="profile-tab-label">{{item.label}}</text>
+        <text class="profile-tab-sub">{{item.sub}}</text>
+      </view>
+      <view
+        wx:if="{{item.key === 'basic'}}"
+        class="profile-tab-item profile-tab-item--ornate {{activeTab === 'art' ? 'profile-tab-item--active' : ''}}"
+        catchtap="onOpenArt"
+      >
+        <text class="profile-tab-glyph" aria-hidden="true">✧</text>
+        <text class="profile-tab-label">立绘</text>
+        <text class="profile-tab-sub">ART</text>
+      </view>
+      <view
+        wx:if="{{item.key === 'world'}}"
+        class="profile-tab-item profile-tab-item--ornate {{activeTab === 'timeline' ? 'profile-tab-item--active' : ''}}"
+        catchtap="onOpenTimeline"
+      >
+        <text class="profile-tab-glyph" aria-hidden="true">◷</text>
+        <text class="profile-tab-label">时间轴</text>
+        <text class="profile-tab-sub">TIME</text>
+      </view>
+    </block>
+    <view
+      class="profile-tab-item profile-tab-item--ornate {{activeTab === 'bioStory' ? 'profile-tab-item--active' : ''}}"
+      catchtap="onOpenBioStory"
+    >
+      <text class="profile-tab-glyph" aria-hidden="true">❧</text>
+      <text class="profile-tab-label">小传故事</text>
+      <text class="profile-tab-sub">STORY</text>
+    </view>
+  </view>
+
+  <view
+    class="oc-image-fullscreen"
+    wx:if="{{ocImageExpanded && ocImages.length}}"
+    catchtouchmove="preventMove"
+  >
+    <view class="oc-image-fullscreen-backdrop" catchtap="onCloseOcImageExpand"></view>
+    <view class="oc-image-fullscreen-panel" style="{{fullscreenBodyStyle}}">
+      <view class="oc-image-fullscreen-head">
+        <text class="oc-image-fullscreen-title">OC 立绘</text>
+        <text class="oc-image-fullscreen-count" wx:if="{{ocImages.length > 1}}">{{ocImageIndex + 1}} / {{ocImages.length}}</text>
+        <view class="oc-image-fullscreen-close" catchtap="onCloseOcImageExpand">
+          <text class="oc-image-fullscreen-close-icon">×</text>
+        </view>
+      </view>
+      <swiper
+        class="oc-image-fullscreen-swiper"
+        current="{{ocImageIndex}}"
+        bindchange="onOcImageSwiperChange"
+        circular="{{ocImages.length > 1}}"
+        indicator-dots="{{false}}"
+      >
+        <swiper-item wx:for="{{ocImages}}" wx:key="id" class="oc-image-fullscreen-swiper-item">
+          <scroll-view class="oc-image-fullscreen-item-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+            <image class="oc-image-fullscreen-img" src="{{item.path}}" mode="widthFix" />
+          </scroll-view>
+        </swiper-item>
+      </swiper>
+      <view class="oc-image-fullscreen-dots" wx:if="{{ocImages.length > 1}}">
+        <view
+          class="oc-image-fullscreen-dot {{ocImageIndex === index ? 'oc-image-fullscreen-dot--active' : ''}}"
+          wx:for="{{ocImages}}"
+          wx:key="id"
+        ></view>
+      </view>
+    </view>
+  </view>
+
+  <canvas type="2d" id="sceneExportCanvas" class="scene-export-canvas"></canvas>
+
+  <view class="color-picker-modal" wx:if="{{colorPickerVisible}}" catchtouchmove="preventMove">
+    <view class="color-picker-backdrop" catchtap="onCloseColorPicker"></view>
+    <view class="color-picker-panel">
+      <text class="color-picker-title">{{colorPickerTitle || '选择颜色'}}</text>
+      <view
+        class="color-picker-sv"
+        style="background: hsl({{colorPickerHue}}, 100%, 50%);"
+        catchtouchstart="onColorSvTouch"
+        catchtouchmove="onColorSvTouch"
+      >
+        <view class="color-picker-sv-white"></view>
+        <view class="color-picker-sv-black"></view>
+        <view
+          class="color-picker-sv-thumb"
+          style="left: {{colorPickerSat * 100}}%; top: {{(1 - colorPickerVal) * 100}}%;"
+        ></view>
+      </view>
+      <view class="color-picker-hue-track"></view>
+      <slider
+        class="color-picker-hue"
+        min="0"
+        max="360"
+        value="{{colorPickerHue}}"
+        activeColor="transparent"
+        backgroundColor="transparent"
+        block-color="#fff"
+        block-size="18"
+        bindchanging="onColorHueChanging"
+        bindchange="onColorHueChange"
+      />
+      <view class="color-picker-preview-row">
+        <view class="color-picker-preview" style="background: {{colorPickerPreview}};"></view>
+        <input class="color-picker-hex" value="{{colorPickerPreview}}" bindinput="onColorHexInput" maxlength="7" />
+      </view>
+      <view class="color-picker-presets">
+        <view
+          class="color-picker-preset"
+          wx:for="{{colorPresets}}"
+          wx:key="value"
+          style="background: {{item.value}};"
+          data-color="{{item.value}}"
+          catchtap="onPickPresetColor"
+        ></view>
+      </view>
+      <view class="color-picker-actions">
+        <view class="profile-mini-btn profile-mini-btn--ghost" catchtap="onCloseColorPicker">取消</view>
+        <view class="profile-mini-btn" catchtap="onConfirmColorPicker">确定</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="relation-link-modal" wx:if="{{relationLinkFormVisible}}" catchtouchmove="preventMove">
+    <view class="relation-link-backdrop" catchtap="onCloseRelationLinkForm"></view>
+    <view class="relation-link-panel">
+      <text class="relation-link-title">建立关系</text>
+      <text class="relation-link-sub">{{relationLinkFormTitle}}</text>
+      <view class="relation-form-row">
+        <text class="relation-form-label">关系</text>
+        <picker mode="selector" range="{{relationTypes}}" value="{{relationLinkTypePickerIndex}}" bindchange="onRelationLinkTypePick">
+          <view class="relation-form-picker">{{relationLinkPickerLabel}}</view>
+        </picker>
+      </view>
+      <view class="relation-form-row" wx:if="{{relationLinkTypePickerIndex === 0}}">
+        <text class="relation-form-label">自定义</text>
+        <input
+          class="relation-form-input"
+          value="{{relationLinkCustomDraft}}"
+          bindinput="onRelationLinkCustomTypeInput"
+          placeholder="如：青梅竹马"
+        />
+      </view>
+      <view class="relation-form-row">
+        <text class="relation-form-label">备注</text>
+        <textarea
+          class="relation-link-note"
+          value="{{relationLinkNote}}"
+          bindinput="onRelationLinkNoteInput"
+          placeholder="补充说明（可选）"
+          auto-height
+          maxlength="-1"
+        />
+      </view>
+      <view class="relation-link-actions">
+        <view class="profile-mini-btn profile-mini-btn--ghost" catchtap="onCloseRelationLinkForm">取消</view>
+        <view class="profile-mini-btn" catchtap="onConfirmRelationLinkForm">确定</view>
+      </view>
+    </view>
+  </view>
+</view>

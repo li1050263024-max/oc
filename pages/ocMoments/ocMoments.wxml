@@ -1,0 +1,114 @@
+<view class="page oc-page has-tab-bar {{uiThemeClass}}">
+  <view class="bg-solid"></view>
+  <scroll-view class="moments-scroll" scroll-y show-scrollbar="{{false}}">
+    <view class="scroll-inner">
+    <view class="moments-cover" catchtap="onChangeCover">
+      <image wx:if="{{coverUrl}}" class="moments-cover-img" src="{{coverUrl}}" mode="aspectFill" />
+      <view wx:else class="moments-cover-bg"></view>
+      <view class="moments-cover-mask"></view>
+      <view class="moments-cover-bar">
+        <text class="moments-cover-title">OC 朋友圈</text>
+        <text class="moments-cover-sub">点击封面可更换</text>
+      </view>
+    </view>
+
+    <view class="moments-body">
+      <view class="moments-compose">
+        <view class="moments-compose-row">
+          <view class="moment-avatar moment-avatar--user moment-avatar--ph">
+            <text class="moment-avatar-letter">我</text>
+          </view>
+          <textarea
+            class="moments-compose-input"
+            value="{{composeText}}"
+            bindinput="onComposeInput"
+            placeholder="分享此刻…"
+            maxlength="500"
+            auto-height
+            show-confirm-bar="{{false}}"
+          />
+        </view>
+        <view class="moments-compose-actions">
+          <view class="moments-publish-btn oc-chip-btn" catchtap="onPublishMoment">
+            <text class="oc-chip-btn-text">发布</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="moments-loading" wx:if="{{showPageLoading || (loading && !feed.length)}}">
+        <view class="moments-loading-dot"></view>
+        <text class="moments-loading-text">正在加载中…</text>
+      </view>
+
+      <view class="moments-empty" wx:elif="{{!generating && !feed.length}}">
+        <text class="moments-empty-text">{{emptyHint}}</text>
+      </view>
+
+      <view class="moment-item" wx:for="{{feed}}" wx:key="id">
+        <view class="moment-head" catchtap="onTapOc" data-oc-id="{{item.isUserPost ? '' : item.ocId}}">
+          <image
+            wx:if="{{item.isUserPost && userAvatarUrl}}"
+            class="moment-avatar"
+            src="{{userAvatarUrl}}"
+            mode="aspectFill"
+          />
+          <image
+            wx:elif="{{!item.isUserPost && (item.avatarDisplay || item.avatarUrl)}}"
+            class="moment-avatar"
+            src="{{item.avatarDisplay || item.avatarUrl}}"
+            mode="aspectFill"
+          />
+          <view wx:else class="moment-avatar moment-avatar--ph {{item.isUserPost ? 'moment-avatar--user' : ''}}">
+            <text class="moment-avatar-letter">{{item.avatarLetter}}</text>
+          </view>
+          <view class="moment-meta">
+            <text class="moment-name">{{item.displayName}}</text>
+            <text class="moment-time">{{item.timeLabel}}</text>
+          </view>
+        </view>
+        <view class="moment-content">
+          <text class="moment-text" user-select>{{item.content}}</text>
+        </view>
+        <view class="moment-actions">
+          <view
+            class="moment-action {{item.liked ? 'moment-action--liked' : ''}}"
+            catchtap="onToggleLike"
+            data-id="{{item.id}}"
+          >
+            <text class="moment-action-icon">{{item.liked ? '♥' : '♡'}}</text>
+            <text class="moment-action-label">{{item.likeCount || '赞'}}</text>
+          </view>
+          <view class="moment-action" catchtap="onOpenComment" data-id="{{item.id}}">
+            <text class="moment-action-icon">💬</text>
+            <text class="moment-action-label">{{item.commentCount || '评论'}}</text>
+          </view>
+        </view>
+        <view class="moment-comments" wx:if="{{item.comments.length}}">
+          <view class="moment-comment" wx:for="{{item.comments}}" wx:for-item="c" wx:key="id">
+            <text class="moment-comment-author {{c.authorType === 'oc' ? 'moment-comment-author--oc' : ''}}">{{c.authorName}}：</text>
+            <text class="moment-comment-text">{{c.content}}</text>
+          </view>
+        </view>
+        <view class="moment-comment-box" wx:if="{{commentPostId === item.id}}">
+          <input
+            class="moment-comment-input"
+            value="{{commentText}}"
+            bindinput="onCommentInput"
+            placeholder="写评论…"
+            maxlength="300"
+            confirm-type="send"
+            bindconfirm="onSubmitComment"
+            data-id="{{item.id}}"
+            focus="{{commentPostId === item.id}}"
+          />
+          <view class="moment-comment-send oc-chip-btn" catchtap="onSubmitComment" data-id="{{item.id}}">
+            <text class="oc-chip-btn-text">发送</text>
+          </view>
+        </view>
+        <view class="moment-divider"></view>
+      </view>
+    </view>
+    </view>
+  </scroll-view>
+  <oc-tab-bar current="moments" flat-top="{{true}}" />
+</view>

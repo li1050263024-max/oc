@@ -1,0 +1,375 @@
+.oc-tab-bar-root {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5000;
+  pointer-events: auto;
+}
+
+.oc-chat-mode-float {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  margin-bottom: 10rpx;
+  height: 0;
+  overflow: visible;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  padding: 0 8rpx;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.oc-chat-mode-float-cell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.oc-tab-bar {
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  padding: 10rpx 8rpx calc(10rpx + env(safe-area-inset-bottom));
+  border-radius: 28rpx 28rpx 0 0;
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1rpx solid var(--theme-bar-border, rgba(139, 92, 246, 0.12));
+  box-shadow: 0 -8rpx 24rpx var(--theme-bar-shadow, rgba(109, 40, 217, 0.06));
+  backdrop-filter: blur(12px);
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.oc-tab-bar--flat {
+  border-top: none;
+  box-shadow: none;
+}
+
+.oc-tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  min-width: 0;
+  min-height: 88rpx;
+  padding: 8rpx 0 4rpx;
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+
+.oc-tab-icon-wrap {
+  position: relative;
+  width: 44rpx;
+  height: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.oc-tab-icon {
+  width: 40rpx;
+  height: 40rpx;
+  position: relative;
+  color: #a3a3ad;
+}
+
+.oc-tab-item--active .oc-tab-icon {
+  color: var(--theme-tab-active, #6d28d9);
+}
+
+.oc-tab-label {
+  font-size: 18rpx;
+  line-height: 1.2;
+  color: #a3a3ad;
+  white-space: nowrap;
+}
+
+.oc-tab-item--active .oc-tab-label {
+  color: var(--theme-tab-active, #6d28d9);
+  font-weight: 600;
+}
+
+/* 首页 — 房子 */
+.oc-tab-icon--home::before {
+  content: '';
+  position: absolute;
+  left: 8rpx;
+  top: 10rpx;
+  width: 24rpx;
+  height: 18rpx;
+  border: 2rpx solid currentColor;
+  border-top: none;
+  box-sizing: border-box;
+}
+.oc-tab-icon--home::after {
+  content: '';
+  position: absolute;
+  left: 12rpx;
+  top: 4rpx;
+  width: 16rpx;
+  height: 16rpx;
+  border-left: 2rpx solid currentColor;
+  border-top: 2rpx solid currentColor;
+  transform: rotate(45deg);
+  box-sizing: border-box;
+}
+
+/* 设定本 — 折角文档 */
+.oc-tab-icon--book::before {
+  content: '';
+  position: absolute;
+  left: 8rpx;
+  top: 6rpx;
+  width: 26rpx;
+  height: 30rpx;
+  border: 2rpx solid currentColor;
+  border-radius: 4rpx;
+  box-sizing: border-box;
+}
+.oc-tab-icon--book::after {
+  content: '';
+  position: absolute;
+  right: 8rpx;
+  top: 6rpx;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 10rpx 10rpx 0;
+  border-color: transparent currentColor transparent transparent;
+  box-sizing: border-box;
+}
+
+/* 选项库 — 三列滑条 */
+.oc-tab-icon--sliders::before {
+  content: '';
+  position: absolute;
+  left: 9rpx;
+  top: 8rpx;
+  width: 4rpx;
+  height: 24rpx;
+  background: currentColor;
+  border-radius: 2rpx;
+  box-shadow: 12rpx 4rpx 0 currentColor, 24rpx -2rpx 0 currentColor;
+}
+.oc-tab-icon--sliders::after {
+  content: '';
+  position: absolute;
+  left: 7rpx;
+  top: 14rpx;
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 12rpx -6rpx 0 currentColor, 24rpx 8rpx 0 currentColor;
+}
+
+/* oc故事 — 笔 + 波浪线 */
+.oc-tab-icon--pen::before {
+  content: '';
+  position: absolute;
+  left: 22rpx;
+  top: 4rpx;
+  width: 4rpx;
+  height: 22rpx;
+  background: currentColor;
+  border-radius: 2rpx;
+  transform: rotate(38deg);
+  transform-origin: bottom center;
+}
+.oc-tab-icon--pen::after {
+  content: '';
+  position: absolute;
+  left: 4rpx;
+  bottom: 8rpx;
+  width: 18rpx;
+  height: 8rpx;
+  border-bottom: 2rpx solid currentColor;
+  border-radius: 0 0 50% 50%;
+  transform: rotate(-8deg);
+}
+
+/* oc聊天 — 气泡 */
+.oc-tab-icon--chat::before {
+  content: '';
+  position: absolute;
+  left: 5rpx;
+  top: 8rpx;
+  width: 30rpx;
+  height: 22rpx;
+  border: 2rpx solid currentColor;
+  border-radius: 10rpx;
+  box-sizing: border-box;
+}
+.oc-tab-icon--chat::after {
+  content: '…';
+  position: absolute;
+  left: 11rpx;
+  top: 11rpx;
+  font-size: 16rpx;
+  line-height: 1;
+  color: currentColor;
+  letter-spacing: 1rpx;
+}
+
+/* 朋友圈 — 光圈 */
+.oc-tab-icon--moments::before {
+  content: '';
+  position: absolute;
+  left: 8rpx;
+  top: 8rpx;
+  width: 24rpx;
+  height: 24rpx;
+  border: 2rpx solid currentColor;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background:
+    linear-gradient(currentColor, currentColor) center/2rpx 24rpx no-repeat,
+    linear-gradient(currentColor, currentColor) center/24rpx 2rpx no-repeat,
+    linear-gradient(45deg, transparent 46%, currentColor 46%, currentColor 54%, transparent 54%) center/24rpx 24rpx no-repeat,
+    linear-gradient(-45deg, transparent 46%, currentColor 46%, currentColor 54%, transparent 54%) center/24rpx 24rpx no-repeat;
+}
+.oc-tab-icon--moments::after {
+  content: '';
+  position: absolute;
+  left: 16rpx;
+  top: 16rpx;
+  width: 8rpx;
+  height: 8rpx;
+  border: 2rpx solid currentColor;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: transparent;
+}
+
+.oc-chat-mode-switch {
+  display: flex;
+  align-items: center;
+  padding: 4rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1rpx solid var(--theme-border-mid2);
+  box-shadow: 0 4rpx 16rpx var(--theme-shadow-md);
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+
+.oc-chat-mode-opt {
+  position: relative;
+  min-width: 96rpx;
+  padding: 10rpx 20rpx;
+  border-radius: 999rpx;
+  text-align: center;
+  font-size: 24rpx;
+  line-height: 1.2;
+  color: #7c7c8a;
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+
+.oc-chat-mode-badge {
+  position: absolute;
+  top: 4rpx;
+  right: 8rpx;
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2rpx solid #fff;
+}
+
+.oc-chat-mode-opt--on {
+  color: #ffffff;
+  font-weight: 600;
+  background: var(--theme-mode-switch-on, #a78bfa);
+  box-shadow: 0 4rpx 12rpx var(--theme-mode-switch-shadow, rgba(139, 92, 246, 0.28));
+}
+
+.oc-tab-badge {
+  position: absolute;
+  top: 2rpx;
+  right: 0;
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2rpx solid #fff;
+}
+
+/* —— cover-view 透明点击热区 —— */
+.oc-tab-hit-root {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100000;
+  width: 100%;
+}
+
+.oc-tab-hit-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
+  height: calc(96rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.oc-tab-hit-item {
+  flex: 1;
+  height: 100%;
+}
+
+.oc-chat-mode-hit-float {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  margin-bottom: 10rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-around;
+  padding: 0 8rpx;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.oc-chat-mode-hit-cell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.oc-chat-mode-hit-switch {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 4rpx;
+  border-radius: 999rpx;
+  /* 热区尽量透明，避免与下方视觉开关叠成「双份」 */
+  background-color: rgba(255, 255, 255, 0.01);
+}
+
+.oc-chat-mode-hit-opt {
+  min-width: 96rpx;
+  padding: 14rpx 24rpx;
+  border-radius: 999rpx;
+  text-align: center;
+  font-size: 24rpx;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.01);
+}

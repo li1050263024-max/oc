@@ -1,0 +1,12 @@
+{
+  "navigationBarTitleText": "章节",
+  "navigationStyle": "custom",
+  "backgroundColor": "#c8bee4",
+  "backgroundColorTop": "#c8bee4",
+  "backgroundColorBottom": "#c4d0e8",
+  "backgroundColorContent": "#c8bee400",
+  "usingComponents": {
+    "oc-page-nav": "/components/ocPageNav/ocPageNav",
+    "oc-back-btn": "/components/ocBackBtn/ocBackBtn"
+  }
+}

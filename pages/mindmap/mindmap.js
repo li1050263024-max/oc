@@ -1,4 +1,5 @@
 const mindmap = require('../../utils/mindmap.js');
+const { normalizeResult, normalizeBackground } = require('../../utils/ocResult.js');
 
 const STORAGE_OC_WORK = 'oc_work_in_progress';
 
@@ -14,8 +15,8 @@ Page({
     const work = wx.getStorageSync(STORAGE_OC_WORK) || {};
     if (work.result) {
       this.setData({
-        result: work.result,
-        background: work.background || null,
+        result: normalizeResult(work.result),
+        background: work.background ? normalizeBackground(work.background) : null,
         catchphrases: work.catchphrases || [],
         attitudes: work.attitudes || []
       });

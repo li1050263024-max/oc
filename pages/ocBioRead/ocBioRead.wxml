@@ -1,0 +1,19 @@
+<view class="page oc-page safe-bottom {{uiThemeClass}}">
+  <view class="bg-solid"></view>
+  <oc-page-nav />
+  <oc-back-btn />
+  <view class="oc-page-shell bio-read-shell">
+    <scroll-view class="bio-panel" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="bio-inner">
+        <text class="bio-read-name" wx:if="{{ocName}}">「{{ocName}}」</text>
+        <view class="section-card">
+          <text class="bio-text" user-select>{{bio}}</text>
+          <view class="pixel-btn copy-btn result-btn" bindtap="onCopyBio">
+            <text class="gen-btn-text">复制全文</text>
+          </view>
+        </view>
+      </view>
+      <view class="scroll-bottom"></view>
+    </scroll-view>
+  </view>
+</view>

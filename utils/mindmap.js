@@ -1,3 +1,5 @@
+const { normalizeResult, personalityBlend, quirkBlend } = require('./ocResult.js');
+
 /**
  * 人设逻辑图绘制：将 result + background + catchphrases + attitudes 画到 ctx
  * @param {Canvas2DContext} ctx
@@ -6,7 +8,7 @@
  * @param {{ result, background?, catchphrases?, attitudes? }} data
  */
 function drawMindMap(ctx, width, height, data) {
-  const r = data.result;
+  const r = normalizeResult(data.result);
   if (!r) return;
   const bg = data.background;
   const catchphrases = data.catchphrases || [];
@@ -36,11 +38,17 @@ function drawMindMap(ctx, width, height, data) {
   ctx.font = 'bold 16px sans-serif';
   ctx.fillStyle = '#5a4a2e';
   const sections = [
-    ['外貌', `种族：${r.race}  发色：${r.hairColor}  瞳色：${r.eyeColor}`],
-    ['性格', `性格：${r.personality}  怪癖：${r.quirk}`]
+    [
+      '外貌',
+      `种族：${r.race}  性别：${r.gender}  年龄：${r.age}  发色：${r.hairColor}  瞳色：${r.eyeColor}`
+    ],
+    ['性格', `性格：${personalityBlend(r)}  怪癖：${quirkBlend(r)}`]
   ];
   if (bg && bg.worldview) {
     sections.push(['世界观', bg.worldview]);
+    if (bg.origins && bg.origins.filter(Boolean).length) {
+      sections.push(['身世设定', (bg.origins || []).join('  |  ')]);
+    }
     sections.push(['人生大事件', (bg.lifeEvents || []).join('  |  ')]);
   }
   if (catchphrases.length) {

@@ -1,0 +1,1906 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OC 抽卡器 · 意见反馈后台</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: linear-gradient(165deg, #e8e4f4 0%, #f5f0ee 50%, #dce8f4 100%);
+      color: #374151;
+      min-height: 100vh;
+    }
+    h1 { font-size: 1.35rem; margin: 0 0 8px; color: #6d28d9; }
+    .hint { font-size: 0.85rem; color: #7c7c8a; margin-bottom: 16px; line-height: 1.55; }
+    .panel {
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(255,255,255,0.6);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      backdrop-filter: blur(12px);
+    }
+    label { display: block; font-size: 0.8rem; color: #6b7280; margin-bottom: 4px; }
+    input, button {
+      font-size: 0.95rem;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    button {
+      background: linear-gradient(135deg, #a78bfa, #c084fc);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .row button { flex: 1; min-width: 140px; margin-bottom: 0; }
+    .item {
+      background: rgba(255,255,255,0.55);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      border: 1px solid rgba(139,92,246,0.12);
+    }
+    .item time { font-size: 0.75rem; color: #9ca3af; }
+    .item .contact { font-size: 0.8rem; color: #6d28d9; margin: 6px 0; }
+    .item .content { white-space: pre-wrap; line-height: 1.55; font-size: 0.9rem; }
+    .item .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      align-items: center;
+      margin: 8px 0 10px;
+      font-size: 0.78rem;
+    }
+    .item .openid {
+      color: #6b7280;
+      word-break: break-all;
+      font-family: ui-monospace, monospace;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 500;
+    }
+    .badge-unread { background: #f3f4f6; color: #6b7280; }
+    .badge-read { background: #d1fae5; color: #047857; }
+    .item-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .item-actions button { width: auto; margin-bottom: 0; padding: 8px 14px; font-size: 0.82rem; }
+    .btn-secondary {
+      background: #fff;
+      color: #6d28d9;
+      border: 1px solid #c4b5fd;
+    }
+    .btn-secondary:disabled { opacity: 0.45; }
+    .reply-box { margin-top: 12px; }
+    .reply-box textarea {
+      width: 100%;
+      min-height: 72px;
+      font-size: 0.88rem;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      resize: vertical;
+      margin-bottom: 8px;
+    }
+    .item-reply {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(167, 139, 250, 0.12);
+      border: 1px solid rgba(139, 92, 246, 0.15);
+    }
+    .item-reply-label { font-size: 0.75rem; color: #6d28d9; margin-bottom: 4px; font-weight: 500; }
+    .item-reply-content { white-space: pre-wrap; font-size: 0.88rem; line-height: 1.5; }
+    .item-reply time { display: block; margin-top: 6px; font-size: 0.72rem; color: #9ca3af; }
+    .empty { text-align: center; color: #9ca3af; padding: 40px 0; }
+    .err { color: #c62828; font-size: 0.85rem; white-space: pre-wrap; }
+    .ok { color: #059669; font-size: 0.85rem; }
+    .warn {
+      background: #fff8e6;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.85rem;
+      color: #92400e;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    details { margin-top: 12px; font-size: 0.85rem; }
+    details summary { cursor: pointer; color: #6d28d9; margin-bottom: 8px; }
+    .link-btn {
+      background: transparent;
+      color: #6d28d9;
+      border: 1px solid #c4b5fd;
+      width: auto;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .stat-card {
+      background: rgba(255,255,255,0.65);
+      border-radius: 10px;
+      padding: 12px;
+      border: 1px solid rgba(139,92,246,0.12);
+    }
+    .stat-card b { display: block; font-size: 1.25rem; color: #6d28d9; margin-top: 4px; }
+  </style>
+  <!-- admin v5 + usageStats -->
+</head>
+<body>
+  <h1>OC 抽卡器 · 管理后台</h1>
+  <p class="hint">
+    上传触发器若报 <code>ret:-202</code>，请<strong>不要</strong>再点「上传触发器」。
+    已测通 HTTP 时请用 <strong>HTTP 加载</strong>；云环境 ID 只填 <code>cloud1-d3gkbz2nf0c84c381</code>，不要填 API 网址。
+  </p>
+
+  <div class="panel" style="padding:10px 16px">
+    <div class="row" style="margin:0">
+      <button type="button" id="tabFeedbackBtn" style="margin:0">意见反馈</button>
+      <button type="button" id="tabUsageBtn" class="btn-secondary" style="margin:0">用量统计</button>
+      <button type="button" id="tabRedeemCreateBtn" class="btn-secondary" style="margin:0">兑换码</button>
+      <button type="button" id="tabRedeemListBtn" class="btn-secondary" style="margin:0">刷新明细</button>
+    </div>
+  </div>
+
+  <div id="panelFeedback">
+  <div class="panel">
+    <p class="hint" style="margin:0 0 10px">
+      API 须含 <code>-1433404171</code>（与路由管理里域名一致），勿用短域名。
+    </p>
+    <label>HTTP API 地址</label>
+      <input
+        id="apiUrl"
+        type="url"
+        placeholder="https://cloud1-d3gkbz2nf0c84c381-1433404171.ap-shanghai.app.tcloudbase.com/feedbackApi"
+      />
+      <label>管理密钥</label>
+      <div class="row">
+        <input id="adminKey" type="text" placeholder="oc-feedback-admin-2026" />
+        <button type="button" id="loadApiBtn">HTTP 加载</button>
+      </div>
+    <button type="button" class="link-btn" id="resetApiBtn">恢复正确 API 地址</button>
+
+    <details style="margin-top:14px">
+      <summary>备选：从云数据库加载（需匿名登录）</summary>
+      <div class="warn" style="margin-top:10px">
+        云开发 → 设置 → 登录授权 → 开启<strong>匿名登录</strong>；见 DEPLOY.md。
+      </div>
+      <label>云环境 ID（仅填 cloud1-d3gkbz2nf0c84c381，勿填 API 网址）</label>
+      <input id="envId" type="text" value="cloud1-d3gkbz2nf0c84c381" placeholder="cloud1-d3gkbz2nf0c84c381" />
+      <button type="button" id="loadDbBtn">从云数据库加载</button>
+      <p class="hint" style="margin:8px 0 0;font-size:0.75rem">
+        SDK 应能访问：<code id="sdkUrlHint">—</code>
+      </p>
+    </details>
+  </div>
+
+  <div class="panel">
+    <p id="status" class="hint" style="margin:0">点击「HTTP 加载」查看反馈</p>
+    <div id="list"></div>
+  </div>
+  </div>
+
+  <div id="panelUsage" style="display:none">
+  <div class="panel">
+    <label>HTTP API 地址（可直接用反馈同一地址）</label>
+    <input
+      id="usageApiUrl"
+      type="url"
+      placeholder="https://cloud1-d3gkbz2nf0c84c381-1433404171.ap-shanghai.app.tcloudbase.com/feedbackApi"
+    />
+    <label>管理密钥（与反馈后台相同）</label>
+    <div class="row">
+      <input id="usageAdminKey" type="text" placeholder="oc-feedback-admin-2026" />
+      <button type="button" id="loadUsageBtn">刷新日汇总</button>
+      <button type="button" id="loadUserQuotaBtn" class="btn-secondary">刷新用户额度</button>
+      <button type="button" id="diagUsageBtn" class="btn-secondary">诊断写入（仅排障）</button>
+    </div>
+    <p class="hint" style="margin:0">
+      日常只需点「刷新日汇总 / 刷新用户额度」。对话产生后约几秒会写入；
+      <code>diag</code> 仅用于排障试写，不必每次跑终端。
+      后台版本：<code id="adminBuildTag">admin-v16</code>
+    </p>
+  </div>
+  <div class="panel">
+    <p id="usageStatus" class="hint" style="margin:0">进入本页会自动刷新；也可手动点上方按钮</p>
+    <pre id="diagBox" style="display:none;white-space:pre-wrap;font-size:0.8rem;background:#111827;color:#e5e7eb;padding:12px;border-radius:8px;overflow:auto;max-height:360px"></pre>
+    <div id="usageTotals" style="margin-bottom:12px"></div>
+    <div id="usageList"></div>
+    <hr style="border:none;border-top:1px solid #e8e0d8;margin:18px 0" />
+    <strong>用户额度（每人）</strong>
+    <label style="margin-top:10px">用户 ID / openid（支持完整或片段）</label>
+    <div class="row">
+      <input
+        id="userQuotaSearchInput"
+        type="text"
+        placeholder="例如 o6B4y3bVOWejuAOYyvhdVd9REdfI"
+        style="margin-bottom:0"
+      />
+      <button type="button" id="userQuotaSearchBtn" style="flex:0;min-width:100px;margin:0">搜索</button>
+      <button type="button" id="userQuotaSearchClearBtn" class="btn-secondary" style="flex:0;min-width:100px;margin:0">清除条件</button>
+    </div>
+    <p id="userQuotaStatus" class="hint" style="margin:8px 0">本周免费已用 / 上限，以及兑换池已耗 / 剩余。可输入用户 id 精确或模糊搜索。强制清空仅支持<strong>单用户</strong>，且需输入确认密码。</p>
+    <div id="userQuotaList"></div>
+  </div>
+  </div>
+
+  <!-- 模块：兑换码（生成 + 核销记录） -->
+  <div id="panelRedeemCreate" style="display:none">
+  <div class="panel">
+    <strong style="display:block;margin-bottom:10px">兑换码</strong>
+    <label>HTTP API 地址（与反馈相同）</label>
+    <input
+      id="redeemApiUrl"
+      type="url"
+      placeholder="https://cloud1-d3gkbz2nf0c84c381-1433404171.ap-shanghai.app.tcloudbase.com/feedbackApi"
+    />
+    <label>管理密钥</label>
+    <input id="redeemAdminKey" type="text" placeholder="oc-feedback-admin-2026" />
+    <p class="hint" style="margin:0 0 12px">
+      本页可<strong>生成兑换码</strong>并查看<strong>用户核销记录</strong>。码状态 / 分享记录请切到「刷新明细」。
+      额度为<strong>通用对话轮次</strong>（单聊群聊共用、无有效期限制）。
+    </p>
+    <label>打赏金额 → 额度（点选自动填入轮次）</label>
+    <div class="row" id="redeemAmountTiers" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <button type="button" class="btn-secondary redeem-tier-btn" data-yuan="1" data-rounds="30" style="flex:0;width:auto;margin:0">¥1 → 30 轮</button>
+      <button type="button" class="btn-secondary redeem-tier-btn" data-yuan="3" data-rounds="150" style="flex:0;width:auto;margin:0">¥3 → 150 轮</button>
+      <button type="button" class="btn-secondary redeem-tier-btn" data-yuan="6" data-rounds="350" style="flex:0;width:auto;margin:0">¥6 → 350 轮</button>
+      <button type="button" class="btn-secondary redeem-tier-btn" data-yuan="10" data-rounds="800" style="flex:0;width:auto;margin:0">¥10 → 800 轮</button>
+    </div>
+    <div class="row">
+      <div style="flex:1;min-width:120px">
+        <label>可兑换额度（轮）</label>
+        <input id="redeemRounds" type="number" min="1" max="100000" value="30" />
+      </div>
+      <div style="flex:1;min-width:100px">
+        <label>生成数量</label>
+        <input id="redeemCount" type="number" min="1" max="100" value="1" />
+      </div>
+      <div style="flex:1;min-width:100px">
+        <label>每码可用次数</label>
+        <input id="redeemMaxUses" type="number" min="1" max="10000" value="1" />
+      </div>
+    </div>
+    <label>备注（可选，点选档位会自动填写）</label>
+    <input id="redeemNote" type="text" placeholder="例如：打赏¥1" />
+    <button type="button" id="createRedeemBtn">生成兑换码</button>
+    <p id="redeemCreateStatus" class="hint" style="margin:10px 0 0"></p>
+    <div id="redeemCreatedBox" style="margin-top:8px"></div>
+  </div>
+  <div class="panel">
+    <div class="row" style="margin-bottom:8px;align-items:center">
+      <strong style="flex:1">兑换记录（用户核销）</strong>
+      <button type="button" id="loadRedeemLogsBtn" class="btn-secondary" style="flex:0;width:auto;margin:0">刷新兑换记录</button>
+    </div>
+    <label>用户 ID / openid / 兑换码（支持完整或片段）</label>
+    <div class="row">
+      <input
+        id="redeemLogsSearchInput"
+        type="text"
+        placeholder="例如 o6B4y3bVOWejuAOYyvhdVd9REdfI 或兑换码"
+        style="margin-bottom:0"
+      />
+      <button type="button" id="redeemLogsSearchBtn" style="flex:0;min-width:100px;margin:0">搜索</button>
+      <button type="button" id="redeemLogsSearchClearBtn" class="btn-secondary" style="flex:0;min-width:100px;margin:0">清空</button>
+    </div>
+    <p id="redeemLogsStatus" class="hint" style="margin:8px 0">进入本页会自动加载；可按用户 id 或兑换码搜索</p>
+    <div id="redeemLogsList"></div>
+  </div>
+  </div>
+
+  <!-- 模块：刷新明细（码状态 + 分享记录） -->
+  <div id="panelRedeemList" style="display:none">
+  <div class="panel">
+    <strong style="display:block;margin-bottom:10px">刷新明细</strong>
+    <label>HTTP API 地址</label>
+    <input
+      id="redeemListApiUrl"
+      type="url"
+      placeholder="https://cloud1-d3gkbz2nf0c84c381-1433404171.ap-shanghai.app.tcloudbase.com/feedbackApi"
+    />
+    <label>管理密钥</label>
+    <div class="row">
+      <input id="redeemListAdminKey" type="text" placeholder="oc-feedback-admin-2026" />
+      <button type="button" id="loadRedeemBtn">刷新码明细</button>
+    </div>
+    <p class="hint" style="margin:0">查看已生成兑换码状态（可用 / 已用尽 / 停用）。生成新码 / 核销记录请切到「兑换码」。</p>
+  </div>
+  <div class="panel">
+    <p id="redeemStatus" class="hint" style="margin:0">点击「刷新码明细」查看</p>
+    <div id="redeemList"></div>
+  </div>
+  <div class="panel">
+    <div class="row" style="margin-bottom:8px;align-items:center">
+      <strong style="flex:1">分享获额记录</strong>
+      <button type="button" id="loadShareLogsBtn" class="btn-secondary" style="flex:0;width:auto;margin:0">刷新分享记录</button>
+    </div>
+    <label>用户 ID / openid（支持完整或片段）</label>
+    <div class="row">
+      <input
+        id="shareLogsSearchInput"
+        type="text"
+        placeholder="例如 o6B4y3bVOWejuAOYyvhdVd9REdfI"
+        style="margin-bottom:0"
+      />
+      <button type="button" id="shareLogsSearchBtn" style="flex:0;min-width:100px;margin:0">搜索</button>
+      <button type="button" id="shareLogsSearchClearBtn" class="btn-secondary" style="flex:0;min-width:100px;margin:0">清空</button>
+    </div>
+    <p id="shareLogsStatus" class="hint" style="margin:8px 0">用户通过分享续期成功后会出现在此；可按用户 id 搜索</p>
+    <div id="shareLogsList"></div>
+  </div>
+  </div>
+
+  <script>
+    const ENV_DEFAULT = 'cloud1-d3gkbz2nf0c84c381';
+    const DEFAULT_API =
+      'https://cloud1-d3gkbz2nf0c84c381-1433404171.ap-shanghai.app.tcloudbase.com/feedbackApi';
+    const DEFAULT_KEY = 'oc-feedback-admin-2026';
+    // admin v9 · button refresh without terminal
+
+
+    function normalizeEnvId(input) {
+      const s = String(input || '').trim();
+      if (!s) return ENV_DEFAULT;
+      if (s.indexOf('http') >= 0 || s.indexOf('/') >= 0) {
+        const m = s.match(/(cloud1-[a-f0-9]+)/i);
+        return m ? m[1] : ENV_DEFAULT;
+      }
+      return s;
+    }
+
+    function getAdminBase() {
+      var path = location.pathname || '/';
+      if (/\.html?$/i.test(path)) {
+        return path.substring(0, path.lastIndexOf('/') + 1);
+      }
+      return path.endsWith('/') ? path : path + '/';
+    }
+
+    function getSdkFileUrl() {
+      return getAdminBase() + 'js/cloudbase.full.js';
+    }
+
+    function getTcbSdk() {
+      var g = window.cloudbase || window.tcb;
+      if (!g) return null;
+      if (g.default) g = g.default;
+      if (typeof g === 'function' && typeof g.init === 'function') return g;
+      if (g && typeof g.init === 'function') return g;
+      if (g.cloudbase && typeof g.cloudbase.init === 'function') return g.cloudbase;
+      return null;
+    }
+
+    var sdkLoadPromise = null;
+    var sdkTriedUrls = [];
+
+    function loadCloudbaseSdk() {
+      var existing = getTcbSdk();
+      if (existing) return Promise.resolve(existing);
+      if (sdkLoadPromise) return sdkLoadPromise;
+      var urls = [];
+      var primary = getSdkFileUrl();
+      urls.push(primary);
+      if (location.origin && primary.indexOf('http') !== 0) {
+        urls.push(location.origin + primary);
+      }
+      urls.push('js/cloudbase.full.js', './js/cloudbase.full.js');
+      urls.push('https://static.cloudbase.net/cloudbase-js-sdk/latest/cloudbase.full.js');
+      urls = urls.filter(function (u, idx, arr) {
+        return u && arr.indexOf(u) === idx;
+      });
+      sdkLoadPromise = new Promise(function (resolve, reject) {
+        var i = 0;
+        var loaded = {};
+        function tryNext() {
+          if (i >= urls.length) {
+            reject(new Error('SDK 全部加载失败'));
+            return;
+          }
+          var src = urls[i++];
+          if (loaded[src]) return tryNext();
+          loaded[src] = true;
+          sdkTriedUrls.push(src);
+          var el = document.createElement('script');
+          el.src = src;
+          el.onload = function () {
+            var g = getTcbSdk();
+            if (g) resolve(g);
+            else tryNext();
+          };
+          el.onerror = tryNext;
+          document.head.appendChild(el);
+        }
+        tryNext();
+      });
+      return sdkLoadPromise;
+    }
+
+    async function diagnoseSdkFile() {
+      var url = getSdkFileUrl();
+      var full = location.origin + url;
+      try {
+        var res = await fetch(url, { method: 'GET', cache: 'no-store' });
+        var ct = res.headers.get('content-type') || '';
+        if (!res.ok) return full + ' → HTTP ' + res.status;
+        if (ct.indexOf('javascript') < 0 && ct.indexOf('ecmascript') < 0) {
+          return full + ' → HTTP ' + res.status + ' 但类型是 ' + ct + '（可能路径指到了 HTML 404 页）';
+        }
+        return full + ' → HTTP ' + res.status + ' OK';
+      } catch (e) {
+        return full + ' → ' + (e.message || e);
+      }
+    }
+
+    function fixApiUrl(url) {
+      const u = String(url || '').trim();
+      if (!u) return DEFAULT_API;
+      if (
+        u.indexOf('cloud1-d3gkbz2nf0c84c381.ap-shanghai.app.tcloudbase.com') >= 0 &&
+        u.indexOf('1433404171') < 0
+      ) {
+        return DEFAULT_API;
+      }
+      return u;
+    }
+
+    const envIdEl = document.getElementById('envId');
+    const apiUrlEl = document.getElementById('apiUrl');
+    const adminKeyEl = document.getElementById('adminKey');
+    const loadDbBtn = document.getElementById('loadDbBtn');
+    const loadApiBtn = document.getElementById('loadApiBtn');
+    const listEl = document.getElementById('list');
+    const statusEl = document.getElementById('status');
+
+    apiUrlEl.value = fixApiUrl(localStorage.getItem('oc_feedback_api') || DEFAULT_API);
+    adminKeyEl.value = localStorage.getItem('oc_feedback_admin_key') || DEFAULT_KEY;
+    envIdEl.value = normalizeEnvId(envIdEl.value);
+    localStorage.setItem('oc_feedback_api', apiUrlEl.value);
+
+    document.getElementById('resetApiBtn').addEventListener('click', function () {
+      apiUrlEl.value = DEFAULT_API;
+      adminKeyEl.value = DEFAULT_KEY;
+      localStorage.setItem('oc_feedback_api', DEFAULT_API);
+      localStorage.setItem('oc_feedback_admin_key', DEFAULT_KEY);
+      statusEl.textContent = '已恢复正确 API 地址，请点 HTTP 加载';
+      statusEl.className = 'hint';
+    });
+
+    function formatTime(item) {
+      if (item.createTimeMs) return new Date(item.createTimeMs).toLocaleString('zh-CN');
+      if (item.createTime && item.createTime.$date) {
+        return new Date(item.createTime.$date).toLocaleString('zh-CN');
+      }
+      return '—';
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function statusLabel(item) {
+      return item.status === 'read' ? '已查收' : '未查收';
+    }
+
+    function statusClass(item) {
+      return item.status === 'read' ? 'badge-read' : 'badge-unread';
+    }
+
+    var currentList = [];
+
+    function renderList(list) {
+      currentList = list || [];
+      statusEl.textContent = '共 ' + currentList.length + ' 条反馈';
+      statusEl.className = 'ok';
+      if (!currentList.length) {
+        listEl.innerHTML = '<p class="empty">暂无反馈</p>';
+        return;
+      }
+      listEl.innerHTML = currentList
+        .map(function (item) {
+          var id = item._id || item.id || '';
+          var reply = String(item.reply || '').trim();
+          var isRead = item.status === 'read';
+          return (
+            '<article class="item" data-id="' +
+            escapeHtml(id) +
+            '">' +
+            '<time>' +
+            formatTime(item) +
+            '</time>' +
+            '<div class="meta">' +
+            '<span class="badge ' +
+            statusClass(item) +
+            '">' +
+            statusLabel(item) +
+            '</span>' +
+            '<span class="openid">反馈人 ID：' +
+            escapeHtml(item.openid || '—') +
+            '</span>' +
+            (item.contact
+              ? '<span class="contact">联系方式：' + escapeHtml(item.contact) + '</span>'
+              : '') +
+            '</div>' +
+            '<div class="content">' +
+            escapeHtml(item.content || '') +
+            '</div>' +
+            (reply
+              ? '<div class="item-reply">' +
+                '<div class="item-reply-label">开发者回复</div>' +
+                '<div class="item-reply-content">' +
+                escapeHtml(reply) +
+                '</div>' +
+                (item.replyTimeMs
+                  ? '<time>回复于 ' +
+                    new Date(item.replyTimeMs).toLocaleString('zh-CN') +
+                    '</time>'
+                  : '') +
+                '</div>'
+              : '') +
+            '<div class="item-actions">' +
+            '<button type="button" class="btn-secondary btn-mark-read" data-id="' +
+            escapeHtml(id) +
+            '" ' +
+            (isRead ? 'disabled' : '') +
+            '>标记已查收</button>' +
+            '</div>' +
+            '<div class="reply-box">' +
+            '<label>开发者回复</label>' +
+            '<textarea class="reply-input" data-id="' +
+            escapeHtml(id) +
+            '" placeholder="输入回复内容，用户可在小程序反馈页查看…">' +
+            escapeHtml(reply) +
+            '</textarea>' +
+            '<button type="button" class="btn-save-reply" data-id="' +
+            escapeHtml(id) +
+            '">保存回复</button>' +
+            '</div>' +
+            '</article>'
+          );
+        })
+        .join('');
+    }
+
+    function sortByTime(list) {
+      return list.slice().sort(function (a, b) {
+        return (b.createTimeMs || 0) - (a.createTimeMs || 0);
+      });
+    }
+
+    function normalizeListItem(item) {
+      if (!item.status) item.status = 'unread';
+      return item;
+    }
+
+    async function postFeedbackUpdate(id, payload) {
+      const apiUrl = fixApiUrl(apiUrlEl.value.trim());
+      const adminKey = adminKeyEl.value.trim();
+      const base = apiUrl.replace(/\/+$/, '').replace(/\/feedbackApi\/?$/i, '/feedbackApi');
+      const res = await fetch(base, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Feedback-Admin-Key': adminKey
+        },
+        body: JSON.stringify(
+          Object.assign({ action: 'update', adminKey: adminKey, id: id }, payload)
+        )
+      });
+      const data = JSON.parse(await res.text());
+      if (!data.ok) throw new Error(data.err || '更新失败');
+    }
+
+    async function updateViaDatabase(id, patch) {
+      const envId = normalizeEnvId(envIdEl.value);
+      const tcbSdk = await loadCloudbaseSdk();
+      const app = tcbSdk.init({ env: envId });
+      const auth = app.auth({ persistence: 'local' });
+      const loginState = await auth.getLoginState();
+      if (!loginState) await auth.signInAnonymously();
+      const db = app.database();
+      await db.collection('feedback').doc(id).update({ data: patch });
+    }
+
+    listEl.addEventListener('click', async function (e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      var id = btn.getAttribute('data-id');
+      if (!id) return;
+      if (btn.classList.contains('btn-mark-read')) {
+        btn.disabled = true;
+        statusEl.textContent = '正在标记已查收…';
+        statusEl.className = 'hint';
+        try {
+          try {
+            await postFeedbackUpdate(id, { status: 'read' });
+          } catch (httpErr) {
+            await updateViaDatabase(id, { status: 'read', readTimeMs: Date.now() });
+          }
+          patchLocalItem(id, { status: 'read', readTimeMs: Date.now() });
+          statusEl.textContent = '已标记为已查收';
+          statusEl.className = 'ok';
+        } catch (err) {
+          statusEl.textContent = '标记失败：' + (err.message || err);
+          statusEl.className = 'err';
+          btn.disabled = false;
+        }
+        return;
+      }
+      if (btn.classList.contains('btn-save-reply')) {
+        var article = btn.closest('.item');
+        var ta = article ? article.querySelector('.reply-input') : null;
+        var reply = ta ? ta.value.trim() : '';
+        btn.disabled = true;
+        statusEl.textContent = '正在保存回复…';
+        statusEl.className = 'hint';
+        try {
+          var now = Date.now();
+          var patch = {
+            reply: reply,
+            replyTimeMs: reply ? now : 0,
+            status: 'read',
+            readTimeMs: now
+          };
+          try {
+            await postFeedbackUpdate(id, { reply: reply });
+          } catch (httpErr) {
+            await updateViaDatabase(id, patch);
+          }
+          patchLocalItem(id, patch);
+          statusEl.textContent = '回复已保存';
+          statusEl.className = 'ok';
+        } catch (err) {
+          statusEl.textContent = '保存回复失败：' + (err.message || err);
+          statusEl.className = 'err';
+          btn.disabled = false;
+        }
+      }
+    });
+
+    function patchLocalItem(id, patch) {
+      currentList = currentList.map(function (item) {
+        var iid = item._id || item.id || '';
+        if (iid !== id) return item;
+        return Object.assign({}, item, patch);
+      });
+      renderList(currentList);
+    }
+
+    async function loadFromDatabase() {
+      const envId = normalizeEnvId(envIdEl.value);
+      envIdEl.value = envId;
+      if (!envId || envId.indexOf('http') >= 0) {
+        statusEl.textContent = '云环境 ID 填 cloud1-d3gkbz2nf0c84c381，不要填 API 网址';
+        statusEl.className = 'err';
+        return;
+      }
+      loadDbBtn.disabled = true;
+      statusEl.textContent = '正在连接云数据库…';
+      statusEl.className = 'hint';
+      listEl.innerHTML = '';
+      try {
+        const tcbSdk = await loadCloudbaseSdk();
+        const app = tcbSdk.init({ env: envId });
+        const auth = app.auth({ persistence: 'local' });
+        const loginState = await auth.getLoginState();
+        if (!loginState) {
+          await auth.signInAnonymously();
+        }
+        const db = app.database();
+        const res = await db
+          .collection('feedback')
+          .orderBy('createTimeMs', 'desc')
+          .limit(200)
+          .get();
+        renderList(sortByTime((res.data || []).map(normalizeListItem)));
+      } catch (e) {
+        var msg = e.message || String(e);
+        if (/SDK|cloudbase|加载失败/i.test(msg)) {
+          var probe = await diagnoseSdkFile();
+          msg =
+            'CloudBase SDK 未加载。请用上方「HTTP 加载」（推荐）。\n' +
+            '诊断：' +
+            probe +
+            '\n若 HTTP 404：托管里应是 cloud-admin/index.html 与 cloud-admin/js/cloudbase.full.js（不要多套一层 feedback-admin 文件夹）。';
+        } else if (/permission|权限|PERMISSION/i.test(msg)) {
+          msg +=
+            ' → 请到云开发控制台：① 设置里开启「匿名登录」；② 数据库 feedback 集合权限改为自定义：read: auth!=null, write: false（见 DEPLOY.md）。或直接用 HTTP 加载。';
+        }
+        statusEl.textContent = '错误：' + msg;
+        statusEl.className = 'err';
+      } finally {
+        loadDbBtn.disabled = false;
+      }
+    }
+
+    async function loadFromHttp() {
+      const apiUrl = apiUrlEl.value.trim();
+      const adminKey = adminKeyEl.value.trim();
+      if (!/^https?:\/\//i.test(apiUrl)) {
+        statusEl.textContent = 'HTTP API 须为 https 开头的网址';
+        statusEl.className = 'err';
+        return;
+      }
+      localStorage.setItem('oc_feedback_api', apiUrl);
+      localStorage.setItem('oc_feedback_admin_key', adminKey);
+      loadApiBtn.disabled = true;
+      statusEl.textContent = 'HTTP 加载中…';
+      statusEl.className = 'hint';
+      listEl.innerHTML = '';
+      try {
+        const apiUrlFixed = fixApiUrl(apiUrl);
+        const base = apiUrlFixed.replace(/\/+$/, '').replace(/\/feedbackApi\/?$/i, '/feedbackApi');
+        const getUrl =
+          base + '?action=list&adminKey=' + encodeURIComponent(adminKey);
+        let raw = '';
+        try {
+          const res = await fetch(getUrl, {
+            method: 'GET',
+            mode: 'cors',
+            headers: { 'X-Feedback-Admin-Key': adminKey }
+          });
+          raw = await res.text();
+        } catch (getErr) {
+          const res = await fetch(base, {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Feedback-Admin-Key': adminKey
+            },
+            body: JSON.stringify({ action: 'list', adminKey: adminKey })
+          });
+          raw = await res.text();
+        }
+        const data = JSON.parse(raw);
+        if (!data.ok) throw new Error(data.err || '加载失败');
+        renderList((data.list || []).map(normalizeListItem));
+      } catch (e) {
+        statusEl.textContent = 'HTTP 错误：' + (e.message || e);
+        statusEl.className = 'err';
+      } finally {
+        loadApiBtn.disabled = false;
+      }
+    }
+
+    document.getElementById('sdkUrlHint').textContent =
+      location.origin + getSdkFileUrl();
+
+    loadDbBtn.addEventListener('click', loadFromDatabase);
+    loadApiBtn.addEventListener('click', loadFromHttp);
+
+    // —— 用量统计（默认复用已测通的 feedbackApi HTTP）——
+    const DEFAULT_USAGE_API =
+      'https://cloud1-d3gkbz2nf0c84c381-1433404171.ap-shanghai.app.tcloudbase.com/feedbackApi';
+    const usageApiUrlEl = document.getElementById('usageApiUrl');
+    const usageAdminKeyEl = document.getElementById('usageAdminKey');
+    const loadUsageBtn = document.getElementById('loadUsageBtn');
+    const loadUserQuotaBtn = document.getElementById('loadUserQuotaBtn');
+    const diagUsageBtn = document.getElementById('diagUsageBtn');
+    const usageStatusEl = document.getElementById('usageStatus');
+    const diagBoxEl = document.getElementById('diagBox');
+    const usageTotalsEl = document.getElementById('usageTotals');
+    const usageListEl = document.getElementById('usageList');
+    const userQuotaStatusEl = document.getElementById('userQuotaStatus');
+    const userQuotaListEl = document.getElementById('userQuotaList');
+    const panelFeedback = document.getElementById('panelFeedback');
+    const panelUsage = document.getElementById('panelUsage');
+    const panelRedeemCreate = document.getElementById('panelRedeemCreate');
+    const panelRedeemList = document.getElementById('panelRedeemList');
+    const tabFeedbackBtn = document.getElementById('tabFeedbackBtn');
+    const tabUsageBtn = document.getElementById('tabUsageBtn');
+    const tabRedeemCreateBtn = document.getElementById('tabRedeemCreateBtn');
+    const tabRedeemListBtn = document.getElementById('tabRedeemListBtn');
+
+    (function initUsageApiUrl() {
+      var saved = localStorage.getItem('oc_usage_api') || '';
+      // 旧默认 /usageStats 若未绑定会 Failed to fetch，自动改用 feedbackApi
+      if (!saved || /\/usageStats\/?$/i.test(saved)) {
+        usageApiUrlEl.value = DEFAULT_USAGE_API;
+      } else {
+        usageApiUrlEl.value = saved;
+      }
+    })();
+    usageAdminKeyEl.value = localStorage.getItem('oc_feedback_admin_key') || DEFAULT_KEY;
+
+    function switchTab(which) {
+      panelFeedback.style.display = which === 'feedback' ? 'block' : 'none';
+      panelUsage.style.display = which === 'usage' ? 'block' : 'none';
+      panelRedeemCreate.style.display = which === 'redeemCreate' ? 'block' : 'none';
+      panelRedeemList.style.display = which === 'redeemList' ? 'block' : 'none';
+      tabFeedbackBtn.className = which === 'feedback' ? '' : 'btn-secondary';
+      tabUsageBtn.className = which === 'usage' ? '' : 'btn-secondary';
+      tabRedeemCreateBtn.className = which === 'redeemCreate' ? '' : 'btn-secondary';
+      tabRedeemListBtn.className = which === 'redeemList' ? '' : 'btn-secondary';
+    }
+    tabFeedbackBtn.addEventListener('click', function () {
+      switchTab('feedback');
+    });
+    tabUsageBtn.addEventListener('click', function () {
+      switchTab('usage');
+      if (typeof loadUsage === 'function') loadUsage();
+      if (typeof loadUserQuota === 'function') loadUserQuota();
+    });
+    tabRedeemCreateBtn.addEventListener('click', function () {
+      switchTab('redeemCreate');
+      syncRedeemApiFields();
+      if (typeof loadRedeemLogs === 'function') loadRedeemLogs();
+    });
+    tabRedeemListBtn.addEventListener('click', function () {
+      switchTab('redeemList');
+      syncRedeemApiFields();
+      loadRedeemList();
+      if (typeof loadShareLogs === 'function') loadShareLogs();
+    });
+
+    function renderUsage(data) {
+      const list = data.list || [];
+      const totals = data.totals || {};
+      usageStatusEl.textContent = '已加载最近 ' + list.length + ' 天';
+      usageStatusEl.className = 'ok';
+      usageTotalsEl.innerHTML =
+        '<div class="item" style="margin:0">' +
+        '<strong>区间合计</strong><div class="meta">' +
+        '<span>对话轮次 <b>' +
+        (totals.chatRounds || 0) +
+        '</b></span>' +
+        '<span>API 调用 <b>' +
+        (totals.apiCalls || 0) +
+        '</b></span>' +
+        '<span>广告续期 <b>' +
+        (totals.unlockAd || 0) +
+        '</b> 次 / ' +
+        (totals.unlockRoundsAd || 0) +
+        ' 轮</span>' +
+        '<span>分享续期 <b>' +
+        (totals.unlockShare || 0) +
+        '</b> 次 / ' +
+        (totals.unlockRoundsShare || 0) +
+        ' 轮</span>' +
+        '<span>失败续期 <b>' +
+        (totals.unlockFailOpen || 0) +
+        '</b> 次 / ' +
+        (totals.unlockRoundsFailOpen || 0) +
+        ' 轮</span>' +
+        '</div></div>';
+
+      if (!list.length) {
+        usageListEl.innerHTML =
+          '<p class="empty">暂无日汇总数据。<br/>请确认：① 已部署云函数 <code>usageStats</code>；② 小程序里真实发送过对话（约 2 秒后上报）；③ 云库 <code>usage_daily</code>「记录管理」里能看到当天文档。<br/>可选：为 <code>dateKey</code> 建降序索引。</p>';
+        return;
+      }
+      usageListEl.innerHTML = list
+        .map(function (row) {
+          var apiNames = row.apiByName || {};
+          var apiDetail = Object.keys(apiNames)
+            .map(function (k) {
+              return k + ':' + apiNames[k];
+            })
+            .join(' · ');
+          return (
+            '<article class="item">' +
+            '<time>' +
+            escapeHtml(row.dateKey || '—') +
+            '</time>' +
+            '<div class="meta">' +
+            '<span>对话 <b>' +
+            (row.chatRounds || 0) +
+            '</b>（单聊 ' +
+            (row.chatRoundsDm || 0) +
+            ' / 群聊 ' +
+            (row.chatRoundsGroup || 0) +
+            '）</span>' +
+            '<span>API <b>' +
+            (row.apiCalls || 0) +
+            '</b></span>' +
+            '<span>广告续 ' +
+            (row.unlockAd || 0) +
+            ' 次/' +
+            (row.unlockRoundsAd || 0) +
+            ' 轮</span>' +
+            '<span>分享续 ' +
+            (row.unlockShare || 0) +
+            ' 次/' +
+            (row.unlockRoundsShare || 0) +
+            ' 轮</span>' +
+            '<span>失败续 ' +
+            (row.unlockFailOpen || 0) +
+            ' 次/' +
+            (row.unlockRoundsFailOpen || 0) +
+            ' 轮</span>' +
+            '</div>' +
+            (apiDetail
+              ? '<p class="hint" style="margin:6px 0 0;font-size:0.78rem">API 明细：' +
+                escapeHtml(apiDetail) +
+                '</p>'
+              : '') +
+            '</article>'
+          );
+        })
+        .join('');
+    }
+
+    async function loadUsage() {
+      loadUsageBtn.disabled = true;
+      usageStatusEl.textContent = '刷新中…';
+      usageStatusEl.className = 'hint';
+      try {
+        const base = String(usageApiUrlEl.value || DEFAULT_USAGE_API)
+          .trim()
+          .replace(/\/$/, '');
+        const adminKey = String(usageAdminKeyEl.value || '').trim();
+        localStorage.setItem('oc_usage_api', base);
+        localStorage.setItem('oc_feedback_admin_key', adminKey);
+        // 与终端脚本一致：只用 POST，避免 GET 假成功/空列表
+        const useFeedbackApi = /feedbackApi/i.test(base);
+        const actionName = useFeedbackApi ? 'usageSummary' : 'summary';
+        const res = await fetch(base, {
+          method: 'POST',
+          mode: 'cors',
+          cache: 'no-store',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Feedback-Admin-Key': adminKey
+          },
+          body: JSON.stringify({
+            action: actionName,
+            days: 14,
+            adminKey: adminKey,
+            _ts: Date.now()
+          })
+        });
+        const raw = await res.text();
+        const data = JSON.parse(raw);
+        if (!data.ok) {
+          var detail = data.errMsg || data.err || '加载失败';
+          if (data.got) detail += '（收到 action=' + data.got + '）';
+          throw new Error(detail);
+        }
+        renderUsage(data);
+        var nowLabel = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+        usageStatusEl.textContent =
+          '已刷新 ' +
+          (data.list || []).length +
+          ' 天 · ' +
+          nowLabel +
+          (data.apiVer ? ' · ' + data.apiVer : '');
+        usageStatusEl.className = 'ok';
+        if (data.warn) {
+          usageStatusEl.textContent += ' · ' + data.warn;
+          usageStatusEl.className = 'err';
+        }
+      } catch (e) {
+        usageStatusEl.textContent =
+          '刷新失败：' +
+          (e.message || e) +
+          '\n请确认 API 地址为 feedbackApi，并已部署云函数。';
+        usageStatusEl.className = 'err';
+      } finally {
+        loadUsageBtn.disabled = false;
+      }
+    }
+
+    function renderUserQuota(list, searchKeyword) {
+      if (!list || !list.length) {
+        userQuotaListEl.innerHTML =
+          '<p class="empty">暂无用户额度数据。请确认集合 <code>user_quota</code> 已建，并让用户打开对话页（会同步）或完成一次兑换。</p>';
+        return;
+      }
+      var kw = String(searchKeyword || '').trim();
+      // 仅在已搜索且结果为单人时显示清空按钮，禁止列表里批量点清空
+      var allowClear = !!kw && list.length === 1;
+      userQuotaListEl.innerHTML = list
+        .map(function (row) {
+          var freeUsed = Number(row.freeUsed) || 0;
+          var freeAllowed = Number(row.freeAllowed) || 0;
+          var used = Number(row.quotaUsed != null ? row.quotaUsed : row.extraConsumed) || 0;
+          var left = Number(row.quotaLeft != null ? row.quotaLeft : row.extraRounds) || 0;
+          var total = Number(row.redeemedTotal) || 0;
+          var oid = String(row.openid || '');
+          return (
+            '<article class="item">' +
+            '<div class="meta">' +
+            '<span class="openid">' +
+            escapeHtml(oid || '—') +
+            '</span>' +
+            '<span>本周免费 <b>' +
+            freeUsed +
+            '</b>/' +
+            (freeAllowed || 30) +
+            '</span>' +
+            '<span>兑换池已耗 <b>' +
+            used +
+            '</b> / 剩余 <b>' +
+            left +
+            '</b></span>' +
+            (total ? '<span>累计兑入 ' + total + '</span>' : '') +
+            '</div>' +
+            '<time>' +
+            formatTimeMs(row.updateTimeMs || row.createTimeMs) +
+            (row.weekKey ? ' · 周 ' + escapeHtml(row.weekKey) : '') +
+            '</time>' +
+            (allowClear && oid
+              ? '<div class="item-actions">' +
+                '<button type="button" class="btn-secondary quota-clear-btn" data-openid="' +
+                escapeHtml(oid) +
+                '" style="background:linear-gradient(135deg,#f87171,#ef4444)">强制清空该用户额度</button>' +
+                '</div>'
+              : !kw
+                ? '<p class="hint" style="margin:8px 0 0;font-size:0.75rem">请先搜索精确到<strong>单个用户</strong>后再清空额度（不支持一键清空全部）。</p>'
+                : list.length > 1
+                  ? '<p class="hint" style="margin:8px 0 0;font-size:0.75rem">当前匹配多人，请缩小到唯一用户后再清空。</p>'
+                  : '') +
+            '</article>'
+          );
+        })
+        .join('');
+    }
+
+    async function clearUserQuotaByOpenid(openid) {
+      var oid = String(openid || '').trim();
+      if (!oid) {
+        alert('缺少 openid');
+        return;
+      }
+      var ok = window.confirm(
+        '仅清空该用户额度（不可批量）。\n\n' +
+          oid +
+          '\n\n将：兑换池剩余 → 0，本周免费视为已用尽。\n累计兑入记录会保留。\n用户需重新打开对话页才会同步本地显示。'
+      );
+      if (!ok) return;
+      var pwd = window.prompt('请输入确认密码后继续清空：', '');
+      if (pwd == null) return;
+      if (String(pwd).trim() !== '223356') {
+        alert('确认密码错误，已取消清空');
+        return;
+      }
+      const base = String(usageApiUrlEl.value || DEFAULT_USAGE_API)
+        .trim()
+        .replace(/\/$/, '');
+      const adminKey = String(usageAdminKeyEl.value || '').trim();
+      userQuotaStatusEl.textContent = '正在清空该用户…';
+      userQuotaStatusEl.className = 'hint';
+      try {
+        const data = await postFeedbackAction(base, adminKey, 'userQuotaClear', {
+          openid: oid,
+          clearExtra: true,
+          clearFree: true,
+          confirmPassword: String(pwd).trim(),
+          note: 'admin-ui-single'
+        });
+        if (!data.ok) throw new Error(data.err || data.errMsg || '清空失败');
+        userQuotaStatusEl.textContent =
+          '已清空该用户额度 · ' + oid.slice(0, 18) + '…';
+        userQuotaStatusEl.className = 'ok';
+        var inp = document.getElementById('userQuotaSearchInput');
+        if (inp) inp.value = oid;
+        await loadUserQuota(oid);
+      } catch (e) {
+        userQuotaStatusEl.textContent = '清空失败：' + (e.message || e);
+        userQuotaStatusEl.className = 'err';
+        alert('清空失败：' + (e.message || e));
+      }
+    }
+
+    if (userQuotaListEl) {
+      userQuotaListEl.addEventListener('click', function (ev) {
+        var t = ev.target;
+        if (!t || !t.classList || !t.classList.contains('quota-clear-btn')) return;
+        clearUserQuotaByOpenid(t.getAttribute('data-openid') || '');
+      });
+    }
+
+    /** 从兑换记录按 openid 聚合（兼容云端尚未部署 userQuotaList） */
+    function aggregateUsersFromRedeemLogs(logs) {
+      var map = {};
+      (logs || []).forEach(function (row) {
+        var oid = row && row.openid;
+        if (!oid) return;
+        var cur = map[oid];
+        if (!cur) {
+          map[oid] = {
+            openid: oid,
+            freeUsed: Number(row.freeUsed) || 0,
+            freeAllowed: Number(row.freeAllowed) || 0,
+            extraRounds: Number(row.extraRounds != null ? row.extraRounds : row.quotaLeft) || 0,
+            extraConsumed:
+              Number(row.extraConsumed != null ? row.extraConsumed : row.quotaUsed) || 0,
+            redeemedTotal: Number(row.redeemedTotal) || Number(row.rounds) || 0,
+            updateTimeMs: Number(row.createTimeMs) || 0,
+            weekKey: row.weekKey || '',
+            quotaUsed:
+              Number(row.quotaUsed != null ? row.quotaUsed : row.extraConsumed) || 0,
+            quotaLeft:
+              Number(row.quotaLeft != null ? row.quotaLeft : row.extraRounds) || 0
+          };
+          return;
+        }
+        cur.redeemedTotal += Number(row.rounds) || 0;
+        if ((Number(row.createTimeMs) || 0) > (cur.updateTimeMs || 0)) {
+          cur.updateTimeMs = Number(row.createTimeMs) || 0;
+          cur.freeUsed = Number(row.freeUsed) || cur.freeUsed;
+          cur.freeAllowed = Number(row.freeAllowed) || cur.freeAllowed;
+          cur.extraRounds =
+            Number(row.extraRounds != null ? row.extraRounds : row.quotaLeft) ||
+            cur.extraRounds;
+          cur.extraConsumed =
+            Number(row.extraConsumed != null ? row.extraConsumed : row.quotaUsed) ||
+            cur.extraConsumed;
+          cur.quotaUsed = cur.extraConsumed;
+          cur.quotaLeft = cur.extraRounds;
+          cur.weekKey = row.weekKey || cur.weekKey;
+        }
+      });
+      return Object.keys(map)
+        .map(function (k) {
+          return map[k];
+        })
+        .sort(function (a, b) {
+          return (b.updateTimeMs || 0) - (a.updateTimeMs || 0);
+        });
+    }
+
+    async function postFeedbackAction(base, adminKey, action, extra) {
+      const payload = Object.assign(
+        { action: action, adminKey: adminKey },
+        extra || {}
+      );
+      const res = await fetch(base, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Feedback-Admin-Key': adminKey
+        },
+        body: JSON.stringify(payload)
+      });
+      const raw = await res.text();
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch (e) {
+        throw new Error('响应不是 JSON：' + raw.slice(0, 120));
+      }
+      return data;
+    }
+
+    async function loadUserQuota(openidKeyword) {
+      if (!loadUserQuotaBtn) return;
+      loadUserQuotaBtn.disabled = true;
+      var searchBtn = document.getElementById('userQuotaSearchBtn');
+      if (searchBtn) searchBtn.disabled = true;
+      userQuotaStatusEl.textContent = '加载中…';
+      userQuotaStatusEl.className = 'hint';
+      try {
+        const base = String(usageApiUrlEl.value || DEFAULT_USAGE_API)
+          .trim()
+          .replace(/\/$/, '');
+        const adminKey = String(usageAdminKeyEl.value || '').trim();
+        localStorage.setItem('oc_usage_api', base);
+        localStorage.setItem('oc_feedback_admin_key', adminKey);
+
+        var kw =
+          openidKeyword != null && typeof openidKeyword !== 'object'
+            ? String(openidKeyword).trim()
+            : String(
+                (document.getElementById('userQuotaSearchInput') || {}).value || ''
+              ).trim();
+
+        var payload = { limit: kw ? 50 : 100 };
+        if (kw) payload.openid = kw;
+
+        let data = await postFeedbackAction(base, adminKey, 'userQuotaList', payload);
+        let fromFallback = false;
+
+        // 云端旧版无 userQuotaList：改从已支持的 redeemLogs 聚合
+        if (
+          !data.ok &&
+          /未知 action/i.test(String(data.err || data.errMsg || ''))
+        ) {
+          const logsData = await postFeedbackAction(base, adminKey, 'redeemLogs', {
+            limit: 200
+          });
+          if (!logsData.ok) {
+            throw new Error(
+              (data.err || data.errMsg || '未知 action') +
+                '；回退 redeemLogs 也失败：' +
+                (logsData.err || logsData.errMsg || '')
+            );
+          }
+          var fallbackList = aggregateUsersFromRedeemLogs(logsData.list || []);
+          if (kw) {
+            fallbackList = fallbackList.filter(function (row) {
+              var oid = String(row.openid || '');
+              return oid.indexOf(kw) >= 0;
+            });
+          }
+          data = {
+            ok: true,
+            list: fallbackList,
+            warn:
+              '云端 feedbackApi 尚未包含最新 userQuotaList，已用兑换记录回退。请部署 feedbackApi。'
+          };
+          fromFallback = true;
+        }
+
+        if (!data.ok) throw new Error(data.errMsg || data.err || '加载失败');
+        // 旧云端不支持 openid 参数时，前端再滤一遍
+        var list = data.list || [];
+        if (kw && !data.keyword) {
+          list = list.filter(function (row) {
+            var oid = String(row.openid || '');
+            var id = String(row._id || '');
+            return oid.indexOf(kw) >= 0 || id.indexOf(kw) >= 0;
+          });
+        }
+        const n = list.length;
+        userQuotaStatusEl.textContent =
+          (kw ? '搜索「' + kw.slice(0, 16) + (kw.length > 16 ? '…' : '') + '」· ' : '') +
+          '共 ' +
+          n +
+          ' 人' +
+          (fromFallback ? '（兑换记录回退）' : '') +
+          (data.warn ? ' · ' + data.warn : '');
+        userQuotaStatusEl.className = data.warn || fromFallback ? 'err' : 'ok';
+        renderUserQuota(list, kw);
+      } catch (e) {
+        userQuotaStatusEl.textContent =
+          '加载失败：' +
+          (e.message || e) +
+          '\n请重新部署 feedbackApi（需支持 action=userQuotaList）。';
+        userQuotaStatusEl.className = 'err';
+      } finally {
+        loadUserQuotaBtn.disabled = false;
+        if (searchBtn) searchBtn.disabled = false;
+      }
+    }
+
+    var userQuotaSearchInput = document.getElementById('userQuotaSearchInput');
+    var userQuotaSearchBtn = document.getElementById('userQuotaSearchBtn');
+    var userQuotaSearchClearBtn = document.getElementById('userQuotaSearchClearBtn');
+    if (userQuotaSearchBtn) {
+      userQuotaSearchBtn.addEventListener('click', function () {
+        loadUserQuota(
+          userQuotaSearchInput ? userQuotaSearchInput.value : ''
+        );
+      });
+    }
+    if (userQuotaSearchClearBtn) {
+      userQuotaSearchClearBtn.addEventListener('click', function () {
+        if (userQuotaSearchInput) userQuotaSearchInput.value = '';
+        loadUserQuota('');
+      });
+    }
+    if (userQuotaSearchInput) {
+      userQuotaSearchInput.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          loadUserQuota(userQuotaSearchInput.value);
+        }
+      });
+    }
+
+    loadUsageBtn.addEventListener('click', loadUsage);
+    if (loadUserQuotaBtn) {
+      loadUserQuotaBtn.addEventListener('click', function () {
+        var inp = document.getElementById('userQuotaSearchInput');
+        loadUserQuota(inp ? inp.value : '');
+      });
+    }
+
+    async function runUsageDiag() {
+      if (!diagUsageBtn) return;
+      diagUsageBtn.disabled = true;
+      usageStatusEl.textContent = '诊断中（会试写今天 usage_daily）…';
+      usageStatusEl.className = 'hint';
+      diagBoxEl.style.display = 'block';
+      diagBoxEl.textContent = '请求中…';
+      try {
+        const base = String(usageApiUrlEl.value || DEFAULT_USAGE_API)
+          .trim()
+          .replace(/\/$/, '');
+        const adminKey = String(usageAdminKeyEl.value || '').trim();
+        localStorage.setItem('oc_usage_api', base);
+        localStorage.setItem('oc_feedback_admin_key', adminKey);
+        const data = await postFeedbackAction(base, adminKey, 'diagUsage', {});
+        if (!data.ok && data.err) {
+          if (/未知 action/i.test(String(data.err))) {
+            throw new Error(
+              '云端 feedbackApi 还是旧版（不支持 diagUsage）。请右键部署最新 feedbackApi 后再点诊断。got=' +
+                (data.got || '')
+            );
+          }
+          throw new Error(data.errMsg || data.err || '诊断失败');
+        }
+        const lines = [];
+        lines.push('apiVer: ' + (data.apiVer || '—'));
+        lines.push('今天 dateKey: ' + (data.dateKey || '—'));
+        lines.push('结论: ' + (data.verdict || '—'));
+        lines.push('');
+        (data.steps || []).forEach(function (s, i) {
+          lines.push(
+            (s.ok ? '✅' : '❌') +
+              ' [' +
+              (i + 1) +
+              '] ' +
+              s.id +
+              '\n   ' +
+              (s.detail || '')
+          );
+        });
+        if (data.readBack) {
+          lines.push('');
+          lines.push(
+            '回读今天: chatRounds=' +
+              data.readBack.chatRounds +
+              ' apiCalls=' +
+              data.readBack.apiCalls
+          );
+        }
+        diagBoxEl.textContent = lines.join('\n');
+        usageStatusEl.textContent = data.writeOk
+          ? '诊断完成：已试写成功，请再点「加载日汇总」'
+          : '诊断完成：写入失败，见下方黑框';
+        usageStatusEl.className = data.writeOk ? 'ok' : 'err';
+        if (data.writeOk) {
+          try {
+            await loadUsage();
+          } catch (_) {}
+        }
+      } catch (e) {
+        diagBoxEl.textContent = String(e.message || e);
+        usageStatusEl.textContent = '诊断失败：' + (e.message || e);
+        usageStatusEl.className = 'err';
+      } finally {
+        diagUsageBtn.disabled = false;
+      }
+    }
+
+    if (diagUsageBtn) diagUsageBtn.addEventListener('click', runUsageDiag);
+
+    // —— 兑换码：生成 / 明细 分模块 ——
+    const redeemApiUrlEl = document.getElementById('redeemApiUrl');
+    const redeemAdminKeyEl = document.getElementById('redeemAdminKey');
+    const redeemListApiUrlEl = document.getElementById('redeemListApiUrl');
+    const redeemListAdminKeyEl = document.getElementById('redeemListAdminKey');
+    const redeemRoundsEl = document.getElementById('redeemRounds');
+    const redeemCountEl = document.getElementById('redeemCount');
+    const redeemMaxUsesEl = document.getElementById('redeemMaxUses');
+    const redeemNoteEl = document.getElementById('redeemNote');
+    const createRedeemBtn = document.getElementById('createRedeemBtn');
+    const loadRedeemBtn = document.getElementById('loadRedeemBtn');
+    const loadRedeemLogsBtn = document.getElementById('loadRedeemLogsBtn');
+    const redeemStatusEl = document.getElementById('redeemStatus');
+    const redeemListEl = document.getElementById('redeemList');
+    const redeemCreateStatusEl = document.getElementById('redeemCreateStatus');
+    const redeemCreatedBoxEl = document.getElementById('redeemCreatedBox');
+    const redeemLogsStatusEl = document.getElementById('redeemLogsStatus');
+    const redeemLogsListEl = document.getElementById('redeemLogsList');
+    const shareLogsStatusEl = document.getElementById('shareLogsStatus');
+    const shareLogsListEl = document.getElementById('shareLogsList');
+    const loadShareLogsBtn = document.getElementById('loadShareLogsBtn');
+
+    function syncRedeemApiFields() {
+      var base =
+        String(
+          (usageApiUrlEl && usageApiUrlEl.value) ||
+            (redeemApiUrlEl && redeemApiUrlEl.value) ||
+            (redeemListApiUrlEl && redeemListApiUrlEl.value) ||
+            localStorage.getItem('oc_usage_api') ||
+            localStorage.getItem('oc_feedback_api') ||
+            DEFAULT_API
+        ).trim() || DEFAULT_API;
+      var key =
+        String(
+          (usageAdminKeyEl && usageAdminKeyEl.value) ||
+            (redeemAdminKeyEl && redeemAdminKeyEl.value) ||
+            (redeemListAdminKeyEl && redeemListAdminKeyEl.value) ||
+            localStorage.getItem('oc_feedback_admin_key') ||
+            DEFAULT_KEY
+        ).trim() || DEFAULT_KEY;
+      if (redeemApiUrlEl) redeemApiUrlEl.value = base;
+      if (redeemAdminKeyEl) redeemAdminKeyEl.value = key;
+      if (redeemListApiUrlEl) redeemListApiUrlEl.value = base;
+      if (redeemListAdminKeyEl) redeemListAdminKeyEl.value = key;
+    }
+
+    syncRedeemApiFields();
+
+    async function postRedeemAction(action, payload, fromList) {
+      syncRedeemApiFields();
+      const base = String(
+        (fromList ? redeemListApiUrlEl && redeemListApiUrlEl.value : redeemApiUrlEl && redeemApiUrlEl.value) ||
+          DEFAULT_API
+      )
+        .trim()
+        .replace(/\/$/, '');
+      const adminKey = String(
+        (fromList
+          ? redeemListAdminKeyEl && redeemListAdminKeyEl.value
+          : redeemAdminKeyEl && redeemAdminKeyEl.value) || ''
+      ).trim();
+      localStorage.setItem('oc_feedback_admin_key', adminKey);
+      localStorage.setItem('oc_usage_api', base);
+      if (redeemApiUrlEl) redeemApiUrlEl.value = base;
+      if (redeemListApiUrlEl) redeemListApiUrlEl.value = base;
+      if (redeemAdminKeyEl) redeemAdminKeyEl.value = adminKey;
+      if (redeemListAdminKeyEl) redeemListAdminKeyEl.value = adminKey;
+      const body = Object.assign({ action: action, adminKey: adminKey }, payload || {});
+      const res = await fetch(base, {
+        method: 'POST',
+        mode: 'cors',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Feedback-Admin-Key': adminKey
+        },
+        body: JSON.stringify(body)
+      });
+      const raw = await res.text();
+      const data = JSON.parse(raw);
+      if (!data.ok) {
+        throw new Error(data.errMsg || data.err || '请求失败');
+      }
+      return data;
+    }
+
+    function formatTimeMs(ms, fallback) {
+      var n = 0;
+      if (ms != null && ms !== '') {
+        if (typeof ms === 'object') {
+          if (ms.$date) n = Number(ms.$date) || 0;
+          else if (typeof ms.toDate === 'function') {
+            try {
+              n = ms.toDate().getTime();
+            } catch (_) {}
+          } else if (ms.seconds != null) {
+            n = Number(ms.seconds) * 1000;
+          }
+        } else {
+          n = Number(ms) || 0;
+          // 秒级时间戳
+          if (n > 0 && n < 1e12) n = n * 1000;
+        }
+      }
+      if (!n && fallback != null) {
+        if (typeof fallback === 'string' && fallback) {
+          var parsed = Date.parse(fallback);
+          if (Number.isFinite(parsed)) n = parsed;
+        } else if (fallback && fallback.$date) {
+          n = Number(fallback.$date) || 0;
+        } else if (fallback && typeof fallback === 'object' && fallback.seconds != null) {
+          n = Number(fallback.seconds) * 1000;
+        }
+      }
+      if (!n) return '—';
+      try {
+        return new Date(n).toLocaleString('zh-CN', {
+          timeZone: 'Asia/Shanghai',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
+      } catch (e) {
+        try {
+          return new Date(n).toLocaleString('zh-CN');
+        } catch (e2) {
+          return String(ms);
+        }
+      }
+    }
+
+    function renderRedeemList(list) {
+      if (!list || !list.length) {
+        redeemListEl.innerHTML = '<p class="empty">暂无兑换码，请先生成</p>';
+        return;
+      }
+      redeemListEl.innerHTML = list
+        .map(function (row) {
+          var enabled = row.enabled !== false;
+          var used = Number(row.usedCount) || 0;
+          var maxUses = Number(row.maxUses) || 1;
+          var badge = enabled
+            ? used >= maxUses
+              ? '<span class="badge badge-read">已用尽</span>'
+              : '<span class="badge badge-read">可用</span>'
+            : '<span class="badge badge-unread">已停用</span>';
+          return (
+            '<article class="item">' +
+            '<div class="meta">' +
+            badge +
+            '<span class="openid"><b>' +
+            escapeHtml(row.code || '') +
+            '</b></span>' +
+            '<span>额度 <b>' +
+            (row.rounds || 0) +
+            '</b> 轮（通用）</span>' +
+            '<span>已用 ' +
+            used +
+            ' / ' +
+            maxUses +
+            '</span>' +
+            '</div>' +
+            (row.note
+              ? '<p class="hint" style="margin:4px 0 0">备注：' +
+                escapeHtml(row.note) +
+                '</p>'
+              : '') +
+            '<time>' +
+            formatTimeMs(row.createTimeMs) +
+            '</time>' +
+            '<div class="item-actions">' +
+            (enabled
+              ? '<button type="button" class="btn-secondary redeem-disable-btn" data-id="' +
+                escapeHtml(row._id || '') +
+                '">停用</button>'
+              : '<button type="button" class="redeem-enable-btn" data-id="' +
+                escapeHtml(row._id || '') +
+                '">启用</button>') +
+            '</div>' +
+            '</article>'
+          );
+        })
+        .join('');
+    }
+
+    function renderRedeemLogs(list) {
+      if (!list || !list.length) {
+        redeemLogsListEl.innerHTML =
+          '<p class="empty">暂无核销记录。若用户已兑换仍为空：请确认已建集合 <code>redeem_logs</code>，并重新部署云函数 <code>redeemCode</code> / <code>feedbackApi</code>。</p>';
+        return;
+      }
+      redeemLogsListEl.innerHTML = list
+        .map(function (row) {
+          var poolUsed =
+            Number(row.quotaUsed != null ? row.quotaUsed : row.extraConsumed) || 0;
+          var poolLeft =
+            Number(row.quotaLeft != null ? row.quotaLeft : row.extraRounds) || 0;
+          var total = Number(row.redeemedTotal) || 0;
+          var freeUsed = Number(row.freeUsed) || 0;
+          var freeAllowed = Number(row.freeAllowed) || 30;
+          return (
+            '<article class="item">' +
+            '<div class="meta">' +
+            '<span class="openid">' +
+            escapeHtml(row.code || '') +
+            '</span>' +
+            '<span>+' +
+            (row.rounds || 0) +
+            ' 轮</span>' +
+            '<span class="openid" title="openid">' +
+            escapeHtml(row.openid || '') +
+            '</span>' +
+            '</div>' +
+            '<div class="meta" style="margin-top:8px">' +
+            '<span style="color:#6d28d9"><b>本周免费已用</b> ' +
+            freeUsed +
+            ' / ' +
+            freeAllowed +
+            '</span>' +
+            '<span><b>兑换池剩余</b> ' +
+            poolLeft +
+            '</span>' +
+            '<span>兑换池已耗 ' +
+            poolUsed +
+            '</span>' +
+            '<span>累计兑入 ' +
+            total +
+            '</span>' +
+            '</div>' +
+            '<p class="hint" style="margin:6px 0 0;font-size:0.75rem">说明：本周免费与兑换池是两套额度；免费没用完时，兑换池「已耗」可为 0。</p>' +
+            '<time>兑换时间：' +
+            formatTimeMs(row.createTimeMs, row.createTime) +
+            '</time>' +
+            '</article>'
+          );
+        })
+        .join('');
+    }
+
+    function renderShareLogs(list) {
+      if (!shareLogsListEl) return;
+      if (!list || !list.length) {
+        shareLogsListEl.innerHTML =
+          '<p class="empty">暂无分享获额记录。请确认：① 已建集合 <code>share_logs</code>；② 已部署 <code>usageStats</code>（含 logShare）与 <code>feedbackApi</code>；③ 用户端已更新并成功分享续期。</p>';
+        return;
+      }
+      shareLogsListEl.innerHTML = list
+        .map(function (row) {
+          return (
+            '<article class="item">' +
+            '<div class="meta">' +
+            '<span><b>分享续期</b></span>' +
+            '<span>+' +
+            (row.rounds || 0) +
+            ' 轮</span>' +
+            '<span>' +
+            escapeHtml(row.channelLabel || row.channel || '—') +
+            '</span>' +
+            '<span class="openid" title="openid">' +
+            escapeHtml(row.openid || '') +
+            '</span>' +
+            '</div>' +
+            '<time>分享时间：' +
+            formatTimeMs(row.createTimeMs, row.createTime) +
+            (row.dateKey ? ' · ' + escapeHtml(row.dateKey) : '') +
+            '</time>' +
+            '</article>'
+          );
+        })
+        .join('');
+    }
+
+    async function loadRedeemList() {
+      loadRedeemBtn.disabled = true;
+      redeemStatusEl.textContent = '加载中…';
+      redeemStatusEl.className = 'hint';
+      try {
+        const data = await postRedeemAction('redeemList', { limit: 100 }, true);
+        redeemStatusEl.textContent = '共 ' + (data.list || []).length + ' 条';
+        redeemStatusEl.className = 'ok';
+        renderRedeemList(data.list || []);
+      } catch (e) {
+        redeemStatusEl.textContent =
+          '加载失败：' +
+          (e.message || e) +
+          '\n请建集合 redeem_codes 并重新部署 feedbackApi。';
+        redeemStatusEl.className = 'err';
+      } finally {
+        loadRedeemBtn.disabled = false;
+      }
+    }
+
+    async function loadRedeemLogs(openidKeyword) {
+      loadRedeemLogsBtn.disabled = true;
+      redeemLogsStatusEl.textContent = '刷新中…';
+      redeemLogsStatusEl.className = 'hint';
+      try {
+        // 与用量页同步地址，避免一边新一边旧
+        syncRedeemApiFields();
+        var kw =
+          openidKeyword != null && typeof openidKeyword !== 'object'
+            ? String(openidKeyword).trim()
+            : String(
+                (document.getElementById('redeemLogsSearchInput') || {}).value || ''
+              ).trim();
+        var payload = {
+          limit: 100,
+          _ts: Date.now()
+        };
+        if (kw) payload.openid = kw;
+        const data = await postRedeemAction('redeemLogs', payload, true);
+        var n = (data.list || []).length;
+        var nowLabel = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+        redeemLogsStatusEl.textContent =
+          (kw
+            ? '搜索「' + kw.slice(0, 18) + (kw.length > 18 ? '…' : '') + '」· '
+            : '') +
+          '共 ' +
+          n +
+          ' 条 · 刷新于 ' +
+          nowLabel +
+          (data.apiVer ? ' · ' + data.apiVer : '') +
+          (data.warn ? ' · ' + data.warn : '');
+        redeemLogsStatusEl.className = data.warn ? 'err' : 'ok';
+        renderRedeemLogs(data.list || []);
+      } catch (e) {
+        redeemLogsStatusEl.textContent =
+          '刷新失败：' +
+          (e.message || e) +
+          '\n请建集合 redeem_logs，并重新部署 feedbackApi。';
+        redeemLogsStatusEl.className = 'err';
+      } finally {
+        loadRedeemLogsBtn.disabled = false;
+      }
+    }
+
+    async function loadShareLogs(openidKeyword) {
+      if (!shareLogsStatusEl || !shareLogsListEl) return;
+      if (loadShareLogsBtn) loadShareLogsBtn.disabled = true;
+      shareLogsStatusEl.textContent = '刷新中…';
+      shareLogsStatusEl.className = 'hint';
+      try {
+        syncRedeemApiFields();
+        var kw =
+          openidKeyword != null && typeof openidKeyword !== 'object'
+            ? String(openidKeyword).trim()
+            : String(
+                (document.getElementById('shareLogsSearchInput') || {}).value || ''
+              ).trim();
+        var payload = { limit: 80, _ts: Date.now() };
+        if (kw) payload.openid = kw;
+        const data = await postRedeemAction('shareLogs', payload, true);
+        if (!data.ok && data.err) throw new Error(data.err);
+        var n = (data.list || []).length;
+        var nowLabel = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+        shareLogsStatusEl.textContent =
+          (kw
+            ? '搜索「' + kw.slice(0, 18) + (kw.length > 18 ? '…' : '') + '」· '
+            : '') +
+          '共 ' +
+          n +
+          ' 条 · 刷新于 ' +
+          nowLabel +
+          (data.apiVer ? ' · ' + data.apiVer : '') +
+          (data.warn ? ' · ' + data.warn : '');
+        shareLogsStatusEl.className = data.warn ? 'err' : 'ok';
+        renderShareLogs(data.list || []);
+      } catch (e) {
+        shareLogsStatusEl.textContent =
+          '刷新失败：' +
+          (e.message || e) +
+          '\n请建集合 share_logs，并重新部署 feedbackApi（需支持 action=shareLogs）。';
+        shareLogsStatusEl.className = 'err';
+      } finally {
+        if (loadShareLogsBtn) loadShareLogsBtn.disabled = false;
+      }
+    }
+
+    async function createRedeemCodes() {
+      createRedeemBtn.disabled = true;
+      redeemCreateStatusEl.textContent = '生成中…';
+      redeemCreateStatusEl.className = 'hint';
+      redeemCreatedBoxEl.innerHTML = '';
+      try {
+        const data = await postRedeemAction('redeemCreate', {
+          rounds: Number(redeemRoundsEl.value) || 120,
+          count: Number(redeemCountEl.value) || 1,
+          maxUses: Number(redeemMaxUsesEl.value) || 1,
+          note: String(redeemNoteEl.value || '').trim()
+        }, false);
+        const codes = (data.codes || []).map(function (c) {
+          return c.code;
+        });
+        redeemCreateStatusEl.textContent =
+          '已生成 ' + codes.length + ' 个，每个 +' + (data.rounds || 0) + ' 轮';
+        redeemCreateStatusEl.className = 'ok';
+        redeemCreatedBoxEl.innerHTML =
+          '<div class="item" style="margin:0"><p class="content" style="font-family:ui-monospace,monospace">' +
+          escapeHtml(codes.join('\n')) +
+          '</p><button type="button" class="btn-secondary" id="copyRedeemCodesBtn" style="width:auto;margin-top:8px">复制全部</button></div>';
+        var copyBtn = document.getElementById('copyRedeemCodesBtn');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', function () {
+            var text = codes.join('\n');
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(text).then(function () {
+                redeemCreateStatusEl.textContent = '已复制到剪贴板';
+                redeemCreateStatusEl.className = 'ok';
+              });
+            } else {
+              redeemCreateStatusEl.textContent = '请手动复制上方码';
+            }
+          });
+        }
+        loadRedeemList();
+      } catch (e) {
+        redeemCreateStatusEl.textContent = '生成失败：' + (e.message || e);
+        redeemCreateStatusEl.className = 'err';
+      } finally {
+        createRedeemBtn.disabled = false;
+      }
+    }
+
+    redeemListEl.addEventListener('click', async function (e) {
+      var t = e.target;
+      if (!t || !t.getAttribute) return;
+      var id = t.getAttribute('data-id');
+      if (!id) return;
+      if (t.classList.contains('redeem-disable-btn')) {
+        try {
+          await postRedeemAction('redeemDisable', { id: id }, true);
+          loadRedeemList();
+        } catch (err) {
+          alert(err.message || err);
+        }
+      }
+      if (t.classList.contains('redeem-enable-btn')) {
+        try {
+          await postRedeemAction('redeemEnable', { id: id }, true);
+          loadRedeemList();
+        } catch (err) {
+          alert(err.message || err);
+        }
+      }
+    });
+
+    createRedeemBtn.addEventListener('click', createRedeemCodes);
+    var redeemTierBox = document.getElementById('redeemAmountTiers');
+    if (redeemTierBox) {
+      redeemTierBox.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.classList || !t.classList.contains('redeem-tier-btn')) return;
+        var yuan = t.getAttribute('data-yuan') || '';
+        var rounds = Number(t.getAttribute('data-rounds')) || 0;
+        if (redeemRoundsEl && rounds > 0) redeemRoundsEl.value = String(rounds);
+        if (redeemNoteEl) redeemNoteEl.value = yuan ? '打赏¥' + yuan : '';
+        var btns = redeemTierBox.querySelectorAll('.redeem-tier-btn');
+        for (var i = 0; i < btns.length; i++) {
+          btns[i].className = 'btn-secondary redeem-tier-btn';
+          btns[i].style.cssText = 'flex:0;width:auto;margin:0';
+        }
+        t.className = 'redeem-tier-btn';
+        t.style.cssText = 'flex:0;width:auto;margin:0';
+      });
+    }
+    loadRedeemBtn.addEventListener('click', loadRedeemList);
+    loadRedeemLogsBtn.addEventListener('click', function () {
+      loadRedeemLogs();
+    });
+    if (loadShareLogsBtn) {
+      loadShareLogsBtn.addEventListener('click', function () {
+        loadShareLogs();
+      });
+    }
+
+    (function bindLogSearch() {
+      var redeemInp = document.getElementById('redeemLogsSearchInput');
+      var redeemBtn = document.getElementById('redeemLogsSearchBtn');
+      var redeemClear = document.getElementById('redeemLogsSearchClearBtn');
+      if (redeemBtn) {
+        redeemBtn.addEventListener('click', function () {
+          loadRedeemLogs(redeemInp ? redeemInp.value : '');
+        });
+      }
+      if (redeemClear) {
+        redeemClear.addEventListener('click', function () {
+          if (redeemInp) redeemInp.value = '';
+          loadRedeemLogs('');
+        });
+      }
+      if (redeemInp) {
+        redeemInp.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter') {
+            ev.preventDefault();
+            loadRedeemLogs(redeemInp.value);
+          }
+        });
+      }
+
+      var shareInp = document.getElementById('shareLogsSearchInput');
+      var shareBtn = document.getElementById('shareLogsSearchBtn');
+      var shareClear = document.getElementById('shareLogsSearchClearBtn');
+      if (shareBtn) {
+        shareBtn.addEventListener('click', function () {
+          loadShareLogs(shareInp ? shareInp.value : '');
+        });
+      }
+      if (shareClear) {
+        shareClear.addEventListener('click', function () {
+          if (shareInp) shareInp.value = '';
+          loadShareLogs('');
+        });
+      }
+      if (shareInp) {
+        shareInp.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter') {
+            ev.preventDefault();
+            loadShareLogs(shareInp.value);
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

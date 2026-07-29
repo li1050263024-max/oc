@@ -1,0 +1,217 @@
+<view class="page chapter-page safe-bottom {{uiThemeClass}}">
+  <view class="bg-solid"></view>
+  <oc-page-nav />
+  <oc-back-btn custom bind:back="onBack" />
+  <view class="chapter-header">
+    <text class="chapter-oc" wx:if="{{ocName}}">{{ocName}}</text>
+  </view>
+  <scroll-view class="chapter-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="chapter-inner section-card">
+      <block wx:if="{{editMode}}">
+        <view class="field-label">故事题目</view>
+        <input
+          class="chapter-title-input"
+          value="{{title}}"
+          bindinput="onTitleInput"
+          maxlength="80"
+          placeholder="故事题目"
+        />
+        <view class="field-label field-label--sub">正文</view>
+        <textarea
+          class="chapter-body-edit"
+          style="height: {{textareaHeight}}rpx;"
+          value="{{content}}"
+          bindinput="onContentInput"
+          maxlength="-1"
+          show-confirm-bar="{{false}}"
+          cursor-spacing="24"
+        />
+        <view class="chapter-actions">
+          <view class="pixel-btn pixel-btn-primary chapter-action-btn" catchtap="onSaveChapter">
+            <text class="btn-action-text">保存</text>
+          </view>
+          <view class="pixel-btn btn-wire-secondary chapter-action-btn" catchtap="onOpenPolishSheet">
+            <text class="btn-action-text">润色修改</text>
+          </view>
+          <view
+            class="pixel-btn btn-wire-secondary chapter-action-btn"
+            wx:if="{{polishCompareReady}}"
+            catchtap="onOpenCompare"
+          >
+            <text class="btn-action-text">对比</text>
+          </view>
+          <view class="pixel-btn btn-ghost chapter-action-btn" catchtap="onCancelEdit">
+            <text class="btn-action-text">取消</text>
+          </view>
+        </view>
+      </block>
+      <block wx:else>
+        <text class="chapter-title">{{title}}</text>
+        <text class="chapter-body" user-select>{{content}}</text>
+        <view class="chapter-actions chapter-actions--view">
+          <view class="pixel-btn pixel-btn-primary chapter-action-btn" catchtap="onContinueChapter">
+            <text class="btn-action-text">续写</text>
+          </view>
+          <view class="pixel-btn btn-wire-secondary chapter-action-btn" catchtap="onEnterEdit">
+            <text class="btn-action-text">修改</text>
+          </view>
+          <view class="pixel-btn btn-wire-secondary chapter-action-btn" catchtap="onOpenHistory">
+            <text class="btn-action-text">历史版本</text>
+          </view>
+          <view class="pixel-btn btn-wire-secondary chapter-action-btn" catchtap="onShareChapter">
+            <text class="btn-action-text">分享</text>
+          </view>
+        </view>
+      </block>
+    </view>
+  </scroll-view>
+
+  <view
+    class="story-writing-overlay"
+    wx:if="{{continuing || polishing || storyWritingExiting}}"
+    catchtouchmove="noop"
+  >
+    <view class="story-writing-card">
+      <view class="story-writing-stage">
+        <view class="story-writing-pen-wrap {{storyWritingExiting ? 'story-writing-pen-wrap--exit' : 'story-writing-pen-wrap--active'}}">
+          <image class="story-quill-img" src="/images/story-quill-line.png" mode="aspectFit" />
+        </view>
+        <view class="story-writing-ink {{storyWritingExiting ? 'story-writing-ink--exit' : ''}}">
+          <view class="sw-ink-path sw-ink-path-1"></view>
+          <view class="sw-ink-path sw-ink-path-2"></view>
+          <view class="sw-ink-path sw-ink-path-3"></view>
+        </view>
+      </view>
+      <text class="story-writing-tip" wx:if="{{!storyWritingExiting}}">{{storyWritingTip || '正在处理…'}}</text>
+    </view>
+  </view>
+
+  <view class="story-sheet-mask" wx:if="{{continueSheetVisible}}" catchtap="onCancelContinue"></view>
+  <view class="story-sheet" wx:if="{{continueSheetVisible}}">
+    <text class="story-sheet-title">继续创作</text>
+    <text class="story-sheet-sub">将整理上文梗概并结合你的方向续写，保存为新章节（标题自动追加【2】等），生成后进入章节页</text>
+    <textarea
+      class="story-sheet-input"
+      value="{{continueInput}}"
+      bindinput="onContinueInput"
+      placeholder="例如：揭开雨夜重逢后的误会；写一场和解对话……"
+      maxlength="1200"
+      auto-height
+      focus="{{continueSheetVisible}}"
+      show-confirm-bar="{{false}}"
+    />
+    <view class="story-sheet-actions">
+      <view class="pixel-btn btn-wire-secondary story-sheet-btn" catchtap="onCancelContinue">
+        <text class="btn-action-text">取消</text>
+      </view>
+      <view class="pixel-btn pixel-btn-primary story-sheet-btn" catchtap="onConfirmContinue">
+        <text class="btn-action-text">{{continuing ? '生成中…' : '开始续写'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="story-sheet-mask" wx:if="{{polishSheetVisible}}" catchtap="onCancelPolish"></view>
+  <view class="story-sheet" wx:if="{{polishSheetVisible}}">
+    <text class="story-sheet-title">润色修改</text>
+    <text class="story-sheet-sub">描述你希望如何调整正文，例如增删情节、调整语气、修正细节等，完成后请确认并保存</text>
+    <textarea
+      class="story-sheet-input"
+      value="{{polishInput}}"
+      bindinput="onPolishInput"
+      placeholder="例如：结尾再含蓄一些；增加一段雨夜对话；把语气改得更治愈……"
+      maxlength="1200"
+      auto-height
+      focus="{{polishSheetVisible}}"
+      show-confirm-bar="{{false}}"
+    />
+    <view class="story-sheet-actions">
+      <view class="pixel-btn btn-wire-secondary story-sheet-btn" catchtap="onCancelPolish">
+        <text class="btn-action-text">取消</text>
+      </view>
+      <view class="pixel-btn pixel-btn-primary story-sheet-btn" catchtap="onConfirmPolish">
+        <text class="btn-action-text">{{polishing ? '处理中…' : '开始润色'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="story-sheet-mask" wx:if="{{compareVisible}}" catchtap="onCloseCompare"></view>
+  <view class="compare-sheet" wx:if="{{compareVisible}}">
+    <text class="story-sheet-title">润色对比</text>
+    <scroll-view class="compare-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="compare-rows">
+        <view
+          class="compare-row compare-row--{{item.type}}"
+          wx:for="{{compareRows}}"
+          wx:key="index"
+        >
+          <block wx:if="{{item.type === 'same'}}">
+            <text class="compare-line compare-line--same" user-select>{{item.after}}</text>
+          </block>
+          <block wx:elif="{{item.type === 'remove'}}">
+            <text class="compare-line compare-line--old" user-select>{{item.before}}</text>
+          </block>
+          <block wx:elif="{{item.type === 'add'}}">
+            <text class="compare-line compare-line--new" user-select>{{item.after}}</text>
+          </block>
+          <block wx:else>
+            <text class="compare-line compare-line--old" user-select>{{item.before}}</text>
+            <text class="compare-line compare-line--new" user-select>{{item.after}}</text>
+          </block>
+        </view>
+      </view>
+    </scroll-view>
+    <view class="story-sheet-actions">
+      <view class="pixel-btn pixel-btn-primary story-sheet-btn" catchtap="onCloseCompare">
+        <text class="btn-action-text">关闭</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="story-sheet-mask" wx:if="{{historyVisible}}" catchtap="onCloseHistory"></view>
+  <view class="history-sheet" wx:if="{{historyVisible}}">
+    <text class="story-sheet-title">历史版本</text>
+    <text class="story-sheet-sub">每次保存都会自动留存上一版，最多保留 40 条</text>
+    <scroll-view class="history-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+      <view wx:if="{{!historyList.length}}" class="history-empty">暂无历史版本</view>
+      <view
+        class="history-item"
+        wx:for="{{historyList}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        catchtap="onPreviewHistory"
+      >
+        <text class="history-item-time">{{item.timeLabel}}</text>
+        <text class="history-item-title">{{item.title || '未命名故事'}}</text>
+        <text class="history-item-preview">{{item.content}}</text>
+      </view>
+    </scroll-view>
+    <view class="story-sheet-actions">
+      <view class="pixel-btn pixel-btn-primary story-sheet-btn" catchtap="onCloseHistory">
+        <text class="btn-action-text">关闭</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="story-sheet-mask" wx:if="{{historyPreviewVisible}}" catchtap="onCloseHistoryPreview"></view>
+  <view class="history-preview-sheet" wx:if="{{historyPreviewVisible}}">
+    <text class="story-sheet-title">{{historyPreviewTitle}}</text>
+    <text class="history-preview-time">{{historyPreviewTime}}</text>
+    <scroll-view class="history-preview-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+      <text class="history-preview-body" user-select>{{historyPreviewContent}}</text>
+    </scroll-view>
+    <view class="story-sheet-actions">
+      <view class="pixel-btn btn-wire-secondary story-sheet-btn" catchtap="onCloseHistoryPreview">
+        <text class="btn-action-text">关闭</text>
+      </view>
+      <view class="pixel-btn pixel-btn-primary story-sheet-btn" catchtap="onRestoreHistory">
+        <text class="btn-action-text">恢复此版本</text>
+      </view>
+    </view>
+  </view>
+  <oc-share-sheet
+    visible="{{shareSheetVisible}}"
+    title="{{shareSheetTitle}}"
+    content="{{shareSheetContent}}"
+    bind:close="onCloseShareSheet"
+  />
+</view>

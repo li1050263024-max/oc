@@ -1,0 +1,11 @@
+{
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "OC 设定",
+  "backgroundColor": "#c8bee4",
+  "backgroundColorTop": "#c8bee400",
+  "backgroundColorBottom": "#c4d0e8",
+  "backgroundColorContent": "#c8bee400",
+  "usingComponents": {
+    "oc-back-btn": "/components/ocBackBtn/ocBackBtn"
+  }
+}

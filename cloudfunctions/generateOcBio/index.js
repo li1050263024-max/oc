@@ -67,7 +67,8 @@ exports.main = async (event) => {
       '/v1/chat/completions',
       { Authorization: `Bearer ${apiKey}` },
       {
-        model: 'deepseek-chat',
+        model: 'deepseek-v4-flash',
+        thinking: { type: 'disabled' },
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `请为以下 OC 写人物小传：\n${hints}` }

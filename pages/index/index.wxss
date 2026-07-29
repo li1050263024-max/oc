@@ -1,522 +1,422 @@
-/* 首页 - 左侧导航 + 右侧抽卡区 */
-.page {
-  min-height: 100vh;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  overflow: hidden;
+.page-dimmed .oc-page-shell {
+  opacity: 0.38;
+  pointer-events: none;
 }
 
+.page.oc-page--gacha {
+  position: relative;
+}
+
+.page.index-panel-open .oc-page-shell {
+  position: relative;
+  z-index: 30;
+}
+
+.page.index-panel-open .index-settings-wrap {
+  z-index: 15;
+}
+
+.page.index-panel-open .index-home-title-float {
+  visibility: hidden;
+}
+
+.page.index-panel-open .index-gacha-toolbar {
+  position: relative;
+  z-index: 10;
+}
+
+.page.index-panel-open .index-scope-panel {
+  position: relative;
+  z-index: 11;
+  background-color: #ffffff;
+  background: #ffffff;
+}
+
+.page.index-panel-open .oc-gacha-stage {
+  position: relative;
+  z-index: 1;
+}
 .bg-solid {
+  position: fixed;
+  inset: 0;
+  background: var(--diffuse-bg);
+  z-index: 0;
+}
+.canvas-hidden {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.index-settings-wrap {
+  position: absolute;
+  z-index: 20;
+}
+
+.index-settings-btn {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--theme-settings-bg, rgba(167, 139, 250, 0.92));
+  border: 1rpx solid var(--theme-settings-border, rgba(139, 92, 246, 0.35));
+  box-shadow: 0 4rpx 12rpx var(--theme-settings-shadow, rgba(109, 40, 217, 0.2));
+}
+
+.index-settings-hamburger {
+  width: 28rpx;
+  height: 20rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.index-settings-bar {
+  width: 100%;
+  height: 3rpx;
+  border-radius: 2rpx;
+  background: #ffffff;
+}
+
+.index-settings-menu {
+  position: absolute;
+  top: 72rpx;
+  left: 0;
+  right: auto;
+  min-width: 220rpx;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1rpx solid var(--theme-border-mid);
+  border-radius: 16rpx;
+  box-shadow: 0 12rpx 32rpx rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  z-index: 30;
+}
+
+.index-settings-item {
+  padding: 24rpx 28rpx;
+  font-size: 28rpx;
+  color: #374151;
+  border-bottom: 1rpx solid var(--theme-border-faint);
+}
+
+.index-settings-item:last-child {
+  border-bottom: none;
+}
+
+.index-settings-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  /* 留出底部 Tab，避免挡住点击 */
+  bottom: calc(112rpx + env(safe-area-inset-bottom));
+  z-index: 10;
+}
+
+.index-oa-mask {
   position: fixed;
   left: 0;
   top: 0;
   right: 0;
   bottom: 0;
-  background: var(--diffuse-bg);
-  z-index: 0;
+  z-index: 1200;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48rpx;
 }
 
-.shell {
+.index-oa-card {
   position: relative;
-  z-index: 1;
-  flex: 1;
-  min-height: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  padding: 12rpx 16rpx 0;
-  padding-bottom: constant(safe-area-inset-bottom);
-  padding-bottom: env(safe-area-inset-bottom);
-  box-sizing: border-box;
-}
-
-.header-block {
-  flex-shrink: 0;
-  padding: 0 4rpx 12rpx;
-}
-.title {
-  display: block;
-  font-size: 34rpx;
-  font-weight: 600;
-  color: var(--diffuse-text);
-  letter-spacing: 1rpx;
-  margin-bottom: 4rpx;
-}
-.subtitle {
-  font-size: 22rpx;
-  color: var(--diffuse-subtle);
-}
-
-.body-row {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  gap: 12rpx;
-  align-items: stretch;
-}
-
-.content-pane-full {
-  width: 100%;
-}
-
-/* 右侧展示区：与 body-row 同高，占满可视区域剩余高度 */
-.content-pane {
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  border: 1rpx solid var(--glass-border);
-  border-radius: 16rpx;
-  background: rgba(255, 255, 255, 0.32);
-  backdrop-filter: blur(20rpx);
-  -webkit-backdrop-filter: blur(20rpx);
-  box-shadow: var(--glass-shadow);
-  box-sizing: border-box;
-}
-
-.content-bottom-spacer {
-  height: 24rpx;
-}
-
-/* 主内容区：未抽卡时垂直居中，抽卡后从上往下排 */
-.main-content {
-  width: 100%;
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12rpx 16rpx 20rpx;
-  box-sizing: border-box;
-}
-.main-content-centered {
-  justify-content: center;
-  padding-bottom: 24rpx;
-}
-
-.draw-area {
-  width: 100%;
-  flex: 1;
-  min-height: 200rpx;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 16rpx;
-}
-.draw-card-large {
-  width: 100%;
-  max-width: 460rpx;
-  min-height: 260rpx;
-  padding: 40rpx 48rpx;
-}
-.draw-card-text-only {
-  font-size: 44rpx;
-  font-weight: 600;
-  color: #fff;
-  letter-spacing: 8rpx;
-  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
-}
-
-/* 开始抽卡：卡背（紫色渐变，饱和度适中） */
-.draw-card {
-  width: 380rpx;
-  min-height: 280rpx;
-  padding: 56rpx 64rpx;
-  background: var(--diffuse-card-back);
-  border: none;
+  width: 560rpx;
+  max-width: 100%;
+  padding: 40rpx 36rpx 36rpx;
   border-radius: 24rpx;
-  box-shadow: var(--diffuse-card-back-shadow);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.draw-card-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-.draw-card-label {
-  font-size: 36rpx;
-  color: rgba(255, 255, 255, 0.85);
-  letter-spacing: 6rpx;
-  margin-bottom: 20rpx;
-}
-.draw-card-text {
-  font-size: 48rpx;
-  font-weight: 600;
-  color: #fff;
-  letter-spacing: 8rpx;
-  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
-}
-
-/* 小人容器 */
-.char-wrap {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  transition: opacity 0.25s ease, transform 0.25s ease;
-}
-.main-content-centered .char-wrap {
-  margin-top: 0;
-  margin-bottom: 16rpx;
-  transform: scale(0.92);
-}
-.main-content:not(.main-content-centered) .char-wrap {
-  margin-top: 0;
-  margin-bottom: 16rpx;
-  transform: scale(0.85);
-}
-.char-wrap-default { opacity: 1; transform: scale(1); }
-.char-wrap.card-visible { opacity: 1; transform: scale(1); }
-.char-wrap:not(.char-wrap-default):not(.card-visible) {
-  opacity: 0;
-  transform: scale(0.96);
-}
-
-/* 星露谷风格像素小人 */
-.pixel-char {
+  background: #fff;
+  box-shadow: 0 24rpx 64rpx rgba(0, 0, 0, 0.22);
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.char-name {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--diffuse-highlight);
-  margin-bottom: 12rpx;
-  padding: 6rpx 20rpx;
-  border: 1rpx solid var(--glass-border);
-  background: var(--glass-bg);
-  backdrop-filter: blur(24rpx);
-  -webkit-backdrop-filter: blur(24rpx);
-  border-radius: 20rpx;
-  letter-spacing: 1rpx;
-  box-shadow: var(--glass-shadow);
-}
-
-.char-head-wrap {
-  position: relative;
-  width: 88rpx;
-  height: 88rpx;
-}
-.char-head {
+.index-oa-close {
   position: absolute;
-  left: 0;
-  top: 0;
-  width: 88rpx;
-  height: 88rpx;
-  background: #f0dcd0;
-  border: 1rpx solid var(--pixel-border);
-  box-sizing: border-box;
-  border-radius: 999rpx;
-}
-.char-hair {
-  position: absolute;
-  left: 2rpx;
-  top: 2rpx;
-  width: 84rpx;
-  height: 44rpx;
-  border: 1rpx solid var(--pixel-border);
-  border-bottom: none;
-  border-radius: 42rpx 42rpx 0 0;
-  box-sizing: border-box;
-}
-.char-eyes {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 88rpx;
-  height: 88rpx;
+  top: 8rpx;
+  right: 12rpx;
+  width: 64rpx;
+  height: 64rpx;
   display: flex;
-  justify-content: space-evenly;
   align-items: center;
-  padding-top: 32rpx;
+  justify-content: center;
+  font-size: 44rpx;
+  line-height: 1;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.index-oa-qr {
+  width: 420rpx;
+  display: block;
+}
+
+.index-oa-hint {
+  margin-top: 20rpx;
+  font-size: 26rpx;
+  line-height: 1.5;
+  color: #6b7280;
+  text-align: center;
+}
+
+.index-gacha-toolbar {
+  width: var(--oc-card-w);
+  max-width: 100%;
+  margin: 16rpx auto 0;
+  padding: 0;
   box-sizing: border-box;
 }
-.char-eye {
-  width: 14rpx;
-  height: 14rpx;
-  border: 1rpx solid var(--pixel-border);
-  border-radius: 50%;
-}
 
-.char-arms-row {
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  margin-top: -2rpx;
-}
-.char-arm {
-  width: 18rpx;
-  height: 52rpx;
-  background: #f0dcd0;
-  border: 1rpx solid var(--pixel-border);
-  border-radius: 8rpx;
-}
-.char-arm-left { margin-right: 4rpx; border-radius: 8rpx 4rpx 4rpx 8rpx; }
-.char-arm-right { margin-left: 4rpx; border-radius: 4rpx 8rpx 8rpx 4rpx; }
-.char-torso {
-  width: 52rpx;
-  height: 56rpx;
-  background: #a89888;
-  border: 1rpx solid var(--pixel-border);
-  border-radius: 12rpx;
-  margin: 0 2rpx;
-}
-.char-torso-race {
-  background: #8b7d6b;
-}
-
-.char-legs {
-  display: flex;
-  justify-content: center;
-  gap: 8rpx;
-  margin-top: -2rpx;
-}
-.char-leg {
-  width: 22rpx;
-  height: 36rpx;
-  background: #6b5d52;
-  border: 1rpx solid var(--pixel-border);
-  border-radius: 8rpx 8rpx 4rpx 4rpx;
-}
-
-/* 设定卡：翻面动画 + 逐项揭晓，保持居中 */
-.reveal-card-wrap {
+.index-gacha-toolbar--wide {
   width: 100%;
   max-width: 100%;
-  margin-bottom: 16rpx;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  perspective: 1200rpx;
-}
-.reveal-card {
-  width: 100%;
-  min-height: 0;
-  padding: 20rpx 24rpx 24rpx;
-  border: 1rpx solid rgba(255, 255, 255, 0.55);
-  border-radius: 20rpx;
-  background: rgba(255, 255, 255, 0.42);
-  backdrop-filter: blur(24rpx);
-  -webkit-backdrop-filter: blur(24rpx);
-  box-shadow: 0 24rpx 56rpx rgba(0, 0, 0, 0.06), 0 0 0 1rpx rgba(255, 255, 255, 0.5) inset;
-  transform-style: preserve-3d;
-  transform-origin: center center;
-  transform: rotateY(-88deg);
-  opacity: 0.2;
-  transition: transform 0.5s ease, opacity 0.45s ease;
-}
-.reveal-card.card-flipped {
-  transform: rotateY(0);
-  opacity: 1;
-}
-.reveal-card .card-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--diffuse-highlight);
-  margin-bottom: 20rpx;
-  text-align: center;
-}
-.reveal-card .card-row {
-  display: flex;
-  align-items: center;
-  padding: 8rpx 0;
-  border-bottom: 1rpx solid rgba(139, 92, 246, 0.08);
-}
-.reveal-card .card-row:last-child { border-bottom: none; }
-.reveal-card .label {
-  width: 88rpx;
-  flex-shrink: 0;
-  font-size: 26rpx;
-  color: var(--diffuse-subtle);
-}
-.reveal-card .value {
-  flex: 1;
-  min-width: 0;
-  font-size: 28rpx;
-  color: var(--diffuse-text);
-  font-weight: 500;
-}
-.reveal-card .value-input {
-  flex: 1;
-  min-width: 0;
-  height: 56rpx;
-  padding: 0 12rpx;
-  margin: 0 8rpx;
-  font-size: 28rpx;
-  color: var(--diffuse-text);
-  font-weight: 500;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-}
-.reveal-card .row-locked {
-  background: rgba(167, 139, 250, 0.06);
-}
-.reveal-card .lock-btn {
-  flex-shrink: 0;
-  margin-left: 16rpx;
-  padding: 4rpx 16rpx;
-  font-size: 22rpx;
-  color: var(--diffuse-highlight);
-  border: 1rpx solid var(--glass-border);
-  border-radius: 16rpx;
-  background: var(--glass-bg);
-  backdrop-filter: blur(16rpx);
-  -webkit-backdrop-filter: blur(16rpx);
-}
-.reveal-card .lock-btn.locked {
-  color: var(--diffuse-subtle);
-  background: rgba(167, 139, 250, 0.1);
 }
 
-/* 第二层/第三层：区块卡 - 磨砂玻璃 */
-.section-card {
+.index-home-header {
+  margin-bottom: 8rpx;
+}
+
+.index-home-title-float {
+  margin-top: 80px;
+}
+
+.index-home-header .index-gacha-toolbar {
+  margin-top: calc(16rpx - 80px);
+}
+
+.index-gacha-btn-row {
+  display: flex;
+  gap: 16rpx;
   width: 100%;
-  max-width: 640rpx;
-  margin-bottom: 24rpx;
-  padding: 28rpx 36rpx 36rpx;
-  border: 1rpx solid var(--glass-border);
-  border-radius: 20rpx;
-  background: var(--glass-bg);
-  backdrop-filter: blur(24rpx);
-  -webkit-backdrop-filter: blur(24rpx);
-  box-shadow: var(--glass-shadow);
+  margin-top: 100px;
 }
-.section-card .card-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--diffuse-highlight);
-  margin-bottom: 20rpx;
+
+.index-gacha-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 20rpx 12rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1rpx solid var(--theme-border);
+  box-shadow: 0 6rpx 18rpx var(--theme-shadow-sm);
+  box-sizing: border-box;
+}
+
+.index-gacha-btn-text {
+  display: block;
   text-align: center;
-}
-.section-card .card-row {
-  display: flex;
-  align-items: center;
-  padding: 12rpx 0;
-  border-bottom: 1rpx solid rgba(139, 92, 246, 0.08);
-}
-.section-card .card-row:last-of-type { border-bottom: none; }
-.section-card .label {
-  width: 88rpx;
-  flex-shrink: 0;
-  font-size: 26rpx;
-  color: var(--diffuse-subtle);
-}
-.section-card .value-input {
-  flex: 1;
-  min-width: 0;
-  height: 56rpx;
-  padding: 0 12rpx;
-  margin: 0 8rpx;
-  font-size: 28rpx;
-  color: var(--diffuse-text);
-  font-weight: 500;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-}
-.section-card .row-locked {
-  background: rgba(167, 139, 250, 0.06);
-}
-.section-card .lock-btn {
-  flex-shrink: 0;
-  margin-left: 16rpx;
-  padding: 4rpx 16rpx;
-  font-size: 22rpx;
-  color: var(--diffuse-highlight);
-  border: 1rpx solid var(--glass-border);
-  border-radius: 16rpx;
-  background: var(--glass-bg);
-  backdrop-filter: blur(16rpx);
-  -webkit-backdrop-filter: blur(16rpx);
-}
-.section-card .lock-btn.locked {
-  color: var(--diffuse-subtle);
-  background: rgba(167, 139, 250, 0.1);
-}
-.actions-small {
-  margin-top: 20rpx;
-}
-.attitude-row {
-  display: flex;
-  align-items: flex-start;
-  padding: 12rpx 0;
-  border-bottom: 1rpx solid rgba(0,0,0,0.06);
-}
-.attitude-row .label {
-  width: 88rpx;
-  flex-shrink: 0;
-  font-size: 26rpx;
-  color: var(--pixel-subtle);
-  padding-top: 16rpx;
-}
-.attitude-content {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-}
-.attitude-event {
   font-size: 24rpx;
-  color: var(--diffuse-subtle);
-}
-.attitude-input {
-  height: 56rpx;
-  padding: 0 12rpx;
-  font-size: 28rpx;
-  color: var(--diffuse-text);
-  background: transparent;
-  border: none;
+  font-weight: 400;
+  color: #a8a8b3;
+  line-height: 1.35;
 }
 
-/* 操作按钮：view+text 保证文字居中 */
-.actions {
+.index-pools-guide {
   width: 100%;
-  max-width: 640rpx;
+  margin-bottom: 15px;
+  padding: 0 8rpx;
+  box-sizing: border-box;
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 20rpx;
-}
-.actions-six {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10rpx 12rpx;
-  width: 100%;
-}
-.actions-six .btn-action {
-  min-width: 0;
-  width: 100%;
-}
-.btn-action {
-  min-width: 0;
-  height: 56rpx;
-  padding: 0;
-  display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 34rpx;
-}
-.btn-action-text {
-  font-size: 22rpx;
-  color: inherit;
-}
-.btn-action-disabled {
-  opacity: 0.6;
-}
-.btn-action-disabled .btn-action-text {
-  color: var(--diffuse-subtle);
+  gap: 8rpx;
+  flex-shrink: 0;
 }
 
-.canvas-hidden {
-  position: fixed;
-  left: -9999px;
-  top: 0;
-  width: 600px;
-  height: 800px;
+.index-pools-guide-text {
+  font-size: 22rpx;
+  color: #9ca3af;
+  line-height: 1.45;
+}
+
+.index-pools-guide-btn {
+  padding: 8rpx 24rpx;
+  border-radius: 999rpx;
+  background: var(--theme-fill-strong);
+  border: 1rpx solid var(--theme-solid-soft-border);
+  box-shadow: 0 4rpx 12rpx var(--theme-shadow-sm);
+  flex-shrink: 0;
+}
+
+.index-pools-guide-btn-text {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #ffffff;
+  line-height: 1.35;
+}
+
+.index-scope-panel {
+  width: 100%;
+  padding: 18rpx 20rpx 16rpx;
+  border-radius: 28rpx;
+  background-color: #ffffff;
+  background: #ffffff;
+  opacity: 1;
+  border: 1rpx solid var(--theme-border);
+  box-shadow: 0 6rpx 18rpx var(--theme-shadow-sm);
+  box-sizing: border-box;
+}
+
+.index-scope-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.index-scope-panel-title {
+  font-size: 26rpx;
+  font-weight: 400;
+  color: #a8a8b3;
+}
+
+.index-scope-panel-close {
+  font-size: 22rpx;
+  font-weight: 400;
+  color: #b8b8c3;
+  padding: 4rpx 0 4rpx 12rpx;
+}
+
+.index-scope-field {
+  position: relative;
+  width: 100%;
+  background-color: #ffffff;
+  background: #ffffff;
+  border-radius: 20rpx;
+  border: 1rpx solid var(--theme-border-soft);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.index-scope-input {
+  width: 100%;
+  min-height: 72rpx;
+  padding: 14rpx 16rpx;
+  border-radius: 20rpx;
+  background-color: #ffffff;
+  background: #ffffff;
+  border: none;
+  font-size: 24rpx;
+  font-weight: 400;
+  color: var(--diffuse-text, #374151);
+  line-height: 1.5;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.index-scope-placeholder {
+  color: #c5c5cf;
+  font-weight: 400;
+  text-align: left;
+}
+
+.index-scope-input--area {
+  display: block;
+  height: 168rpx;
+  min-height: 168rpx;
+  max-height: 168rpx;
+  padding: 14rpx 96rpx 56rpx 16rpx;
+  overflow-y: auto;
+  word-break: break-all;
+}
+
+.index-scope-inline-btn {
+  position: absolute;
+  right: 12rpx;
+  bottom: 12rpx;
+  padding: 6rpx 20rpx;
+  border-radius: 999rpx;
+  background: var(--theme-fill-solid);
+  box-shadow: 0 4rpx 12rpx var(--theme-border-mid);
+  z-index: 2;
+}
+
+.index-scope-inline-btn--applied {
+  background: var(--theme-fill-solid-dim);
+  box-shadow: none;
+}
+
+.index-scope-inline-btn--disabled {
+  opacity: 0.55;
+}
+
+.index-scope-inline-btn-text {
+  font-size: 22rpx;
+  font-weight: 500;
+  color: #ffffff;
+  line-height: 1.35;
+}
+
+/* 第三环节：牌内行高与第一、二环节一致 */
+.oc-result-card .attitude-row {
+  padding: 3rpx 0;
+}
+
+.oc-result-card .attitude-row .label {
+  width: 72rpx;
+  font-size: 22rpx;
+  padding-top: 4rpx;
+}
+
+.oc-result-card .attitude-event {
+  font-size: 20rpx;
+  line-height: 1.3;
+}
+
+.oc-result-card .attitude-input {
+  height: 44rpx;
+  font-size: 24rpx;
+}
+
+.oc-result-card .attitude-row .row-lock {
+  width: 48rpx;
+  height: 48rpx;
+  margin-top: 0;
+}
+
+.page.oc-page--gacha .oc-gacha-stage,
+.page.oc-page--gacha .oc-gacha-card-slot {
+  overflow: visible;
+}
+
+/* 三环节容器：替代 block，保证 flex 子项能正确撑开卡牌区 */
+.gacha-phase-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.gacha-phase-pane .oc-gacha-stage {
+  flex: 1;
+  min-height: calc(var(--oc-card-h) + 120rpx);
+  padding-top: 8rpx;
+  padding-bottom: 72rpx;
+}
+
+.gacha-phase-pane .oc-gacha-tap-cover {
+  z-index: 50;
+}
+
+.page.oc-page--gacha.has-tab-bar .oc-page-shell {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-top: 0;
 }

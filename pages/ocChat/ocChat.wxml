@@ -1,64 +1,630 @@
-<view class="page safe-bottom">
+<view class="page has-tab-bar {{uiThemeClass}}">
   <view class="bg-solid"></view>
-  <view class="layout">
-    <view class="oc-panel">
-      <text class="panel-title">选择 OC</text>
-      <scroll-view class="oc-scroll" scroll-y enhanced show-scrollbar="{{false}}">
-        <view
-          class="oc-item {{selectedId === item.id ? 'oc-item-active' : ''}}"
-          wx:for="{{ocList}}"
-          wx:key="id"
-          data-id="{{item.id}}"
-          bindtap="onSelectOc"
-        >
-          <text class="oc-item-name">{{item.name}}</text>
+  <oc-page-nav />
+  <view class="oc-segment-nav-float" style="{{segmentNavStyle}}">
+    <view class="oc-segment-nav-inner">
+      <oc-segment-bar current="dm" options="{{chatModeOptions}}" bind:change="onChatSegmentChange" />
+    </view>
+  </view>
+  <view class="chat-list-rail" style="{{listRailStyle}}">
+    <view class="chat-list-rail-inner">
+      <view
+        class="chat-list-toggle {{ocPanelOpen ? 'chat-list-toggle--on' : ''}}"
+        catchtap="onToggleOcPanelFromHead"
+        aria-role="button"
+      >
+        <view class="chat-list-icon">
+          <view class="chat-list-icon-line"></view>
+          <view class="chat-list-icon-line"></view>
+          <view class="chat-list-icon-line"></view>
         </view>
+      </view>
+    </view>
+  </view>
+  <view
+    class="layout"
+    bindtouchmove="onLayoutTouchMove"
+    bindtouchend="onLayoutTouchEnd"
+    bindtouchcancel="onLayoutTouchEnd"
+  >
+    <view class="oc-panel {{ocListCompact ? 'oc-panel--names' : ''}}" wx:if="{{ocPanelOpen}}">
+      <scroll-view class="oc-scroll panel-scroll-area" scroll-y show-scrollbar="{{false}}">
+        <block wx:if="{{!ocListCompact}}">
+          <view
+            class="oc-detail-card {{selectedId === item.id ? 'oc-detail-card--active' : ''}} {{dragId === item.id ? 'oc-detail-card--dragging' : ''}}"
+            wx:for="{{ocList}}"
+            wx:key="id"
+            data-id="{{item.id}}"
+            data-label="{{item.name}}"
+            bindlongpress="onCardLongPress"
+            bindtap="onSelectOc"
+          >
+            <view wx:if="{{item.hasUnread}}" class="oc-list-badge"></view>
+            <text class="oc-detail-name">{{item.name}}</text>
+            <view class="oc-detail-row">
+              <text class="oc-detail-lab">种族</text>
+              <text class="oc-detail-val">{{item.race}}</text>
+            </view>
+            <view class="oc-detail-row">
+              <text class="oc-detail-lab">性别</text>
+              <text class="oc-detail-val">{{item.gender}}</text>
+            </view>
+            <view class="oc-detail-row">
+              <text class="oc-detail-lab">年龄</text>
+              <text class="oc-detail-val">{{item.age}}</text>
+            </view>
+            <view class="oc-detail-row">
+              <text class="oc-detail-lab">性格</text>
+              <text class="oc-detail-val">{{item.personalityText}}</text>
+            </view>
+            <view class="oc-detail-row">
+              <text class="oc-detail-lab">怪癖</text>
+              <text class="oc-detail-val">{{item.quirkText}}</text>
+            </view>
+          </view>
+        </block>
+        <block wx:else>
+          <view
+            class="oc-item {{selectedId === item.id ? 'oc-item-active' : ''}} {{dragId === item.id ? 'oc-item--dragging' : ''}}"
+            wx:for="{{ocList}}"
+            wx:key="id"
+            data-id="{{item.id}}"
+            data-label="{{item.name}}"
+            bindlongpress="onCardLongPress"
+            bindtap="onSelectOc"
+          >
+            <view wx:if="{{item.hasUnread}}" class="oc-list-badge"></view>
+            <text class="oc-item-name">{{item.name}}</text>
+          </view>
+        </block>
         <view class="oc-empty" wx:if="{{ocList.length === 0}}">
-          <text>暂无 OC。请先在首页抽卡并收藏，或在 OC 设定本中填写姓名。</text>
+          <text>暂无 OC。请先在首页抽卡，或在设定本中保存角色。</text>
         </view>
       </scroll-view>
+      <view class="panel-trash {{trashHighlight ? 'panel-trash--hot' : ''}}" id="panel-trash">
+        <text class="panel-trash-icon-char">🗑</text>
+        <text class="panel-trash-hint">拖到此处删除全部对话</text>
+      </view>
     </view>
 
-    <view class="chat-panel">
-      <view class="chat-head" wx:if="{{selectedName}}">
-        <text class="chat-with">与 {{selectedName}} 对话</text>
-        <text class="chat-clear" bindtap="onClearChat">清空</text>
+    <view class="chat-column">
+      <view class="chat-panel">
+      <image
+        wx:if="{{chatBackgroundUrl}}"
+        class="chat-bg-image"
+        src="{{chatBackgroundUrl}}"
+        mode="aspectFill"
+      />
+      <view class="chat-bg-overlay" wx:if="{{chatBackgroundUrl}}"></view>
+      <view class="chat-head chat-head--picker">
+        <view class="chat-head-top">
+          <view class="chat-oc-name-box" wx:if="{{selectedName}}" catchtap="onRenameOcTap">
+            <text class="chat-oc-name-text">{{selectedName}}</text>
+          </view>
+          <view class="chat-oc-name-box chat-oc-name-box--empty" wx:else>
+            <text class="chat-oc-name-text chat-oc-name-text--empty">选择 OC</text>
+          </view>
+          <view class="chat-head-actions">
+            <view class="chat-quota-badge" catchtap="onTapQuotaBadge">
+              <text class="chat-quota-text">本周已用 {{quotaUsed}}/剩余 {{quotaLeft}}</text>
+            </view>
+            <block wx:if="{{selectedName}}">
+            <view class="oc-chip-btn oc-chip-btn--with-chevron" bindtap="onToggleSessionPicker">
+              <text class="oc-chip-btn-text">对话</text>
+              <view class="oc-chevron oc-chevron--down"></view>
+            </view>
+            <view class="chat-head-more-wrap">
+              <view class="chat-more-btn chat-more-btn--head" catchtap="onToggleChatMore">
+                <text class="chat-more-icon">⋯</text>
+              </view>
+              <view wx:if="{{chatMoreOpen}}" class="chat-more-menu chat-more-menu--head" catchtap="">
+                <view class="chat-more-item" catchtap="onMorePickBackground">背景</view>
+                <view class="chat-more-item" catchtap="onMorePickBackup">备份</view>
+                <view class="chat-more-item" catchtap="onMorePickSave">保存</view>
+              </view>
+            </view>
+            </block>
+          </view>
+        </view>
+        <view class="session-picker" wx:if="{{sessionPickerOpen && selectedName}}">
+          <wxs src="../../utils/sessionPicker.wxs" module="sp" />
+          <view class="session-picker-top">
+            <view
+              class="session-picker-top-new"
+              wx:if="{{!sessionManageMode}}"
+              bindtap="onCreateSessionFromPicker"
+            >
+              <text class="session-picker-title">＋ 新建对话窗口</text>
+            </view>
+            <text class="session-picker-selected-count" wx:else>已选 {{sessionSelectedIds.length}} 项</text>
+            <view class="oc-chip-btn session-picker-manage-btn" catchtap="onToggleSessionManage">
+              <text class="oc-chip-btn-text">{{sessionManageMode ? '完成' : '管理'}}</text>
+            </view>
+          </view>
+          <scroll-view
+            class="session-picker-scroll"
+            scroll-y
+            enhanced
+            show-scrollbar="{{false}}"
+          >
+            <view
+              class="session-picker-item {{sessionId === item.id ? 'session-picker-item--active' : ''}} {{sessionManageMode && sp.isSelected(sessionSelectedIds, item.id) ? 'session-picker-item--checked' : ''}}"
+              wx:for="{{sessionList}}"
+              wx:key="id"
+              data-id="{{item.id}}"
+              catchtap="onSessionRowTap"
+            >
+              <view
+                class="session-picker-check {{sp.isSelected(sessionSelectedIds, item.id) ? 'session-picker-check--on' : ''}}"
+                wx:if="{{sessionManageMode}}"
+              >
+                <text class="session-picker-check-icon" wx:if="{{sp.isSelected(sessionSelectedIds, item.id)}}">✓</text>
+              </view>
+              <view class="session-picker-item-main" data-id="{{item.id}}" bindtap="onPickSession">
+                <text class="session-picker-title" data-id="{{item.id}}" catchtap="onSessionTitleTap">{{item.title || '对话'}}</text>
+                <text class="session-picker-preview" wx:if="{{item.preview}}">{{item.preview}}</text>
+              </view>
+              <view
+                class="oc-chip-btn session-picker-del"
+                wx:if="{{!sessionManageMode}}"
+                data-id="{{item.id}}"
+                catchtap="onDeleteSessionTap"
+              >
+                <text class="oc-chip-btn-text">删除</text>
+              </view>
+            </view>
+            <view class="session-picker-empty" wx:if="{{sessionList.length === 0}}">
+              <text>暂无其它窗口</text>
+            </view>
+          </scroll-view>
+          <view class="session-picker-manage-bar" wx:if="{{sessionManageMode}}">
+            <text class="session-picker-manage-link" bindtap="onSelectAllSessions">全选</text>
+            <view class="oc-chip-btn session-picker-batch-del" bindtap="onBatchDeleteSessions">
+              <text class="oc-chip-btn-text">删除</text>
+            </view>
+          </view>
+          <text class="session-picker-hint" wx:else>点击列表切换对话；双击对话名称可修改</text>
+        </view>
+      </view>
+      <view class="scenario-bar" wx:if="{{selectedId}}">
+        <view class="scenario-main" wx:if="{{scenario}}">
+          <text class="scenario-label">情景</text>
+          <text class="scenario-title">{{scenarioTitle}}</text>
+          <view class="scenario-actions-end">
+            <view class="oc-chip-btn scenario-chip" catchtap="onImportScenario">
+              <text class="oc-chip-btn-text">更换</text>
+            </view>
+            <view class="oc-chip-btn scenario-chip" catchtap="onClearScenario">
+              <text class="oc-chip-btn-text">清除</text>
+            </view>
+          </view>
+        </view>
+        <view class="scenario-main scenario-main--empty" wx:else>
+          <text class="scenario-hint">未导入情景</text>
+          <view class="oc-chip-btn scenario-chip" bindtap="onImportScenario">
+            <text class="oc-chip-btn-text">导入故事</text>
+          </view>
+        </view>
+        <view class="scenario-preview" wx:if="{{scenario && scenarioPreviewBlocks.length}}">
+          <text class="scenario-preview-label">故事预览（前三段）</text>
+          <view class="scenario-preview-p" wx:for="{{scenarioPreviewBlocks}}" wx:key="index">
+            <text user-select>{{item}}</text>
+          </view>
+        </view>
       </view>
       <scroll-view
         class="chat-scroll"
         scroll-y
         scroll-into-view="{{scrollTo}}"
-        enhanced
         show-scrollbar="{{false}}"
+        bindtap="onCloseMsgMenu"
       >
         <view class="chat-inner">
-          <view class="msg-hint" wx:if="{{!selectedId}}">请从左侧选择一名 OC</view>
-          <view class="msg-hint" wx:elif="{{messages.length === 0}}">说点什么，让 TA 回应你吧</view>
-          <view
-            class="msg-row {{item.role === 'user' ? 'msg-user' : 'msg-assistant'}}"
-            wx:for="{{messages}}"
-            wx:key="index"
-          >
-            <text class="msg-bubble" user-select>{{item.content}}</text>
+          <view class="msg-hint" wx:if="{{!selectedId}}">{{ocPanelOpen ? '请从列表选择一名 OC' : '点击左侧列表选择 OC'}}</view>
+          <view class="msg-hint" wx:elif="{{messages.length === 0}}">{{scenario ? '已载入情景，说点什么开始演绎吧' : '说点什么，让 TA 回应你吧'}}</view>
+          <block wx:for="{{messages}}" wx:for-index="msgIdx" wx:key="msgIdx">
+            <view class="msg-time-divider" wx:if="{{item.showTimeDivider && item.timeLabel}}">
+              <text class="msg-time-divider-text">{{item.timeLabel}}</text>
+            </view>
+            <view
+              class="msg-row {{item.role === 'user' ? 'msg-user' : 'msg-assistant'}}"
+            >
+              <block wx:if="{{item.role !== 'user'}}">
+                <view
+                  class="msg-avatar-hit {{avatarPressKey === ('oc-' + msgIdx) ? 'msg-avatar-hit--active' : ''}}"
+                  catchtouchstart="onAvatarTouchStart"
+                  catchtouchmove="onAvatarTouchMoveBlock"
+                  catchtouchend="onAvatarTouchEnd"
+                  catchtouchcancel="onAvatarTouchEnd"
+                  catchtap="onAvatarTap"
+                  catchlongpress="onAvatarLongPress"
+                  data-avatar-target="oc"
+                  data-msg-index="{{msgIdx}}"
+                  data-oc-id="{{item.ocId || selectedId}}"
+                  data-label="{{selectedName}}"
+                >
+                  <image
+                    wx:if="{{ocAvatarUrl}}"
+                    class="msg-avatar"
+                    src="{{ocAvatarUrl}}"
+                    mode="aspectFill"
+                    show-menu-by-longpress="{{false}}"
+                  />
+                  <view wx:else class="msg-avatar msg-avatar--placeholder">
+                    <text class="msg-avatar-letter">{{ocAvatarLetter}}</text>
+                  </view>
+                </view>
+                <view class="msg-bubble-wrap">
+                  <block wx:if="{{item.kind === 'game_dice'}}">
+                    <view class="msg-game msg-game--dice msg-game--oc">
+                      <view class="msg-dice-faces">
+                        <view class="msg-dice-face" wx:for="{{item.game.values}}" wx:for-item="face" wx:for-index="faceIdx" wx:key="faceIdx">
+                          <text class="msg-dice-num">{{face}}</text>
+                        </view>
+                      </view>
+                      <text class="msg-game-sub" wx:if="{{item.game.rivalValue}}">你 {{item.game.rivalValue}} · TA {{item.game.value}}</text>
+                    </view>
+                  </block>
+                  <block wx:elif="{{item.kind === 'game_money'}}">
+                    <view
+                      class="msg-money {{item.game.type === 'transfer' ? 'msg-money--transfer' : 'msg-money--red'}} {{item.game.status === 'sent' || item.game.status === 'waiting' ? 'msg-money--claimable' : ''}} {{item.game.status === 'rejected' ? 'msg-money--rejected' : ''}}"
+                      catchtap="onMoneyCardTap"
+                      data-index="{{msgIdx}}"
+                    >
+                      <view class="msg-money-top">
+                        <text class="msg-money-kind">{{item.game.type === 'transfer' ? '转账' : '红包'}}</text>
+                        <block wx:if="{{item.game.type === 'transfer'}}">
+                          <text class="msg-money-amount">¥{{item.game.amountText || item.game.amount}}</text>
+                        </block>
+                        <block wx:elif="{{item.game.status === 'claimed' || item.game.status === 'accepted'}}">
+                          <text class="msg-money-amount">¥{{item.game.amountText || item.game.amount}}</text>
+                        </block>
+                        <block wx:elif="{{item.game.status === 'rejected'}}">
+                          <text class="msg-money-seal">已退回</text>
+                        </block>
+                        <block wx:else>
+                          <text class="msg-money-seal">待拆开</text>
+                        </block>
+                      </view>
+                      <text class="msg-money-bless" wx:if="{{item.game.type !== 'transfer' && (item.game.status === 'sent' || item.game.status === 'waiting')}}">{{item.game.blessing || '恭喜发财，大吉大利'}}</text>
+                      <text class="msg-money-status" wx:if="{{item.game.status === 'sent' || item.game.status === 'waiting'}}">{{item.game.type === 'transfer' ? '点击收款或退回' : '点击领取或退回'}}</text>
+                      <text class="msg-money-status" wx:elif="{{item.game.status === 'claimed'}}">已领取 ¥{{item.game.amountText || item.game.amount}}</text>
+                      <text class="msg-money-status" wx:elif="{{item.game.status === 'accepted'}}">已收款</text>
+                      <text class="msg-money-status" wx:elif="{{item.game.status === 'rejected'}}">已退回给对方</text>
+                    </view>
+                  </block>
+                  <view wx:else class="msg-bubble" user-select>{{item.content}}</view>
+                  <view class="msg-bubble-foot">
+                    <text wx:if="{{item.timeLabel}}" class="msg-time-inline">{{item.timeLabel}}</text>
+                    <view
+                      class="msg-more-btn"
+                      catchtap="onMsgMoreTap"
+                      data-index="{{msgIdx}}"
+                    >···</view>
+                  </view>
+                  <view
+                    wx:if="{{msgMenuIndex === msgIdx}}"
+                    class="msg-action-menu"
+                    catchtap=""
+                  >
+                    <view class="msg-action-item" catchtap="onMsgRegenerate" data-index="{{msgIdx}}">重说</view>
+                    <view class="msg-action-item msg-action-item--danger" catchtap="onMsgDelete" data-index="{{msgIdx}}">删除</view>
+                  </view>
+                </view>
+              </block>
+              <block wx:else>
+                <view class="msg-bubble-wrap msg-bubble-wrap--user">
+                  <view wx:if="{{item.recalled}}" class="msg-bubble msg-bubble--recalled">你撤回了一条消息</view>
+                  <block wx:elif="{{item.kind === 'game_dice'}}">
+                    <view class="msg-game msg-game--dice" catchlongpress="onMessageLongPress" data-index="{{msgIdx}}">
+                      <view class="msg-dice-faces">
+                        <view class="msg-dice-face" wx:for="{{item.game.values}}" wx:for-item="face" wx:for-index="faceIdx" wx:key="faceIdx">
+                          <text class="msg-dice-num">{{face}}</text>
+                        </view>
+                      </view>
+                    </view>
+                    <view class="msg-bubble-foot msg-bubble-foot--user">
+                      <text wx:if="{{item.timeLabel}}" class="msg-time-inline">{{item.timeLabel}}</text>
+                    </view>
+                  </block>
+                  <block wx:elif="{{item.kind === 'game_money'}}">
+                    <view
+                      class="msg-money {{item.game.type === 'transfer' ? 'msg-money--transfer' : 'msg-money--red'}} msg-money--user"
+                      catchlongpress="onMessageLongPress"
+                      data-index="{{msgIdx}}"
+                    >
+                      <view class="msg-money-top">
+                        <text class="msg-money-kind">{{item.game.type === 'transfer' ? '转账' : '红包'}}</text>
+                        <text class="msg-money-amount">¥{{item.game.amountText || item.game.amount}}</text>
+                      </view>
+                      <text class="msg-money-status" wx:if="{{item.game.status === 'waiting'}}">待对方处理</text>
+                      <text class="msg-money-status" wx:elif="{{item.game.status === 'accepted'}}">对方已接收</text>
+                      <text class="msg-money-status" wx:elif="{{item.game.status === 'rejected'}}">对方已退回</text>
+                    </view>
+                    <view class="msg-bubble-foot msg-bubble-foot--user">
+                      <text wx:if="{{item.timeLabel}}" class="msg-time-inline">{{item.timeLabel}}</text>
+                    </view>
+                  </block>
+                  <block wx:else>
+                    <view
+                      class="msg-bubble"
+                      user-select
+                      catchlongpress="onMessageLongPress"
+                      data-index="{{msgIdx}}"
+                    >{{item.content}}</view>
+                    <view class="msg-bubble-foot msg-bubble-foot--user">
+                      <text wx:if="{{item.timeLabel}}" class="msg-time-inline">{{item.timeLabel}}</text>
+                      <text wx:if="{{item.canRecall}}" class="msg-recall-hint">长按撤回</text>
+                    </view>
+                  </block>
+                </view>
+                <view
+                  class="msg-avatar-hit {{avatarPressKey === ('oc-' + msgIdx) ? 'msg-avatar-hit--active' : ''}}"
+                  catchtouchstart="onAvatarTouchStart"
+                  catchtouchmove="onAvatarTouchMoveBlock"
+                  catchtouchend="onAvatarTouchEnd"
+                  catchtouchcancel="onAvatarTouchEnd"
+                  catchtap="onAvatarTap"
+                  catchlongpress="onAvatarLongPress"
+                  data-avatar-target="user"
+                  data-msg-index="{{msgIdx}}"
+                >
+                  <image
+                    wx:if="{{userAvatarUrl}}"
+                    class="msg-avatar"
+                    src="{{userAvatarUrl}}"
+                    mode="aspectFill"
+                    show-menu-by-longpress="{{false}}"
+                  />
+                  <view wx:else class="msg-avatar msg-avatar--placeholder msg-avatar--user">
+                    <text class="msg-avatar-letter">我</text>
+                  </view>
+                </view>
+              </block>
+            </view>
+          </block>
+          <!-- 用户侧：先播摇骰动画 -->
+          <view class="msg-row msg-user" wx:if="{{diceRolling}}">
+            <view class="msg-bubble-wrap msg-bubble-wrap--user">
+              <view class="msg-game msg-game--dice msg-game--rolling">
+                <view class="msg-dice-face msg-dice-face--spin">
+                  <text class="msg-dice-num">?</text>
+                </view>
+              </view>
+            </view>
+            <view class="msg-avatar-hit">
+              <image
+                wx:if="{{userAvatarUrl}}"
+                class="msg-avatar"
+                src="{{userAvatarUrl}}"
+                mode="aspectFill"
+                show-menu-by-longpress="{{false}}"
+              />
+              <view wx:else class="msg-avatar msg-avatar--placeholder msg-avatar--user">
+                <text class="msg-avatar-letter">我</text>
+              </view>
+            </view>
+          </view>
+          <!-- OC 侧：仅在等回复时显示输入中 -->
+          <view class="msg-row msg-assistant" wx:if="{{loading}}">
+            <view
+              class="msg-avatar-hit {{avatarPressKey === ('oc-' + selectedId) ? 'msg-avatar-hit--active' : ''}}"
+              catchtouchstart="onAvatarTouchStart"
+              catchtouchmove="onAvatarTouchMoveBlock"
+              catchtouchend="onAvatarTouchEnd"
+              catchtouchcancel="onAvatarTouchEnd"
+              catchtap="onAvatarTap"
+              catchlongpress="onAvatarLongPress"
+              data-avatar-target="oc"
+              data-oc-id="{{selectedId}}"
+              data-label="{{selectedName}}"
+            >
+              <image
+                wx:if="{{ocAvatarUrl}}"
+                class="msg-avatar"
+                src="{{ocAvatarUrl}}"
+                mode="aspectFill"
+                show-menu-by-longpress="{{false}}"
+              />
+              <view wx:else class="msg-avatar msg-avatar--placeholder">
+                <text class="msg-avatar-letter">{{ocAvatarLetter}}</text>
+              </view>
+            </view>
+            <view class="msg-bubble msg-bubble--waiting">
+              <text class="msg-waiting-text">对方输入中</text>
+            </view>
           </view>
           <view id="chat-bottom" class="chat-anchor"></view>
         </view>
       </scroll-view>
+      <view class="composer-tools" wx:if="{{composerToolsOpen}}">
+        <view class="composer-tool" bindtap="onRollDiceTap">
+          <view class="composer-tool-icon">骰</view>
+          <text class="composer-tool-label">摇骰子</text>
+        </view>
+        <view class="composer-tool" bindtap="onRedPacketTap">
+          <view class="composer-tool-icon composer-tool-icon--red">包</view>
+          <text class="composer-tool-label">红包</text>
+        </view>
+        <view class="composer-tool" bindtap="onTransferTap">
+          <view class="composer-tool-icon composer-tool-icon--pay">转</view>
+          <text class="composer-tool-label">转账</text>
+        </view>
+      </view>
       <view class="composer">
+        <view
+          class="composer-plus {{composerToolsOpen ? 'composer-plus--on' : ''}} {{!selectedId || loading || diceRolling ? 'disabled' : ''}}"
+          bindtap="onToggleComposerTools"
+        >
+          <text class="composer-plus-icon">{{composerToolsOpen ? '×' : '+'}}</text>
+        </view>
         <input
           class="composer-input"
           value="{{inputText}}"
           bindinput="onInput"
+          bindfocus="onCloseComposerTools"
           confirm-type="send"
           bindconfirm="onSend"
           placeholder="{{selectedId ? '输入消息…' : '请先选择 OC'}}"
-          disabled="{{!selectedId || loading}}"
+          disabled="{{!selectedId || loading || diceRolling}}"
         />
-        <view class="pixel-btn pixel-btn-primary send-btn {{loading || !selectedId ? 'disabled' : ''}}" bindtap="onSend">
+        <view class="pixel-btn pixel-btn-primary send-btn {{loading || diceRolling || !selectedId ? 'disabled' : ''}}" bindtap="onSend">
           <text class="send-t">发送</text>
         </view>
       </view>
     </view>
+    </view>
   </view>
-  <oc-nav current="chat" />
+  <view
+    class="drag-ghost"
+    wx:if="{{dragging}}"
+    style="left: {{dragX}}px; top: {{dragY}}px;"
+  >
+    <text>{{dragLabel}}</text>
+  </view>
+
+  <view class="rename-mask" wx:if="{{moneySheetVisible}}" catchtap="onCloseMoneySheet"></view>
+  <view class="rename-sheet money-sheet" wx:if="{{moneySheetVisible}}" catchtap="">
+    <text class="rename-sheet-title">{{moneySheetTitle}}</text>
+    <text class="money-sheet-hint">{{moneySheetType === 'transfer' ? '虚拟玩法，转账金额不限' : '虚拟玩法，红包最多 200 元'}}</text>
+    <view class="money-amount-row">
+      <text class="money-amount-yen">¥</text>
+      <input
+        class="money-amount-input"
+        type="digit"
+        value="{{moneyAmountInput}}"
+        bindinput="onMoneyAmountInput"
+        placeholder="输入金额"
+        focus="{{moneySheetVisible}}"
+      />
+    </view>
+    <view class="money-presets">
+      <view
+        class="money-preset"
+        wx:for="{{moneyPresets}}"
+        wx:key="*this"
+        data-amount="{{item}}"
+        bindtap="onMoneyPresetTap"
+      >{{item}}</view>
+    </view>
+    <view class="story-import-actions">
+      <view class="pixel-btn btn-wire-secondary story-import-btn" bindtap="onCloseMoneySheet">取消</view>
+      <view class="pixel-btn pixel-btn-primary story-import-btn" bindtap="onConfirmMoneySend">发送</view>
+    </view>
+  </view>
+
+  <view class="rename-mask" wx:if="{{renameVisible}}" catchtap="onCancelRename"></view>
+  <view class="rename-sheet" wx:if="{{renameVisible}}">
+    <text class="rename-sheet-title">{{renameMode === 'oc' ? '修改 OC 备注' : renameMode === 'group' ? '修改群名称' : '修改对话名称'}}</text>
+    <input
+      class="rename-input"
+      value="{{renameInput}}"
+      bindinput="onRenameInput"
+      maxlength="40"
+      focus="{{renameVisible}}"
+    />
+    <view class="story-import-actions">
+      <view class="pixel-btn btn-wire-secondary story-import-btn" bindtap="onCancelRename">取消</view>
+      <view class="pixel-btn pixel-btn-primary story-import-btn" bindtap="onConfirmRename">确定</view>
+    </view>
+  </view>
+
+  <view class="story-import-mask" wx:if="{{storyImportVisible}}" catchtap="onCancelStoryImport"></view>
+  <view class="story-import-sheet" wx:if="{{storyImportVisible}}">
+    <text class="story-import-title">{{storyImportTitle}}</text>
+    <text class="story-import-sub">确认导入以下情景？（前三段）</text>
+    <scroll-view class="story-import-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="scenario-preview-p" wx:for="{{storyImportBlocks}}" wx:key="index">
+        <text user-select>{{item}}</text>
+      </view>
+    </scroll-view>
+    <view class="story-import-actions">
+      <view class="pixel-btn btn-wire-secondary story-import-btn" bindtap="onCancelStoryImport">取消</view>
+      <view class="pixel-btn pixel-btn-primary story-import-btn" bindtap="onConfirmStoryImport">导入情景</view>
+    </view>
+  </view>
+
+  <view class="rename-mask" wx:if="{{avatarEditVisible}}"></view>
+  <view class="rename-sheet avatar-edit-sheet" wx:if="{{avatarEditVisible}}">
+    <text class="rename-sheet-title">设置{{avatarEditLabel}}</text>
+    <view class="avatar-edit-preview-wrap">
+      <image
+        wx:if="{{avatarEditPreview}}"
+        class="avatar-edit-preview"
+        src="{{avatarEditPreview}}"
+        mode="aspectFill"
+      />
+      <view wx:else class="avatar-edit-preview avatar-edit-preview--empty">
+        <text class="avatar-edit-preview-hint">点「修改」选图</text>
+      </view>
+    </view>
+    <view class="avatar-edit-actions">
+      <view class="pixel-btn btn-wire-secondary avatar-edit-action-btn" catchtap="onAvatarModify">
+        <text class="btn-t">修改</text>
+      </view>
+      <view
+        class="pixel-btn pixel-btn-primary avatar-edit-action-btn {{avatarEditHasSavedAvatar && !avatarEditPickedNew ? 'disabled' : ''}}"
+        catchtap="onAvatarSave"
+      >
+        <text class="btn-t">保存</text>
+      </view>
+      <view
+        class="pixel-btn btn-ghost avatar-edit-action-btn avatar-edit-action-btn--danger {{avatarEditCanDelete ? '' : 'disabled'}}"
+        catchtap="onAvatarDelete"
+      >
+        <text class="btn-t">删除</text>
+      </view>
+      <view class="pixel-btn btn-wire-secondary avatar-edit-action-btn" catchtap="onCancelAvatarEdit">
+        <text class="btn-t">取消</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="rename-mask" wx:if="{{bgEditVisible}}" catchtap="onCancelBgEdit"></view>
+  <view class="rename-sheet avatar-edit-sheet" wx:if="{{bgEditVisible}}">
+    <text class="rename-sheet-title">聊天背景</text>
+    <view class="avatar-edit-preview-wrap avatar-edit-preview-wrap--wide">
+      <image class="avatar-edit-preview avatar-edit-preview--wide" src="{{bgEditPreview}}" mode="aspectFill" />
+    </view>
+    <view class="avatar-edit-actions">
+      <view class="pixel-btn btn-wire-secondary avatar-edit-action-btn" catchtap="onBgModify">
+        <text class="btn-t">修改</text>
+      </view>
+      <view
+        class="pixel-btn pixel-btn-primary avatar-edit-action-btn {{bgEditHasSaved && !bgEditPickedNew ? 'disabled' : ''}}"
+        catchtap="onBgSave"
+      >
+        <text class="btn-t">保存</text>
+      </view>
+      <view
+        class="pixel-btn btn-ghost avatar-edit-action-btn avatar-edit-action-btn--danger {{bgEditCanDelete ? '' : 'disabled'}}"
+        catchtap="onBgDelete"
+      >
+        <text class="btn-t">删除</text>
+      </view>
+    </view>
+  </view>
+
+  <canvas
+    wx:if="{{snapshotCanvasOn}}"
+    type="2d"
+    id="chat-snapshot-canvas"
+    class="chat-snapshot-canvas"
+  ></canvas>
+  <oc-tab-bar
+    wx:if="{{!renameVisible && !storyImportVisible && !avatarEditVisible && !bgEditVisible && !quotaSheetVisible && !moneySheetVisible}}"
+    current="chat"
+    chat-mode="dm"
+  />
+  <quota-unlock-sheet
+    wx:if="{{quotaSheetVisible}}"
+    visible="{{true}}"
+    share-left="{{quotaSheetShareLeft}}"
+    oa-visible="{{quotaOaQrVisible}}"
+    bind:share="onQuotaSheetShareTap"
+    bind:redeem="onQuotaSheetRedeemTap"
+    bind:followoa="onQuotaSheetFollowOaTap"
+    bind:closeoa="onQuotaSheetCloseOaTap"
+    bind:close="onQuotaSheetCloseTap"
+  />
 </view>

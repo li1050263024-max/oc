@@ -1,5 +1,6 @@
 const STORAGE_FAVORITES = 'oc_favorites';
-const STORAGE_OC_WORK = 'oc_work_in_progress';
+const { loadFavoriteToWork } = require('../../utils/favorite.js');
+const { normalizeResult, personalityBlend, quirkBlend } = require('../../utils/ocResult.js');
 
 Page({
   data: {
@@ -17,6 +18,15 @@ Page({
   loadList() {
     let list = wx.getStorageSync(STORAGE_FAVORITES) || [];
     if (!Array.isArray(list)) list = [];
+    list = list.map((item) => {
+      const r = normalizeResult(item.result || {});
+      return {
+        ...item,
+        result: r,
+        personalityText: personalityBlend(r) || '—',
+        quirkText: quirkBlend(r) || '—'
+      };
+    });
     this.setData({ list });
   },
 
@@ -35,29 +45,33 @@ Page({
     wx.navigateBack();
   },
 
-  /** 载入到 OC 设定本 / 进行中存档 */
+  /** 载入到 OC 设定详情页 */
   onLoadToNotebook(e) {
     const id = e.currentTarget.dataset.id;
-    const list = wx.getStorageSync(STORAGE_FAVORITES) || [];
-    const item = list.find((i) => i.id === id);
-    if (!item || !item.result) return;
-    const work = {
-      result: { ...item.result },
-      background: item.background ? { ...item.background } : null,
-      catchphrases: (item.catchphrases || []).slice(),
-      attitudes: (item.attitudes || []).map((a) => ({ ...a })),
-      generatedBio: item.generatedBio || '',
-      layer2Done: true,
-      layer3Done: true
-    };
-    wx.setStorageSync(STORAGE_OC_WORK, work);
-    wx.navigateTo({ url: '/pages/ocNotebook/ocNotebook' });
+    if (!id) return;
+    wx.navigateTo({
+      url: '/pages/ocNotebookEdit/ocNotebookEdit?id=' + encodeURIComponent(id)
+    });
+  },
+
+  /** 查看 / 生成 OC 小传 */
+  onViewBio(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    const work = loadFavoriteToWork(id);
+    if (!work) {
+      wx.showToast({ title: '未找到该收藏', icon: 'none' });
+      return;
+    }
+    wx.navigateTo({ url: '/pages/ocBioHub/ocBioHub?ocId=' + encodeURIComponent(id) });
   },
 
   /** 与该 OC 对话 */
   onChat(e) {
     const id = e.currentTarget.dataset.id;
     if (!id) return;
+    const { ensureOcIdBioForChat } = require('../../utils/ocChatGate.js');
+    if (!ensureOcIdBioForChat(id)) return;
     wx.navigateTo({ url: '/pages/ocChat/ocChat?ocId=' + encodeURIComponent(id) });
   },
 
@@ -68,18 +82,24 @@ Page({
     const list = wx.getStorageSync(STORAGE_FAVORITES) || [];
     const item = list.find(i => i.id === id);
     if (!item || !item.result) return;
-    const r = item.result;
+    const r = normalizeResult(item.result);
     let lines = [
       '【OC 设定】',
       `姓名：${r.name}`,
       `种族：${r.race}`,
+      `性别：${r.gender}`,
+      `年龄：${r.age}`,
       `发色：${r.hairColor}`,
       `瞳色：${r.eyeColor}`,
-      `性格：${r.personality}`,
-      `怪癖：${r.quirk}`
+      `性格：${personalityBlend(r)}`,
+      r.likes ? `喜欢：${r.likes}` : '',
+      `怪癖：${quirkBlend(r)}`
     ];
     if (item.background && item.background.worldview) {
       lines.push('', '【背景故事】', `世界观：${item.background.worldview}`);
+      (item.background.origins || []).forEach((ev, i) => {
+        if (ev) lines.push(`身世设定${i + 1}：${ev}`);
+      });
       (item.background.lifeEvents || []).forEach((ev, i) => lines.push(`人生大事件${i + 1}：${ev}`));
     }
     if (item.catchphrases && item.catchphrases.length) {

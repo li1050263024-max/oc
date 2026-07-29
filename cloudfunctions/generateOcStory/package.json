@@ -1,0 +1,7 @@
+{
+  "name": "generateOcStory",
+  "version": "1.0.0",
+  "description": "DeepSeek 生成 OC 故事",
+  "main": "index.js",
+  "dependencies": {}
+}

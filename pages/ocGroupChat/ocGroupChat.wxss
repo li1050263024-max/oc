@@ -1,0 +1,107 @@
+@import './_shared_ocChat.wxss';
+
+.panel-new-btn--bottom {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 8rpx 10rpx 0;
+  padding: 14rpx 12rpx;
+  border-radius: 10rpx;
+  border: 1rpx solid var(--theme-border-strong);
+  background: var(--theme-fill-soft);
+}
+.panel-new-btn--bottom .panel-list-btn-text {
+  font-size: 24rpx;
+}
+
+.panel-pick-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 12rpx;
+  font-size: 22rpx;
+  color: var(--diffuse-subtle);
+  flex-shrink: 0;
+}
+.panel-pick-cancel {
+  color: var(--diffuse-highlight);
+  padding: 4rpx 8rpx;
+}
+
+.pick-item {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  padding: 16rpx 12rpx;
+  border-top: 1rpx solid var(--theme-border-faint);
+}
+.pick-item--on {
+  background: var(--theme-fill-soft);
+}
+.pick-check {
+  width: 32rpx;
+  font-size: 24rpx;
+  color: var(--diffuse-highlight);
+  text-align: center;
+}
+
+.panel-pick-go {
+  flex-shrink: 0;
+  margin: 10rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 36rpx;
+  font-size: 26rpx;
+  color: #fff;
+}
+.panel-pick-go.disabled {
+  opacity: 0.5;
+}
+
+.room-detail-card {
+  margin: 10rpx 10rpx 0;
+  padding: 14rpx 12rpx;
+  border-radius: 12rpx;
+  border: 1rpx solid var(--theme-border);
+  background: rgba(255, 255, 255, 0.35);
+}
+.room-detail-card--active {
+  border-color: rgba(124, 58, 237, 0.45);
+  background: var(--theme-fill-soft3);
+}
+.room-preview-line {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: var(--diffuse-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msg-col {
+  flex: 1;
+  min-width: 0;
+  max-width: calc(100% - 84rpx);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.msg-speaker {
+  font-size: 22rpx;
+  color: var(--diffuse-highlight);
+  margin-bottom: 6rpx;
+  padding-left: 4rpx;
+}
+
+.msg-col .msg-bubble-wrap {
+  max-width: 100%;
+  width: 100%;
+}
+
+.room-detail-card--dragging {
+  opacity: 0.35;
+}

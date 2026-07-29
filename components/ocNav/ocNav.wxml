@@ -1,39 +1,45 @@
 <view class="oc-nav-root">
   <view
-    class="nav-fab {{popupOpen ? 'nav-fab-open' : ''}}"
+    wx:if="{{tutorialMask && popupOpen}}"
+    class="nav-tutorial-mask"
+    catchtap="onDismissTutorial"
+  ></view>
+
+  <view
+    wx:if="{{!popupOpen}}"
+    class="nav-fab"
     style="left: {{fabLeft}}px; top: {{fabTop}}px;"
-    bindtap="onTogglePopup"
+    catchtouchstart="onFabDragStart"
+    catchtouchmove="onFabDragMove"
+    catchtouchend="onFabDragEnd"
+    catchtouchcancel="onFabDragEnd"
   >
-    <text class="nav-fab-icon">{{popupOpen ? '×' : '☰'}}</text>
+    <text class="nav-fab-icon">☰</text>
   </view>
 
   <view
     wx:if="{{popupOpen}}"
     class="nav-popup"
     style="left: {{panelLeft}}px; top: {{panelTop}}px;"
-    catchtouchmove="preventBubble"
   >
-    <view
-      class="nav-popup-head"
-      bindtouchstart="onDragStart"
-      bindtouchmove="onDragMove"
-      bindtouchend="onDragEnd"
-      bindtouchcancel="onDragEnd"
-    >
-      <text class="nav-drag-hint">按住拖动</text>
-      <text class="nav-popup-close" catchtap="onClosePopup">×</text>
+    <view class="nav-popup-head">
+      <view
+        class="nav-drag-handle"
+        catchtouchstart="onPanelDragStart"
+        catchtouchmove="onPanelDragMove"
+        catchtouchend="onPanelDragEnd"
+        catchtouchcancel="onPanelDragEnd"
+      >
+        <text class="nav-drag-hint">拖动导航</text>
+      </view>
+      <view class="nav-popup-close" catchtap="onClosePopup">×</view>
     </view>
-    <view class="nav-popup-list">
+    <scroll-view class="nav-popup-list" scroll-y enhanced show-scrollbar="{{false}}">
       <view
         class="nav-popup-item {{current === 'index' ? 'nav-popup-item-active' : ''}}"
         data-key="index"
         catchtap="onNavTap"
       >首页</view>
-      <view
-        class="nav-popup-item {{current === 'favorites' ? 'nav-popup-item-active' : ''}}"
-        data-key="favorites"
-        catchtap="onNavTap"
-      >历史收藏</view>
       <view
         class="nav-popup-item {{current === 'pools' ? 'nav-popup-item-active' : ''}}"
         data-key="pools"
@@ -45,15 +51,67 @@
         catchtap="onNavTap"
       >设定本</view>
       <view
-        class="nav-popup-item {{current === 'chat' ? 'nav-popup-item-active' : ''}} {{layer3Ready ? '' : 'nav-popup-item-disabled'}}"
+        class="nav-popup-item nav-popup-item-with-badge {{current === 'chat' ? 'nav-popup-item-active' : ''}} {{hasBioOc ? '' : 'nav-popup-item-disabled'}}"
         data-key="chat"
         catchtap="onNavTap"
-      >OC对话</view>
+      >
+        <text>OC对话</text>
+        <view wx:if="{{badgeChat}}" class="nav-badge"></view>
+      </view>
+      <view
+        class="nav-popup-item nav-popup-item-with-badge {{current === 'groupChat' ? 'nav-popup-item-active' : ''}} {{hasBioOc ? '' : 'nav-popup-item-disabled'}}"
+        data-key="groupChat"
+        catchtap="onNavTap"
+      >
+        <text>OC群聊</text>
+        <view wx:if="{{badgeGroupChat}}" class="nav-badge"></view>
+      </view>
       <view
         class="nav-popup-item {{current === 'bio' ? 'nav-popup-item-active' : ''}} {{layer3Ready ? '' : 'nav-popup-item-disabled'}}"
         data-key="bio"
         catchtap="onNavTap"
       >OC小传</view>
+      <view
+        class="nav-popup-item {{current === 'story' ? 'nav-popup-item-active' : ''}} {{hasLocalOc ? '' : 'nav-popup-item-disabled'}}"
+        data-key="story"
+        catchtap="onNavTap"
+      >OC故事</view>
+      <view
+        class="nav-popup-item {{current === 'moments' ? 'nav-popup-item-active' : ''}} {{hasBioOc ? '' : 'nav-popup-item-disabled'}}"
+        data-key="moments"
+        catchtap="onNavTap"
+      >OC朋友圈</view>
+      <view
+        class="nav-popup-item {{current === 'feedback' ? 'nav-popup-item-active' : ''}}"
+        data-key="feedback"
+        catchtap="onNavTap"
+      >意见与反馈</view>
+      <view
+        class="nav-popup-item"
+        catchtap="onOpenRedeem"
+      >兑换码</view>
+      <view
+        class="nav-popup-item"
+        catchtap="onFollowOfficialAccount"
+      >关注公众号</view>
+    </scroll-view>
+  </view>
+
+  <view
+    wx:if="{{oaQrVisible}}"
+    class="nav-oa-mask"
+    catchtap="onCloseOaQr"
+    catchtouchmove="preventMove"
+  >
+    <view class="nav-oa-card" catchtap="preventMove">
+      <view class="nav-oa-close" catchtap="onCloseOaQr">×</view>
+      <image
+        class="nav-oa-qr"
+        src="/images/mp-oa-qrcode.png"
+        mode="widthFix"
+        show-menu-by-longpress="{{true}}"
+      />
+      <text class="nav-oa-hint">可查看小程序版本更新说明及官方通知</text>
     </view>
   </view>
 </view>

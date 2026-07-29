@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "openapi": []
+  },
+  "triggers": [
+    {
+      "name": "feedbackApiHttp",
+      "type": "http",
+      "config": {
+        "path": "/feedbackApi",
+        "method": ["GET", "POST", "OPTIONS"]
+      }
+    }
+  ]
+}

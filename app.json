@@ -1,26 +1,151 @@
 {
   "cloud": true,
   "pages": [
-    "pages/index/index",
-    "pages/favorites/favorites",
-    "pages/pools/pools",
-    "pages/background/background",
-    "pages/attitude/attitude",
-    "pages/mindmap/mindmap",
-    "pages/ocBio/ocBio",
-    "pages/ocNotebook/ocNotebook",
-    "pages/ocChat/ocChat"
+    "pages/index/index"
   ],
+  "subPackages": [
+    {
+      "root": "pages/favorites",
+      "name": "favorites",
+      "pages": ["favorites"]
+    },
+    {
+      "root": "pages/pools",
+      "name": "pools",
+      "pages": ["pools"]
+    },
+    {
+      "root": "pages/background",
+      "name": "background",
+      "pages": ["background"]
+    },
+    {
+      "root": "pages/attitude",
+      "name": "attitude",
+      "pages": ["attitude"]
+    },
+    {
+      "root": "pages/mindmap",
+      "name": "mindmap",
+      "pages": ["mindmap"]
+    },
+    {
+      "root": "pages/ocBioHub",
+      "name": "ocBioHub",
+      "pages": ["ocBioHub"]
+    },
+    {
+      "root": "pages/ocBio",
+      "name": "ocBio",
+      "pages": ["ocBio"]
+    },
+    {
+      "root": "pages/ocBioRead",
+      "name": "ocBioRead",
+      "pages": ["ocBioRead"]
+    },
+    {
+      "root": "pages/ocStory",
+      "name": "ocStory",
+      "pages": ["ocStory"]
+    },
+    {
+      "root": "pages/ocStoryChapter",
+      "name": "ocStoryChapter",
+      "pages": ["ocStoryChapter"]
+    },
+    {
+      "root": "pages/ocNotebook",
+      "name": "ocNotebook",
+      "pages": ["ocNotebook"]
+    },
+    {
+      "root": "pages/ocProfileDetail",
+      "name": "ocProfileDetail",
+      "pages": ["ocProfileDetail"]
+    },
+    {
+      "root": "pages/ocAlbumDetail",
+      "name": "ocAlbumDetail",
+      "pages": ["ocAlbumDetail"]
+    },
+    {
+      "root": "pages/ocNotebookEdit",
+      "name": "ocNotebookEdit",
+      "pages": ["ocNotebookEdit"]
+    },
+    {
+      "root": "pages/ocChat",
+      "name": "ocChat",
+      "pages": ["ocChat"]
+    },
+    {
+      "root": "pages/ocGroupChat",
+      "name": "ocGroupChat",
+      "pages": ["ocGroupChat"]
+    },
+    {
+      "root": "pages/ocMoments",
+      "name": "ocMoments",
+      "pages": ["ocMoments"]
+    },
+    {
+      "root": "pages/feedback",
+      "name": "feedback",
+      "pages": ["feedback"]
+    },
+    {
+      "root": "pages/pageSettings",
+      "name": "pageSettings",
+      "pages": ["pageSettings"]
+    },
+    {
+      "root": "pages/redeemCode",
+      "name": "redeemCode",
+      "pages": ["redeemCode"]
+    }
+  ],
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": [
+        "pools",
+        "favorites",
+        "ocNotebook",
+        "ocBioHub",
+        "ocChat",
+        "ocMoments",
+        "ocStory",
+        "ocGroupChat"
+      ]
+    },
+    "pages/ocNotebook/ocNotebook": {
+      "network": "all",
+      "packages": ["ocBioHub", "ocChat", "ocMoments", "ocProfileDetail"]
+    },
+    "pages/ocBioHub/ocBioHub": {
+      "network": "all",
+      "packages": ["ocBio", "ocBioRead", "ocStory", "ocChat"]
+    }
+  },
   "window": {
     "backgroundTextStyle": "dark",
-    "navigationBarBackgroundColor": "#faf9f7",
+    "navigationBarBackgroundColor": "#00000000",
     "navigationBarTitleText": "OC 抽卡器",
-    "navigationBarTextStyle": "black"
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#c8bee4",
+    "backgroundColorTop": "#c8bee4",
+    "backgroundColorBottom": "#c4d0e8"
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json",
   "lazyCodeLoading": "requiredComponents",
   "usingComponents": {
-    "oc-nav": "/components/ocNav/ocNav"
+    "oc-nav": "/components/ocNav/ocNav",
+    "oc-tab-bar": "/components/ocTabBar/ocTabBar",
+    "oc-segment-bar": "/components/ocSegmentBar/ocSegmentBar",
+    "oc-page-nav": "/components/ocPageNav/ocPageNav",
+    "oc-back-btn": "/components/ocBackBtn/ocBackBtn",
+    "oc-share-sheet": "/components/ocShareSheet/ocShareSheet"
   }
 }

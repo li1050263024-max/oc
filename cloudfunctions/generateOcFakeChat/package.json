@@ -1,0 +1,7 @@
+{
+  "name": "generateOcFakeChat",
+  "version": "1.0.0",
+  "description": "DeepSeek 生成 OC 假私聊消息",
+  "main": "index.js",
+  "dependencies": {}
+}

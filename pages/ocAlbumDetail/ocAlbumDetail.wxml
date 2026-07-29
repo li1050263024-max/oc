@@ -1,0 +1,65 @@
+<view class="page safe-bottom {{uiThemeClass}}">
+  <view class="bg-solid"></view>
+  <oc-back-btn />
+  <scroll-view class="scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="main">
+      <view class="album-hero">
+        <text class="album-hero-title">{{albumName}}</text>
+        <text class="album-hero-sub">{{imageCount}} / {{maxImages}} 张</text>
+        <text class="album-hero-preset" wx:if="{{isPreset}}">预设图册</text>
+      </view>
+
+      <view class="action-row">
+        <view class="action-btn" bindtap="onRenameAlbum">重命名</view>
+        <view class="action-btn action-btn--primary" bindtap="onChooseImages">
+          {{uploading ? '上传中…' : '上传图片'}}
+        </view>
+        <view class="action-btn action-btn--danger" wx:if="{{!isPreset}}" bindtap="onDeleteAlbum">删除图册</view>
+      </view>
+
+      <view class="grid" wx:if="{{images.length}}">
+        <view class="grid-item" wx:for="{{images}}" wx:key="id">
+          <image
+            class="grid-img"
+            src="{{item.path}}"
+            mode="aspectFill"
+            data-index="{{index}}"
+            bindtap="onPreviewImage"
+          />
+          <view class="grid-del" data-id="{{item.id}}" catchtap="onRemoveImage">×</view>
+        </view>
+      </view>
+      <view class="empty" wx:else>
+        <text class="empty-plus">+</text>
+        <text class="empty-text">还没有图片，点击上方上传</text>
+      </view>
+
+      <view class="bottom-spacer"></view>
+    </view>
+  </scroll-view>
+
+  <view class="album-preview" wx:if="{{previewVisible && images.length}}" catchtouchmove="preventMove">
+    <view class="album-preview-backdrop" catchtap="onClosePreview"></view>
+    <view class="album-preview-panel">
+      <view class="album-preview-head">
+        <text class="album-preview-title">{{albumName}}</text>
+        <text class="album-preview-count" wx:if="{{images.length > 1}}">{{previewIndex + 1}} / {{images.length}}</text>
+        <view class="album-preview-close" catchtap="onClosePreview">
+          <text class="album-preview-close-icon">×</text>
+        </view>
+      </view>
+      <swiper
+        class="album-preview-swiper"
+        current="{{previewIndex}}"
+        bindchange="onPreviewSwiperChange"
+        circular="{{images.length > 1}}"
+      >
+        <swiper-item wx:for="{{images}}" wx:key="id" class="album-preview-item">
+          <view class="album-preview-stage">
+            <image class="album-preview-img" src="{{item.path}}" mode="aspectFit" />
+          </view>
+        </swiper-item>
+      </swiper>
+    </view>
+  </view>
+</view>

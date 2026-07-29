@@ -1,0 +1,22 @@
+@import './_shared_ocBio.wxss';
+
+.bio-read-shell {
+  flex: 1;
+  min-height: 0;
+  padding: 12rpx 20rpx 0;
+  box-sizing: border-box;
+}
+
+.bio-read-name {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--diffuse-highlight);
+  margin-bottom: 16rpx;
+  text-align: center;
+}
+
+.bio-read-shell .result-btn {
+  width: 100%;
+  margin-top: 8rpx;
+}

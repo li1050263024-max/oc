@@ -1,42 +1,239 @@
-<view class="page safe-bottom">
+<view class="page safe-bottom has-tab-bar {{uiThemeClass}}">
+
   <view class="bg-solid"></view>
+  <oc-page-nav />
+  <oc-back-btn home />
+
   <view class="main">
+
     <view class="title-wrap">
-      <text class="title">自定义选项</text>
-      <text class="subtitle">编辑各维度选项，抽卡时将使用你的选项池</text>
+
+      <text class="title">选项库</text>
+
+      <text class="subtitle">编辑各维度选项；抽卡使用逻辑关联组合</text>
+
     </view>
 
-    <scroll-view class="sections" scroll-y>
+
+
+    <view class="batch-toolbar-wrap">
+
+      <view
+
+        class="batch-toolbar {{batchMode ? 'batch-toolbar--on' : ''}}"
+
+        hover-class="batch-toolbar-hover"
+
+        catchtap="onToggleBatchMode"
+
+      >
+
+        <text class="batch-toolbar-title">批量管理</text>
+
+        <text class="batch-toolbar-state">{{batchMode ? '完成' : '进入'}}</text>
+
+      </view>
+
+      <view class="batch-bar" wx:if="{{batchMode}}">
+
+        <view class="batch-bar-btn" hover-class="batch-bar-btn-hover" catchtap="onBatchSelectAll">
+
+          <text>全选</text>
+
+        </view>
+
+        <view class="batch-bar-btn" hover-class="batch-bar-btn-hover" catchtap="onBatchSelectNone">
+
+          <text>取消全选</text>
+
+        </view>
+
+        <view
+
+          class="batch-bar-btn batch-bar-btn-danger {{batchSelectedCount > 0 ? '' : 'batch-bar-btn-disabled'}}"
+
+          hover-class="batch-bar-btn-hover"
+
+          catchtap="onBatchDeleteSelected"
+
+        >
+
+          <text>删除选中{{batchSelectedCount > 0 ? '(' + batchSelectedCount + ')' : ''}}</text>
+
+        </view>
+
+      </view>
+
+    </view>
+
+
+
+    <scroll-view class="sections" scroll-y enhanced show-scrollbar="{{true}}" enable-back-to-top="{{true}}">
+
       <view class="section pixel-card" wx:for="{{sections}}" wx:key="key">
-        <view class="section-title">{{item.label}}选项</view>
-        <view class="item-list">
-          <view class="item-row" wx:for="{{item.list}}" wx:for-item="opt" wx:key="*this">
-            <text class="item-text">{{opt}}</text>
-            <view class="item-del" bindtap="onDelete" data-key="{{item.key}}" data-index="{{index}}">
-              <text class="item-del-text">删除</text>
+
+        <view class="section-header">
+
+          <view
+
+            wx:if="{{batchMode && item.list.length}}"
+
+            class="pool-check pool-check--section"
+
+            catchtap="onSectionSelectAll"
+
+            data-key="{{item.key}}"
+
+          >
+
+            <view class="pool-check-ring {{item.allSelected ? 'pool-check-ring--on' : ''}}"></view>
+
+          </view>
+
+          <view class="section-header-main" catchtap="onToggleSectionExpand" data-key="{{item.key}}">
+
+            <text class="section-title">{{item.label}}选项</text>
+
+            <text class="section-count">{{item.list.length}} 项</text>
+
+            <text class="section-tag" wx:if="{{item.group === 'extra'}}">背景/态度</text>
+
+          </view>
+
+          <view
+
+            class="section-fold"
+
+            catchtap="onToggleSectionExpand"
+
+            data-key="{{item.key}}"
+
+            hover-class="section-fold-hover"
+
+          >
+
+            <view class="fold-tri {{item.expanded ? 'fold-tri--open' : ''}}"></view>
+
+          </view>
+
+        </view>
+
+
+
+        <block wx:if="{{item.expanded}}">
+          <view class="section-tools" wx:if="{{!batchMode}}">
+            <view class="add-row">
+              <input
+                class="add-input"
+                placeholder="输入新{{item.label}}"
+                value="{{item.newVal}}"
+                data-key="{{item.key}}"
+                bindinput="onNewInput"
+              />
+              <view class="pixel-btn pixel-btn-primary btn-add" catchtap="onAdd" data-key="{{item.key}}">
+                <text class="btn-add-text">添加</text>
+              </view>
+            </view>
+            <view class="ai-row">
+              <input
+                class="add-input ai-theme-input"
+                placeholder="主题（可选，如赛博朋克）"
+                value="{{item.aiTheme}}"
+                data-key="{{item.key}}"
+                bindinput="onAiThemeInput"
+              />
+              <view
+                class="pixel-btn btn-ai {{item.aiLoading || expandAllLoading ? 'btn-ai-disabled' : ''}}"
+                catchtap="onAiExpand"
+                data-key="{{item.key}}"
+              >
+                <text class="btn-ai-text">{{item.aiLoading ? '…' : '智能补充'}}</text>
+              </view>
             </view>
           </view>
-        </view>
-        <view class="add-row">
-          <input
-            class="add-input"
-            placeholder="输入新{{item.label}}选项"
-            value="{{item.newVal}}"
-            data-key="{{item.key}}"
-            bindinput="onNewInput"
-          />
-          <view class="pixel-btn pixel-btn-primary btn-add" bindtap="onAdd" data-key="{{item.key}}">
-            <text class="btn-add-text">添加</text>
+
+          <scroll-view
+            wx:if="{{item.listView.length}}"
+            class="item-list-scroll"
+            scroll-y
+            enhanced
+            show-scrollbar="{{true}}"
+            enable-flex="{{true}}"
+          >
+            <view class="item-list">
+              <view
+                class="item-row {{opt.hidden ? 'item-row--hidden' : ''}}"
+                wx:for="{{item.listView}}"
+                wx:for-item="opt"
+                wx:key="i"
+              >
+                <view
+                  wx:if="{{batchMode}}"
+                  class="pool-check"
+                  catchtap="onToggleItemSelect"
+                  data-key="{{item.key}}"
+                  data-index="{{opt.i}}"
+                >
+                  <view class="pool-check-ring {{opt.selected ? 'pool-check-ring--on' : ''}}"></view>
+                </view>
+                <text class="item-text">{{opt.text}}</text>
+                <view
+                  wx:if="{{!batchMode}}"
+                  class="item-fold"
+                  catchtap="onToggleItemHidden"
+                  data-key="{{item.key}}"
+                  data-index="{{opt.i}}"
+                  hover-class="item-fold-hover"
+                >
+                  <view class="fold-tri fold-tri--sm {{opt.hidden ? '' : 'fold-tri--open'}}"></view>
+                </view>
+                <view
+                  wx:if="{{!batchMode}}"
+                  class="item-del"
+                  catchtap="onDelete"
+                  data-key="{{item.key}}"
+                  data-index="{{opt.i}}"
+                >
+                  <text class="item-del-text">删除</text>
+                </view>
+              </view>
+            </view>
+          </scroll-view>
+          <view class="item-empty" wx:elif="{{!item.listView.length}}">
+            <text>暂无选项</text>
           </view>
-        </view>
+        </block>
+
       </view>
+
     </scroll-view>
 
-    <view class="bottom-actions">
-      <view class="pixel-btn btn-reset" bindtap="onReset">
-        <text class="btn-reset-text">恢复默认</text>
+
+
+    <view class="bottom-actions" wx:if="{{!batchMode}}">
+
+      <view
+
+        class="pixel-btn btn-ai-all {{expandAllLoading ? 'btn-ai-disabled' : ''}}"
+
+        catchtap="onAiExpandAll"
+
+      >
+
+        <text class="btn-ai-text">丰富全部维度</text>
+
       </view>
+
+      <view class="pixel-btn btn-reset" catchtap="onReset">
+
+        <text class="btn-reset-text">恢复默认</text>
+
+      </view>
+
     </view>
+
   </view>
-  <oc-nav current="pools" />
+
+  <oc-tab-bar current="" />
 </view>
+

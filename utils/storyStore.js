@@ -1,0 +1,343 @@
+const {
+  getFavorites,
+  getFavoriteById,
+  updateFavoriteItem,
+  workFromFavoriteItem
+} = require('./favorite.js');
+const { buildOcPromptFromWork } = require('./ocContext.js');
+const { personalityBlend, quirkBlend } = require('./ocResult.js');
+const { isLayer3Ready } = require('./ocWork.js');
+
+const STORAGE_OC_WORK = 'oc_work_in_progress';
+
+function syncWorkOcStories(favoriteId, list) {
+  const work = wx.getStorageSync(STORAGE_OC_WORK) || {};
+  if (!work.result || work.notebookFavoriteId !== favoriteId) return;
+  work.ocStories = (list || []).map((s) => ({ ...s }));
+  wx.setStorageSync(STORAGE_OC_WORK, work);
+}
+
+function favoriteHasBio(item) {
+  return !!(item && item.generatedBio && String(item.generatedBio).trim());
+}
+
+function newStoryId() {
+  return 'st_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+}
+
+function newHistoryId() {
+  return 'sh_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+}
+
+const MAX_STORY_HISTORY = 40;
+
+const LEGACY_SERIES_SUFFIX_RE = /【\.(\d+)】\s*$/;
+const SERIES_SUFFIX_RE = /【(\d+)】\s*$/;
+
+function buildChapterSuffix(index) {
+  return '【' + index + '】';
+}
+
+/** 去掉末尾章节后缀（兼容旧版 【.2】 与新版 【2】） */
+function getSeriesBaseTitle(title) {
+  let t = String(title || '').trim();
+  t = t.replace(LEGACY_SERIES_SUFFIX_RE, '').trim();
+  t = t.replace(SERIES_SUFFIX_RE, '').trim();
+  return t || '未命名故事';
+}
+
+function getChapterIndex(title) {
+  const t = String(title || '').trim();
+  let m = t.match(LEGACY_SERIES_SUFFIX_RE);
+  if (m) return parseInt(m[1], 10);
+  m = t.match(SERIES_SUFFIX_RE);
+  if (m) return parseInt(m[1], 10);
+  return 1;
+}
+
+/** 将标题中的 【.2】 规范为 【2】 */
+function normalizeChapterTitle(title) {
+  const t = String(title || '').trim();
+  if (!t) return t;
+  return t.replace(LEGACY_SERIES_SUFFIX_RE, (_, n) => buildChapterSuffix(n));
+}
+
+function buildNextChapterTitle(sourceTitle, stories) {
+  const base = getSeriesBaseTitle(sourceTitle);
+  let maxIdx = getChapterIndex(sourceTitle);
+  (stories || []).forEach((s) => {
+    if (getSeriesBaseTitle(s.title) !== base) return;
+    maxIdx = Math.max(maxIdx, getChapterIndex(s.title));
+  });
+  return base + buildChapterSuffix(maxIdx + 1);
+}
+
+function getStoriesFromItem(item) {
+  if (!item || !Array.isArray(item.ocStories)) return [];
+  return item.ocStories.slice();
+}
+
+function _storyParagraphBlocks(content) {
+  const t = String(content || '').trim();
+  if (!t) return [];
+  const blocks = t.split(/\n\s*\n/).map((s) => s.trim()).filter(Boolean);
+  if (blocks.length > 1) return blocks;
+  return t.split(/\n/).map((s) => s.trim()).filter(Boolean);
+}
+
+function storyFirstParagraph(content) {
+  const blocks = _storyParagraphBlocks(content);
+  return blocks[0] || String(content || '').trim().slice(0, 160);
+}
+
+/** 取正文前 n 段（空行分段，否则按行）用于列表预览 */
+function storyPreviewParagraphs(content, n) {
+  const count = typeof n === 'number' && n > 0 ? n : 3;
+  const blocks = storyPreviewBlocks(content, count);
+  if (!blocks.length) return '';
+  return blocks.join('\n\n');
+}
+
+/** 前 n 段正文块（数组），长文无分段时均分为 n 段 */
+function storyPreviewBlocks(content, n) {
+  const count = typeof n === 'number' && n > 0 ? n : 3;
+  let blocks = _storyParagraphBlocks(content);
+  if (!blocks.length) return [];
+  if (blocks.length >= count) return blocks.slice(0, count);
+  if (blocks.length === 1 && blocks[0].length > 120) {
+    const t = blocks[0];
+    const size = Math.max(80, Math.ceil(t.length / count));
+    const parts = [];
+    for (let i = 0; i < count; i++) {
+      const chunk = t.slice(i * size, (i + 1) * size).trim();
+      if (chunk) parts.push(chunk);
+    }
+    if (parts.length) return parts;
+  }
+  return blocks;
+}
+
+function getStoryFromFavorite(favoriteId, storyId) {
+  const item = getFavoriteById(favoriteId);
+  if (!item || !storyId) return null;
+  return getStoriesFromItem(item).find((s) => s.id === storyId) || null;
+}
+
+function getStoryHistoryList(story) {
+  if (!story || !Array.isArray(story.history)) return [];
+  return story.history.slice().sort((a, b) => (b.savedAt || b.time || 0) - (a.savedAt || a.time || 0));
+}
+
+function formatHistoryTime(ts) {
+  const t = typeof ts === 'number' ? ts : Date.now();
+  const d = new Date(t);
+  const p = (n) => (n < 10 ? '0' + n : '' + n);
+  return (
+    d.getFullYear() +
+    '-' +
+    p(d.getMonth() + 1) +
+    '-' +
+    p(d.getDate()) +
+    ' ' +
+    p(d.getHours()) +
+    ':' +
+    p(d.getMinutes())
+  );
+}
+
+function mapHistoryForDisplay(story) {
+  return getStoryHistoryList(story).map((h) =>
+    Object.assign({}, h, {
+      timeLabel: formatHistoryTime(h.savedAt || h.time)
+    })
+  );
+}
+
+function upsertStoryToFavorite(favoriteId, entry) {
+  const item = getFavoriteById(favoriteId);
+  if (!item) return false;
+  const list = getStoriesFromItem(item);
+  const existing = list.find((s) => s.id === entry.id);
+  const story = {
+    id: entry.id || newStoryId(),
+    title: normalizeChapterTitle(String(entry.title || '').trim()),
+    userPrompt: String(entry.userPrompt || '').trim(),
+    content: String(entry.content || '').trim(),
+    time: entry.time || Date.now(),
+    parentStoryId: entry.parentStoryId ? String(entry.parentStoryId) : '',
+    history:
+      entry.history != null
+        ? entry.history.slice()
+        : existing && Array.isArray(existing.history)
+          ? existing.history.slice()
+          : []
+  };
+  const idx = list.findIndex((s) => s.id === story.id);
+  if (idx >= 0) {
+    list[idx] = story;
+  } else {
+    list.unshift(story);
+  }
+  const work = workFromFavoriteItem(item) || { result: item.result };
+  work.ocStories = list;
+  const ok = updateFavoriteItem(favoriteId, work);
+  if (ok) syncWorkOcStories(favoriteId, list);
+  return ok;
+}
+
+function saveStoryWithHistory(favoriteId, entry) {
+  const item = getFavoriteById(favoriteId);
+  if (!item) return false;
+  const list = getStoriesFromItem(item);
+  const existing = entry.id ? list.find((s) => s.id === entry.id) : null;
+  let history =
+    existing && Array.isArray(existing.history) ? existing.history.slice() : [];
+  if (existing) {
+    history.unshift({
+      id: newHistoryId(),
+      title: existing.title || '',
+      content: existing.content || '',
+      userPrompt: existing.userPrompt || '',
+      time: existing.time || Date.now(),
+      savedAt: Date.now()
+    });
+    if (history.length > MAX_STORY_HISTORY) {
+      history = history.slice(0, MAX_STORY_HISTORY);
+    }
+  }
+  return upsertStoryToFavorite(
+    favoriteId,
+    Object.assign({}, entry, { history: history })
+  );
+}
+
+function saveStoryToFavorite(favoriteId, entry) {
+  return upsertStoryToFavorite(favoriteId, entry);
+}
+
+function deleteStoryFromFavorite(favoriteId, storyId) {
+  const item = getFavoriteById(favoriteId);
+  if (!item) return false;
+  const list = getStoriesFromItem(item).filter((s) => s.id !== storyId);
+  const work = workFromFavoriteItem(item) || { result: item.result };
+  work.ocStories = list;
+  const ok = updateFavoriteItem(favoriteId, work);
+  if (ok) syncWorkOcStories(favoriteId, list);
+  return ok;
+}
+
+function _formatBackground(work) {
+  const bg = work && work.background;
+  if (!bg || !bg.worldview) return '';
+  const lines = ['世界观：' + bg.worldview];
+  const origins = (bg.origins || []).filter(Boolean);
+  if (origins.length) lines.push('身世：' + origins.join('；'));
+  const ev = (bg.lifeEvents || []).filter(Boolean);
+  if (ev.length) lines.push('大事件：' + ev.join('；'));
+  return lines.join('\n');
+}
+
+function bioPreviewLines(text, maxLines) {
+  const n = typeof maxLines === 'number' && maxLines > 0 ? maxLines : 5;
+  const t = String(text || '').trim();
+  if (!t) return '';
+  const lines = t.split(/\n/);
+  if (lines.length <= n) return t;
+  return lines.slice(0, n).join('\n') + '…';
+}
+
+function _formatLayer3(work) {
+  const cp = (work && work.catchphrases) || [];
+  const ad = (work && work.attitudes) || [];
+  const lines = [];
+  if (cp.filter(Boolean).length) {
+    lines.push('常用语：' + cp.filter(Boolean).join(' / '));
+  }
+  if (ad.length) {
+    lines.push(
+      '态度：' +
+        ad.map((a) => (a.event || '') + '→' + (a.attitude || '')).join('；')
+    );
+  }
+  return lines.join('\n');
+}
+
+function _mapPickerEntry(id, item, work, r) {
+  return {
+    id: id,
+    name: r.name || '未命名',
+    race: r.race || '',
+    gender: r.gender || '',
+    age: r.age || '',
+    hairColor: r.hairColor || '',
+    eyeColor: r.eyeColor || '',
+    personalityText: personalityBlend(r),
+    quirkText: quirkBlend(r),
+    hasBio: favoriteHasBio(item),
+    bioText: String((item && item.generatedBio) || '').trim(),
+    backgroundText: _formatBackground(work),
+    layer3Text: _formatLayer3(work),
+    summary: buildOcPromptFromWork(work),
+    result: r
+  };
+}
+
+function buildOcPickerList() {
+  const list = getFavorites();
+  const mapped = list.map((item) => {
+    const work = workFromFavoriteItem(item) || item;
+    const r = item.result || {};
+    return _mapPickerEntry(item.id, item, work, r);
+  });
+  const work = wx.getStorageSync(STORAGE_OC_WORK) || {};
+  if (!work.result || !isLayer3Ready(work)) return mapped;
+  const favId = work.notebookFavoriteId;
+  if (favId && mapped.some((m) => m.id === favId)) return mapped;
+  const name = String(work.result.name || '').trim();
+  if (mapped.some((m) => m.name === name && name)) return mapped;
+  const pseudo = {
+    generatedBio: work.generatedBio || '',
+    result: work.result
+  };
+  mapped.unshift(
+    _mapPickerEntry(favId || '__work__', pseudo, work, work.result)
+  );
+  return mapped;
+}
+
+function buildStoryPromptParts(favoriteId) {
+  const item = getFavoriteById(favoriteId);
+  if (!item || !favoriteHasBio(item)) return null;
+  const work = workFromFavoriteItem(item);
+  return {
+    ocSetting: buildOcPromptFromWork(work),
+    ocBio: String(item.generatedBio || '').trim()
+  };
+}
+
+module.exports = {
+  bioPreviewLines,
+  formatBackgroundForWork: _formatBackground,
+  formatLayer3ForWork: _formatLayer3,
+  favoriteHasBio,
+  newStoryId,
+  getStoryHistoryList,
+  formatHistoryTime,
+  mapHistoryForDisplay,
+  saveStoryWithHistory,
+  getSeriesBaseTitle,
+  getChapterIndex,
+  buildChapterSuffix,
+  normalizeChapterTitle,
+  buildNextChapterTitle,
+  storyFirstParagraph,
+  storyPreviewParagraphs,
+  storyPreviewBlocks,
+  getStoriesFromItem,
+  getStoryFromFavorite,
+  upsertStoryToFavorite,
+  saveStoryToFavorite,
+  deleteStoryFromFavorite,
+  buildOcPickerList,
+  buildStoryPromptParts
+};

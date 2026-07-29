@@ -1,0 +1,7 @@
+{
+  "name": "expandOcPool",
+  "version": "1.0.0",
+  "description": "DeepSeek 丰富选项库",
+  "main": "index.js",
+  "dependencies": {}
+}

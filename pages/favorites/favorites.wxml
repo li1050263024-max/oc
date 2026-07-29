@@ -1,5 +1,7 @@
-<view class="page safe-bottom">
+<view class="page safe-bottom {{uiThemeClass}}">
   <view class="bg-solid"></view>
+  <oc-page-nav />
+  <oc-back-btn home />
   <view class="main">
     <view class="title-wrap">
       <text class="title">我的收藏</text>
@@ -13,10 +15,12 @@
           <text class="item-name">{{item.result.name}}</text>
           <text class="item-race">{{item.result.race}}</text>
         </view>
+        <view class="item-row"><text class="label">性别</text><text class="value">{{item.result.gender}}</text></view>
+        <view class="item-row"><text class="label">年龄</text><text class="value">{{item.result.age}}</text></view>
         <view class="item-row"><text class="label">发色</text><text class="value">{{item.result.hairColor}}</text></view>
         <view class="item-row"><text class="label">瞳色</text><text class="value">{{item.result.eyeColor}}</text></view>
-        <view class="item-row"><text class="label">性格</text><text class="value">{{item.result.personality}}</text></view>
-        <view class="item-row"><text class="label">怪癖</text><text class="value">{{item.result.quirk}}</text></view>
+        <view class="item-row"><text class="label">性格</text><text class="value">{{item.personalityText}}</text></view>
+        <view class="item-row"><text class="label">怪癖</text><text class="value">{{item.quirkText}}</text></view>
         <block wx:if="{{item.background && item.background.worldview}}">
           <view class="item-row item-section"><text class="label">世界观</text><text class="value">{{item.background.worldview}}</text></view>
           <view class="item-row" wx:for="{{item.background.lifeEvents}}" wx:for-item="ev" wx:key="*this"><text class="label">事件</text><text class="value">{{ev}}</text></view>
@@ -27,9 +31,16 @@
         <block wx:if="{{item.attitudes && item.attitudes.length > 0}}">
           <view class="item-row" wx:for="{{item.attitudes}}" wx:for-item="att" wx:key="event"><text class="label">态度</text><text class="value">{{att.event}} → {{att.attitude}}</text></view>
         </block>
+        <view class="item-row item-bio-hint" wx:if="{{item.generatedBio}}">
+          <text class="label">小传</text>
+          <text class="value bio-preview">已生成，可点击查看</text>
+        </view>
         <view class="item-actions">
           <view class="pixel-btn btn-small" bindtap="onChat" data-id="{{item.id}}">
             <text class="btn-small-text">对话</text>
+          </view>
+          <view class="pixel-btn btn-small btn-bio" bindtap="onViewBio" data-id="{{item.id}}">
+            <text class="btn-small-text">小传</text>
           </view>
           <view class="pixel-btn btn-small" bindtap="onLoadToNotebook" data-id="{{item.id}}">
             <text class="btn-small-text">载入设定本</text>
@@ -46,10 +57,6 @@
 
     <view class="empty" wx:else>
       <text class="empty-text">去首页抽一张 OC 吧</text>
-      <view class="pixel-btn pixel-btn-primary btn-back" bindtap="onBackHome">
-        <text class="btn-small-text">返回首页</text>
-      </view>
     </view>
   </view>
-  <oc-nav current="favorites" />
 </view>

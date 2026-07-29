@@ -1,0 +1,11 @@
+<view class="oc-segment-bar">
+  <view
+    class="oc-segment-item {{current === item.key ? 'oc-segment-item--active' : ''}}"
+    wx:for="{{options}}"
+    wx:key="key"
+    data-key="{{item.key}}"
+    bindtap="onTap"
+  >
+    <text class="oc-segment-text">{{item.label}}</text>
+  </view>
+</view>

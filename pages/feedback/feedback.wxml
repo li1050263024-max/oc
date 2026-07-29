@@ -1,0 +1,50 @@
+<view class="page safe-bottom {{uiThemeClass}}">
+  <view class="bg-solid"></view>
+  <oc-page-nav />
+  <oc-back-btn />
+  <scroll-view class="scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="main">
+      <text class="title">意见与反馈</text>
+      <text class="lead">欢迎提出 bug、功能建议或使用体验，我们会尽快查看。</text>
+
+      <view class="form-card">
+        <text class="label">反馈内容</text>
+        <textarea
+          class="textarea"
+          value="{{content}}"
+          bindinput="onContentInput"
+          placeholder="请描述你的问题或建议…"
+          maxlength="2000"
+          show-confirm-bar="{{false}}"
+        />
+        <view class="pixel-btn pixel-btn-primary submit-btn" bindtap="onSubmit">
+          <text class="btn-t">{{submitting ? '提交中…' : '提交反馈'}}</text>
+        </view>
+      </view>
+
+      <view class="records-section">
+        <view class="records-head">
+          <text class="section-title">反馈记录与进度</text>
+          <text class="records-hint" wx:if="{{loadingRecords}}">同步中…</text>
+        </view>
+        <view class="record-list" wx:if="{{records.length}}">
+          <view class="record-card" wx:for="{{records}}" wx:key="id">
+            <view class="record-head">
+              <text class="record-time">{{item.timeLabel}}</text>
+              <text class="record-status record-status--read" wx:if="{{item.status === 'read'}}">{{item.statusLabel}}</text>
+              <text class="record-status record-status--unread" wx:else>{{item.statusLabel}}</text>
+            </view>
+            <text class="record-content" user-select>{{item.content}}</text>
+            <view class="record-reply" wx:if="{{item.reply}}">
+              <text class="record-reply-label">开发者回复</text>
+              <text class="record-reply-content" user-select>{{item.reply}}</text>
+              <text class="record-reply-time" wx:if="{{item.replyTimeLabel}}">{{item.replyTimeLabel}}</text>
+            </view>
+          </view>
+        </view>
+        <text class="empty-hint" wx:else>暂无反馈记录，提交后会显示在这里</text>
+      </view>
+      <view class="bottom-spacer"></view>
+    </view>
+  </scroll-view>
+</view>

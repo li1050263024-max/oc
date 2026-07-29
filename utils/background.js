@@ -50,12 +50,12 @@ function drawPartialBackground(current, locked, pools) {
   if (!current) return drawBackgroundStory(pools);
   const p = getPools(pools);
   const next = {
-    worldview: locked.worldview ? current.worldview : pickOne(p.worldviews || []),
+    worldview: locked.worldview === true ? current.worldview : pickOne(p.worldviews || []),
     lifeEvents: (current.lifeEvents || []).slice()
   };
   for (let i = 0; i < 3; i++) {
     const key = 'lifeEvent' + i;
-    if (!locked[key] && next.lifeEvents[i] !== undefined) {
+    if (locked[key] !== true && next.lifeEvents[i] !== undefined) {
       next.lifeEvents[i] = pickOne(p.lifeEvents || []);
     }
   }
@@ -103,7 +103,7 @@ function drawPartialCatchphrases(current, locked, pools) {
   const next = current.slice();
   for (let i = 0; i < 3; i++) {
     const key = 'catchphrase' + i;
-    if (!locked[key] && next[i] !== undefined) {
+    if (locked[key] !== true && next[i] !== undefined) {
       next[i] = pickOne(pool);
     }
   }
@@ -125,7 +125,7 @@ function drawPartialAttitudes(current, locked, pools) {
   const next = current.map(item => ({ ...item }));
   for (let i = 0; i < 3; i++) {
     const key = 'attitude' + i;
-    if (!locked[key] && next[i]) {
+    if (locked[key] !== true && next[i]) {
       next[i] = {
         event: pickOne(events),
         attitude: pickOne(attitudePool)

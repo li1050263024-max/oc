@@ -1,0 +1,19 @@
+<view class="oc-share-mask" wx:if="{{visible}}" catchtap="onClose"></view>
+<view class="oc-share-sheet" wx:if="{{visible}}">
+  <text class="oc-share-title">{{title}}</text>
+  <text class="oc-share-hint">以下内容可在小程序内查看与复制；分享给好友后，对方打开将进入该 OC 展示页</text>
+  <scroll-view class="oc-share-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <text class="oc-share-body" user-select>{{content}}</text>
+  </scroll-view>
+  <view class="oc-share-actions">
+    <view class="pixel-btn btn-wire-secondary oc-share-btn" catchtap="onCopy">
+      <text class="oc-share-btn-text">复制全文</text>
+    </view>
+    <button class="oc-share-wx-btn" open-type="share" hover-class="oc-share-wx-btn--hover">
+      分享给好友
+    </button>
+    <view class="pixel-btn btn-ghost oc-share-btn" catchtap="onClose">
+      <text class="oc-share-btn-text">关闭</text>
+    </view>
+  </view>
+</view>
