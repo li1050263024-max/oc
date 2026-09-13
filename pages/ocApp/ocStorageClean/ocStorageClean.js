@@ -4,6 +4,7 @@ Page({
   data: {
     loading: true,
     kvText: '',
+    categories: [],
     items: [],
     selectedCount: 0,
     orphanAudioText: '',
@@ -25,6 +26,7 @@ Page({
         this.setData({
           loading: false,
           kvText: inv.kvText || '',
+          categories: inv.categories || [],
           items: items,
           selectedCount: 0,
           orphanAudioText: inv.orphanAudioText || '',
@@ -82,7 +84,7 @@ Page({
       title: '确认删除',
       content: '将删除所选 ' + ids.length + ' 个本地 BGM，且不可恢复。',
       confirmText: '删除',
-      confirmColor: '#fe2c55',
+      confirmColor: '#7c3aed',
       success: (res) => {
         if (!res.confirm) return;
         wx.showLoading({ title: '删除中…', mask: true });

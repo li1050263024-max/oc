@@ -15,6 +15,7 @@
       <view class="index-settings-item" bindtap="onGoFeedback">意见与反馈</view>
       <view class="index-settings-item" bindtap="onPageSettings">页面设置</view>
       <view class="index-settings-item" bindtap="onGoRedeem">额度商店</view>
+      <view class="index-settings-item" bindtap="onGoStorageClean">清理本地存储</view>
       <view class="index-settings-item" bindtap="onFollowOfficialAccount">关注公众号</view>
     </view>
     <view class="index-settings-mask" wx:if="{{settingsOpen}}" bindtap="onCloseSettings"></view>

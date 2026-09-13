@@ -58,8 +58,15 @@
         <text class="dp-tag" wx:if="{{genderAgeText}}">{{genderAgeText}}</text>
       </view>
 
+      <!-- 用户主页：不显示关注/私信 -->
+      <view class="dp-actions" wx:if="{{isUserProfile}}">
+        <view class="dp-btn dp-btn--manage">
+          <text>我的作品 · 可删除</text>
+        </view>
+      </view>
+
       <!-- 未关注：红色 +关注 -->
-      <view class="dp-actions" wx:if="{{!followed}}">
+      <view class="dp-actions" wx:elif="{{!followed}}">
         <view class="dp-btn dp-btn--follow" catchtap="onTapFollow">
           <text>+ 关注</text>
         </view>
@@ -116,6 +123,14 @@
           <view class="dp-likes" wx:if="{{!item.locked}}">
             <text class="dp-heart">♡</text>
             <text class="dp-likes-n">{{item.likeText}}</text>
+          </view>
+          <view
+            class="dp-del"
+            wx:if="{{isUserProfile || manageMode}}"
+            catchtap="onDeleteWork"
+            data-id="{{item.id}}"
+          >
+            <text class="dp-del-t">删除</text>
           </view>
         </view>
       </view>

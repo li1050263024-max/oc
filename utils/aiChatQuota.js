@@ -902,10 +902,12 @@ function redeemCodeOnServer(code) {
   });
 }
 
-function syncExtraRoundsFromServer() {
+function syncExtraRoundsFromServer(opts) {
   const { callCloudFunction } = require('./cloudInit.js');
-  // 先推送本地待同步的加额/消耗，再拉云端，避免广告刚加的额度被覆盖
-  return flushQuotaToCloud()
+  const skipFlush = !!(opts && opts.skipFlush);
+  // 支付刚到账时 skipFlush，避免待同步消耗用旧快照盖掉充值
+  const head = skipFlush ? Promise.resolve({}) : flushQuotaToCloud();
+  return head
     .then(() =>
       callCloudFunction({
         name: 'redeemCode',
@@ -915,7 +917,10 @@ function syncExtraRoundsFromServer() {
     .then((res) => {
       const data = (res && res.result) || {};
       if (data.ok && data.extraRounds != null) {
-        writeExtraRounds(data.extraRounds);
+        const server = Math.max(0, Number(data.extraRounds) || 0);
+        // 支付后短窗口：取 max，防止 balance 读到旧主文档时把本地刚写入的额度抹掉
+        const local = readExtraRounds();
+        writeExtraRounds(skipFlush ? Math.max(server, local) : server);
       }
       if (data.ok) {
         applyCloudFreeQuotaToLocal(data);

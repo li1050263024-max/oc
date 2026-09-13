@@ -109,7 +109,12 @@
         <view class="dy-mask"></view>
 
         <view class="dy-side">
-          <view class="dy-avatar-wrap" catchtap="onTapOc" data-oc-id="{{item.ocId}}">
+          <view
+            class="dy-avatar-wrap"
+            catchtap="onTapOc"
+            data-oc-id="{{item.ocId}}"
+            data-user-post="{{item.isUserPost}}"
+          >
             <image
               wx:if="{{item.avatarDisplay}}"
               class="dy-avatar"
@@ -180,7 +185,12 @@
 
         <view class="dy-bottom">
           <view class="dy-name-row">
-            <text wx:if="{{item.isUserPost}}" class="dy-name dy-name--me">@{{item.displayName || '我'}}</text>
+            <text
+              wx:if="{{item.isUserPost}}"
+              class="dy-name dy-name--me"
+              catchtap="onTapOc"
+              data-user-post="true"
+            >@{{item.displayName || '我'}}</text>
             <text
               wx:else
               class="dy-name"

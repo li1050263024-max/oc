@@ -278,6 +278,12 @@
   font-weight: 600;
 }
 
+.dp-btn--manage {
+  background: rgba(124, 58, 237, 0.12);
+  color: #6d28d9;
+  font-weight: 600;
+}
+
 .dp-btn--followed,
 .dp-btn--dm {
   background: #f1f1f2;
@@ -452,6 +458,23 @@
   font-size: 22rpx;
   color: #fff;
   font-weight: 500;
+}
+
+.dp-del {
+  position: absolute;
+  right: 10rpx;
+  top: 10rpx;
+  z-index: 2;
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(109, 40, 217, 0.92);
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.25);
+}
+
+.dp-del-t {
+  font-size: 20rpx;
+  color: #fff;
+  font-weight: 600;
 }
 
 .dp-empty,

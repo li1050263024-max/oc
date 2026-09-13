@@ -265,10 +265,11 @@ async function deliverProduct(openid, product, orderMeta) {
   const outTradeNo = String((orderMeta && (orderMeta.outTradeNo || orderMeta._id)) || '');
 
   if (rounds > 0) {
-    nextExtra += rounds;
-    patch.extraRounds = nextExtra;
+    // 用 _.inc，避免与 syncBalance 并发时绝对写互相覆盖
+    patch.extraRounds = _.inc(rounds);
     patch.redeemedTotal = _.inc(rounds);
     patch.extraRoundsExpireAt = 0;
+    nextExtra += rounds;
   }
 
   let nextVipExpire = Number(quota.vipExpireAt) || 0;
@@ -311,8 +312,18 @@ async function deliverProduct(openid, product, orderMeta) {
     } catch (_) {}
   }
 
+  // 以落库后的真实余额为准（并发 _.inc 后更准）
+  let freshExtra = nextExtra;
+  try {
+    const fresh = await getOrCreateQuota(openid);
+    freshExtra = Math.max(0, Number(fresh.extraRounds) || 0);
+    if (vipDays > 0) {
+      nextVipExpire = Number(fresh.vipExpireAt) || nextVipExpire;
+    }
+  } catch (_) {}
+
   return {
-    extraRounds: nextExtra,
+    extraRounds: freshExtra,
     isVip: vipDays > 0 ? true : !!(quota.isVip && (!quota.vipExpireAt || quota.vipExpireAt > Date.now())),
     vipExpireAt: nextVipExpire,
     rounds: rounds,
@@ -335,6 +346,17 @@ async function markDelivered(outTradeNo, patch) {
     });
 }
 
+async function hasVpayLog(outTradeNo) {
+  const code = 'VPAY:' + String(outTradeNo || '').trim();
+  if (!code || code === 'VPAY:') return false;
+  try {
+    const existed = await db.collection('redeem_logs').where({ code: code }).limit(1).get();
+    return !!(existed && existed.data && existed.data.length);
+  } catch (_) {
+    return false;
+  }
+}
+
 async function deliverOrderDoc(order, extras) {
   if (!order) return { ok: false, errMsg: '无订单' };
   const outTradeNo = String(order.outTradeNo || order._id || '').trim();
@@ -343,7 +365,7 @@ async function deliverOrderDoc(order, extras) {
     return { ok: true, already: true };
   }
 
-  // 原子占坑：仅 pending 可进入发货，防止 notify 与 poll 并发双发
+  // 原子占坑：仅 pending/paid 可进入发货，防止 notify 与 poll 并发双发
   let claimed = 0;
   try {
     const claim = await db
@@ -366,11 +388,33 @@ async function deliverOrderDoc(order, extras) {
     try {
       const got = await db.collection('virtual_orders').doc(outTradeNo).get();
       const cur = got && got.data;
-      if (cur && (cur.status === 'delivered' || cur.status === 'delivering')) {
+      if (cur && cur.status === 'delivered') {
         return { ok: true, already: true };
       }
-      // 无 where 更新权限时的兜底：再读一次状态
-      if (cur && cur.status === 'pending') {
+      if (cur && cur.status === 'delivering') {
+        const at = Number(cur.deliveringAt) || 0;
+        const age = Date.now() - at;
+        // 另一路正在发货：让客户端继续 poll，切勿当成已到账
+        if (age >= 0 && age < 20000) {
+          return { ok: false, busy: true, errMsg: '发货中' };
+        }
+        // 超时卡死：若已有 VPAY 日志则只收尾；否则重新占坑补发
+        if (await hasVpayLog(outTradeNo)) {
+          await markDelivered(outTradeNo, {
+            mchOrderNo: extras && extras.mchOrderNo,
+            recovered: true
+          });
+          return { ok: true, already: true, recovered: true };
+        }
+        try {
+          await db.collection('virtual_orders').doc(outTradeNo).update({
+            data: { status: 'delivering', deliveringAt: Date.now() }
+          });
+          claimed = 1;
+        } catch (_) {
+          return { ok: false, busy: true, errMsg: '发货锁定中' };
+        }
+      } else if (cur && (cur.status === 'pending' || cur.status === 'paid')) {
         await db.collection('virtual_orders').doc(outTradeNo).update({
           data: { status: 'delivering', deliveringAt: Date.now() }
         });
@@ -379,13 +423,23 @@ async function deliverOrderDoc(order, extras) {
     } catch (_) {}
   }
   if (!claimed) {
-    return { ok: true, already: true };
+    // 无法确认状态时不要谎报 already，让客户端继续等
+    return { ok: false, busy: true, errMsg: '发货未就绪' };
   }
 
   const product = productById(order.productId);
   if (!product) return { ok: false, errMsg: '未知商品' };
   const openid = String(order.openid || '').trim();
   if (!openid) return { ok: false, errMsg: '订单无 openid' };
+
+  // 幂等：已有发货日志则不再加额
+  if (await hasVpayLog(outTradeNo)) {
+    await markDelivered(outTradeNo, {
+      mchOrderNo: extras && extras.mchOrderNo,
+      recovered: true
+    });
+    return { ok: true, already: true, recovered: true };
+  }
 
   const grant = await deliverProduct(openid, product, { outTradeNo: outTradeNo });
   await markDelivered(outTradeNo, {
@@ -572,6 +626,40 @@ async function pollOrder(event, openid) {
     };
   }
 
+  // 客户端支付控件已 success：可直接尝试发货（查单接口不可用时的兜底）
+  if (event && event.clientPaid && (order.status === 'pending' || order.status === 'paid' || order.status === 'delivering')) {
+    if (order.status === 'pending') {
+      try {
+        await db.collection('virtual_orders').doc(outTradeNo).update({
+          data: { status: 'paid', clientPaidAt: Date.now() }
+        });
+        order.status = 'paid';
+      } catch (_) {}
+    }
+    const r = await deliverOrderDoc(order, {});
+    if (r && r.busy) {
+      return { ok: true, status: 'pending', busy: true };
+    }
+    if (r && r.ok) {
+      const quota = await getOrCreateQuota(openid);
+      const grantExtra =
+        r.grant && r.grant.extraRounds != null
+          ? Number(r.grant.extraRounds)
+          : Math.max(0, Number(quota.extraRounds) || 0);
+      return {
+        ok: true,
+        status: 'delivered',
+        extraRounds: Math.max(0, grantExtra, Number(quota.extraRounds) || 0),
+        isVip: !!(
+          quota.isVip &&
+          (!(Number(quota.vipExpireAt) > 0) || Number(quota.vipExpireAt) > Date.now())
+        ),
+        vipExpireAt: Number(quota.vipExpireAt) || 0,
+        via: 'client_paid'
+      };
+    }
+  }
+
   // 可选：查微信单（需 access_token）；失败则仍返回 pending，等消息推送
   try {
     const c = cfg();
@@ -601,12 +689,23 @@ async function pollOrder(event, openid) {
           (q.order && (q.order.status === 1 || q.order.order_state === 1)));
       if (paid && order.status !== 'delivered') {
         const r = await deliverOrderDoc(order, {});
-        if (r.ok) {
+        if (r && r.busy) {
+          return { ok: true, status: 'pending', busy: true };
+        }
+        if (r && r.ok) {
           const quota = await getOrCreateQuota(openid);
+          const grantExtra =
+            r.grant && r.grant.extraRounds != null
+              ? Number(r.grant.extraRounds)
+              : Math.max(0, Number(quota.extraRounds) || 0);
           return {
             ok: true,
             status: 'delivered',
-            extraRounds: Math.max(0, Number(quota.extraRounds) || 0),
+            extraRounds: Math.max(
+              0,
+              grantExtra,
+              Number(quota.extraRounds) || 0
+            ),
             isVip: !!(
               quota.isVip &&
               (!(Number(quota.vipExpireAt) > 0) ||
@@ -620,6 +719,11 @@ async function pollOrder(event, openid) {
     }
   } catch (e) {
     console.warn('[virtualPay] query_order skip', e && e.message);
+  }
+
+  // delivering 中：继续 pending，勿提前返回 delivered
+  if (order.status === 'delivering') {
+    return { ok: true, status: 'pending', busy: true };
   }
 
   return { ok: true, status: order.status || 'pending' };
@@ -636,9 +740,9 @@ async function buyAdFree(openid) {
   }
   const nextExtra = extra - AD_FREE_COST;
   const nextVip = computeVipExpire(quota, AD_FREE_DAYS);
-  await db.collection('user_quota').doc(quota._id).update({
+  await db.collection('user_quota').doc(openid).update({
     data: {
-      extraRounds: nextExtra,
+      extraRounds: _.inc(-AD_FREE_COST),
       extraConsumed: _.inc(AD_FREE_COST),
       isVip: true,
       vipPaused: false,

@@ -427,6 +427,42 @@ async function pullChatSession(openid, event) {
   };
 }
 
+/** 按真实消息文档列会话，避免 meta 空壳可选却无内容 */
+async function listChatSessions(openid, event) {
+  const ocId = String((event && event.ocId) || '').trim();
+  if (!ocId) return { ok: false, errMsg: '缺少 ocId' };
+  let rows = [];
+  try {
+    const res = await db
+      .collection('user_chat_msgs')
+      .where({ openid: openid, ocId: ocId })
+      .limit(50)
+      .get();
+    rows = (res && res.data) || [];
+  } catch (e) {
+    // 无索引时退回按 meta + 逐条 pull（由客户端处理）
+    return { ok: false, errMsg: (e && e.message) || '查询失败', sessions: [] };
+  }
+  const sessions = rows
+    .map((doc) => {
+      const msgs = Array.isArray(doc.messages) ? doc.messages : [];
+      const last = msgs.length ? msgs[msgs.length - 1] : null;
+      const preview = String(
+        (last && (last.content || last.text || last.preview)) || ''
+      ).slice(0, 24);
+      return {
+        id: String(doc.sessionId || 'default'),
+        title: String(doc.title || '') || '对话',
+        preview: preview,
+        messageCount: msgs.length,
+        updatedAt: Number(doc.updatedAt) || 0
+      };
+    })
+    .filter((s) => s.messageCount > 0)
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  return { ok: true, sessions: sessions };
+}
+
 exports.main = async (event) => {
   const openid = openidOf();
   if (!openid) return { ok: false, errMsg: '无法识别用户' };
@@ -434,6 +470,7 @@ exports.main = async (event) => {
   try {
     if (action === 'pull') return await pullAll(openid);
     if (action === 'listBackup') return await listBackup(openid);
+    if (action === 'listChatSessions') return await listChatSessions(openid, event);
     if (action === 'pullChatSession') return await pullChatSession(openid, event);
     if (action === 'pushNotebook') return await pushNotebook(openid, event);
     if (action === 'pushChatMeta') return await pushChatMeta(openid, event);

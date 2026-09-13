@@ -503,6 +503,14 @@ Page({
     wx.navigateTo({ url: '/pages/redeemCode/redeemCode' });
   },
 
+  onGoStorageClean() {
+    this.setData({ settingsOpen: false });
+    wx.navigateTo({
+      url: '/pages/ocApp/ocStorageClean/ocStorageClean',
+      fail: () => wx.showToast({ title: '打开清理页失败', icon: 'none' })
+    });
+  },
+
   onGoAdFreeCard() {
     this.setData({ settingsOpen: false });
     wx.navigateTo({ url: '/pages/redeemCode/redeemCode?focus=adfree' });

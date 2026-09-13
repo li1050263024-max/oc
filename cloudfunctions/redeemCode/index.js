@@ -48,17 +48,22 @@ function isVipActive(row) {
  */
 async function getOrCreateQuota(openid) {
   const col = db.collection('user_quota');
-  const byId = col.doc(openid);
+  const oid = String(openid || '').trim();
+  if (!oid) throw new Error('缺少 openid');
+
+  // 与 virtualPay 对齐：统一以 openid 作为文档 ID
+  let primary = null;
   try {
-    const got = await byId.get();
+    const got = await col.doc(oid).get();
     if (got && got.data && Object.keys(got.data).length) {
-      return Object.assign({ _id: openid }, got.data);
+      primary = Object.assign({ _id: oid }, got.data);
     }
   } catch (_) {}
 
+  let legacy = null;
   try {
-    const res = await col.where({ openid }).limit(20).get();
-    const rows = (res && res.data) || [];
+    const res = await col.where({ openid: oid }).limit(20).get();
+    const rows = ((res && res.data) || []).filter((r) => r && r._id !== oid);
     if (rows.length) {
       rows.sort(
         (a, b) =>
@@ -66,38 +71,57 @@ async function getOrCreateQuota(openid) {
           Number(b.redeemedTotal || 0) - Number(a.redeemedTotal || 0) ||
           Number(b.updateTimeMs || 0) - Number(a.updateTimeMs || 0)
       );
-      return rows[0];
+      legacy = rows[0];
     }
   } catch (_) {}
 
-  const doc = {
-    openid,
-    extraRounds: 0,
-    redeemedTotal: 0,
-    extraConsumed: 0,
-    weekKey: '',
-    freeUsed: 0,
-    freeAllowed: FREE_WEEKLY_ROUNDS,
-    isVip: false,
-    vipExpireAt: 0,
-    videoExtractWeekKey: '',
-    videoExtractUsed: 0,
-    createTimeMs: Date.now(),
-    updateTimeMs: Date.now()
-  };
-  try {
-    await byId.set({ data: doc });
-    return Object.assign({ _id: openid }, doc);
-  } catch (e) {
-    try {
-      const add = await col.add({ data: doc });
-      return Object.assign({ _id: add._id }, doc);
-    } catch (e2) {
-      const res = await col.where({ openid }).limit(1).get();
-      if (res.data && res.data.length) return res.data[0];
-      throw e2;
+  if (!primary && legacy) {
+    const migrated = Object.assign({}, legacy, {
+      openid: oid,
+      updateTimeMs: Date.now()
+    });
+    delete migrated._id;
+    await col.doc(oid).set({ data: migrated });
+    primary = Object.assign({ _id: oid }, migrated);
+  }
+
+  if (!primary) {
+    const doc = {
+      openid: oid,
+      extraRounds: 0,
+      redeemedTotal: 0,
+      extraConsumed: 0,
+      weekKey: '',
+      freeUsed: 0,
+      freeAllowed: FREE_WEEKLY_ROUNDS,
+      isVip: false,
+      vipExpireAt: 0,
+      videoExtractWeekKey: '',
+      videoExtractUsed: 0,
+      createTimeMs: Date.now(),
+      updateTimeMs: Date.now()
+    };
+    await col.doc(oid).set({ data: doc });
+    return Object.assign({ _id: oid }, doc);
+  }
+
+  if (legacy) {
+    const pExtra = Math.max(0, Number(primary.extraRounds) || 0);
+    const lExtra = Math.max(0, Number(legacy.extraRounds) || 0);
+    if (lExtra > pExtra) {
+      const patch = {
+        extraRounds: lExtra,
+        redeemedTotal: Math.max(
+          Number(primary.redeemedTotal) || 0,
+          Number(legacy.redeemedTotal) || 0
+        ),
+        updateTimeMs: Date.now()
+      };
+      await col.doc(oid).update({ data: patch });
+      primary = Object.assign({}, primary, patch);
     }
   }
+  return primary;
 }
 
 function videoExtractState(row) {
@@ -140,7 +164,7 @@ async function getBalance(openid) {
   // 额度已过期：落库清零，避免前端反复看到脏数据
   if (!extraValid && extraRounds > 0) {
     try {
-      await db.collection('user_quota').doc(row._id || openid).update({
+      await db.collection('user_quota').doc(openid).update({
         data: { extraRounds: 0, updateTimeMs: Date.now() }
       });
     } catch (_) {}
@@ -175,17 +199,14 @@ async function syncBalance(openid, payload) {
 
   const added = Math.max(0, Math.floor(Number(payload && payload.deltaExtraAdded) || 0));
   const d = Math.max(0, Math.floor(Number(payload && payload.deltaConsumed) || 0));
-  // 广告等本地加额：先加再扣，避免被 balance 回拉抹掉
+  // 用 _.inc 增量，禁止「读旧值再绝对写回」盖掉刚到账的充值
   if (added > 0 || d > 0) {
-    const cur = Math.max(0, Number(quota.extraRounds) || 0);
-    const afterAdd = cur + added;
-    const consume = Math.min(d, afterAdd);
-    const next = Math.max(0, afterAdd - consume);
-    if (next !== cur) {
-      patch.extraRounds = next;
+    const net = added - d;
+    if (net !== 0) {
+      patch.extraRounds = _.inc(net);
     }
-    if (consume > 0) {
-      patch.extraConsumed = _.inc(consume);
+    if (d > 0) {
+      patch.extraConsumed = _.inc(d);
     }
     if (added > 0) {
       patch.extraEarned = _.inc(added);
@@ -236,7 +257,16 @@ async function syncBalance(openid, payload) {
   if (Object.keys(patch).length <= 1) {
     return getBalance(openid);
   }
-  await db.collection('user_quota').doc(quota._id).update({ data: patch });
+  await db.collection('user_quota').doc(openid).update({ data: patch });
+  // 增量扣成负数时钳回 0
+  try {
+    const after = await getOrCreateQuota(openid);
+    if (Number(after.extraRounds) < 0) {
+      await db.collection('user_quota').doc(openid).update({
+        data: { extraRounds: 0, updateTimeMs: Date.now() }
+      });
+    }
+  } catch (_) {}
   return getBalance(openid);
 }
 
@@ -256,7 +286,7 @@ async function videoExtractBegin(openid) {
       isVip: ve.isVip
     };
   }
-  await db.collection('user_quota').doc(quota._id).update({
+  await db.collection('user_quota').doc(openid).update({
     data: {
       videoExtractWeekKey: ve.weekKey,
       videoExtractUsed: ve.used + 1,
@@ -278,7 +308,7 @@ async function videoExtractRefund(openid) {
   const quota = await getOrCreateQuota(openid);
   const ve = videoExtractState(quota);
   const nextUsed = Math.max(0, ve.used - 1);
-  await db.collection('user_quota').doc(quota._id).update({
+  await db.collection('user_quota').doc(openid).update({
     data: {
       videoExtractWeekKey: ve.weekKey,
       videoExtractUsed: nextUsed,
@@ -407,7 +437,7 @@ async function redeem(openid, rawCode) {
 
   if (grantRounds) {
     nextExtra = nextExtra + rounds;
-    patch.extraRounds = nextExtra;
+    patch.extraRounds = _.inc(rounds);
     patch.redeemedTotal = _.inc(rounds);
     if (roundsExpireDays > 0) {
       const prevExp = Number(quota.extraRoundsExpireAt) || 0;
@@ -433,7 +463,11 @@ async function redeem(openid, rawCode) {
     patch.freeAllowed = nextWeekly;
   }
 
-  await db.collection('user_quota').doc(quota._id).update({ data: patch });
+  await db.collection('user_quota').doc(openid).update({ data: patch });
+  try {
+    const fresh = await getOrCreateQuota(openid);
+    nextExtra = Math.max(0, Number(fresh.extraRounds) || 0);
+  } catch (_) {}
 
   const now = Date.now();
   let logWarn = '';

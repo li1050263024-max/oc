@@ -1527,10 +1527,19 @@ Page({
   },
 
   onTapOc(e) {
-    const ocId = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.ocId;
-    if (!ocId) return;
+    const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
+    const isUser = ds.userPost === true || ds.userPost === 'true' || ds.userPost === 1;
+    if (isUser || !ds.ocId) {
+      wx.navigateTo({
+        url: '/pages/ocApp/ocDouyinProfile/ocDouyinProfile?user=1',
+        fail() {
+          wx.showToast({ title: '无法打开主页', icon: 'none' });
+        }
+      });
+      return;
+    }
     wx.navigateTo({
-      url: '/pages/ocApp/ocDouyinProfile/ocDouyinProfile?id=' + encodeURIComponent(ocId),
+      url: '/pages/ocApp/ocDouyinProfile/ocDouyinProfile?id=' + encodeURIComponent(ds.ocId),
       fail() {
         wx.showToast({ title: '无法打开主页', icon: 'none' });
       }

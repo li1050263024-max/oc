@@ -39,9 +39,10 @@ Page({
     this.setData({ uiThemeClass: getUiThemeClass() });
   },
 
-  _syncExtra() {
+  _syncExtra(opts) {
     this.setData({ extraRounds: readExtraRounds() });
-    syncExtraRoundsFromServer().then((n) => {
+    const skipFlush = !!(opts && opts.skipFlush);
+    syncExtraRoundsFromServer(skipFlush ? { skipFlush: true } : undefined).then((n) => {
       this.setData({ extraRounds: n });
       this._syncVip();
     });
@@ -99,13 +100,14 @@ Page({
               writeExtraRounds(Number(r.extraRounds) || 0);
               this.setData({ extraRounds: Number(r.extraRounds) || 0 });
             }
-            this._syncExtra();
+            this._syncExtra({ skipFlush: true });
             this._syncVip();
             if (delivered) {
               wx.showToast({ title: '充值成功，额度已到账', icon: 'none', duration: 2600 });
-              // 延迟再拉一次，防止云端记账稍慢
-              setTimeout(() => this._syncExtra(), 2000);
-              setTimeout(() => this._syncExtra(), 6000);
+              // 延迟再拉一次，支付窗口内禁止 flush 盖额度
+              setTimeout(() => this._syncExtra({ skipFlush: true }), 2000);
+              setTimeout(() => this._syncExtra({ skipFlush: true }), 6000);
+              setTimeout(() => this._syncExtra({ skipFlush: true }), 12000);
               return;
             }
             wx.showModal({
@@ -117,8 +119,8 @@ Page({
             let n = 0;
             const timer = setInterval(() => {
               n += 1;
-              this._syncExtra();
-              if (n >= 15) clearInterval(timer);
+              this._syncExtra({ skipFlush: true });
+              if (n >= 20) clearInterval(timer);
             }, 2000);
           })
           .catch((err) => {

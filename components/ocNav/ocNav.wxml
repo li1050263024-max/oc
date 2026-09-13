@@ -93,7 +93,7 @@
       <view
         class="nav-popup-item"
         catchtap="onOpenStorageClean"
-      >清除本地内容</view>
+      >清理本地存储</view>
     </scroll-view>
   </view>
 

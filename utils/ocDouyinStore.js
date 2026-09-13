@@ -193,6 +193,45 @@ function getClipsByOcId(ocId) {
     .map(ensureClipEngagement);
 }
 
+function getUserPosts() {
+  return getStoredFeed()
+    .filter((c) => c && (c.isUserPost || c.authorType === 'user'))
+    .slice()
+    .sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0))
+    .map(ensureClipEngagement);
+}
+
+function removeClip(clipId) {
+  const id = String(clipId || '');
+  if (!id) return false;
+  const feed = getStoredFeed();
+  const next = feed.filter((c) => c && String(c.id) !== id);
+  if (next.length === feed.length) return false;
+  saveFeed(next);
+  try {
+    const likes = wx.getStorageSync(STORAGE_LIKES) || {};
+    if (likes[id] != null) {
+      delete likes[id];
+      wx.setStorageSync(STORAGE_LIKES, likes);
+    }
+  } catch (_) {}
+  try {
+    const favs = wx.getStorageSync(STORAGE_FAVS) || {};
+    if (favs[id] != null) {
+      delete favs[id];
+      wx.setStorageSync(STORAGE_FAVS, favs);
+    }
+  } catch (_) {}
+  try {
+    const comments = wx.getStorageSync(STORAGE_COMMENTS) || {};
+    if (comments[id] != null) {
+      delete comments[id];
+      wx.setStorageSync(STORAGE_COMMENTS, comments);
+    }
+  } catch (_) {}
+  return true;
+}
+
 function getOcTotalLikes(ocId) {
   return getClipsByOcId(ocId).reduce((sum, c) => sum + getLikeCount(c.id), 0);
 }
@@ -781,7 +820,7 @@ function addUserPost(opts) {
     isUserPost: true,
     authorName: '我',
     displayName: '我',
-    content: text || (images.length ? '分享图片' : ''),
+    content: text,
     images: images,
     imagePath: images.length ? images[0].path : '',
     imageId: images.length ? images[0].id : '',
@@ -827,6 +866,8 @@ module.exports = {
   prepareFeedForDisplay,
   prepareCommentsForDisplay,
   addUserPost,
+  getUserPosts,
+  removeClip,
   toggleCommentLike,
   getOcProfileCard,
   toggleOcFollow,

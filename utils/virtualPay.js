@@ -38,7 +38,7 @@ function requestVirtualPayment(payParams) {
       return;
     }
     wx.requestVirtualPayment({
-            mode: payParams.mode || 'short_series_coin',
+      mode: payParams.mode || 'short_series_coin',
       signData: payParams.signData,
       paySig: payParams.paySig,
       signature: payParams.signature,
@@ -55,11 +55,17 @@ function pollUntilDelivered(outTradeNo, tries) {
     i += 1;
     return callCloudFunction({
       name: 'virtualPay',
-      data: { action: 'pollOrder', outTradeNo: outTradeNo },
+      data: {
+        action: 'pollOrder',
+        outTradeNo: outTradeNo,
+        // 支付控件 success 后提示云端可发货（查单失败时的兜底）
+        clientPaid: true
+      },
       timeout: 20000
     }).then((res) => {
       const r = (res && res.result) || {};
       if (r.ok && r.status === 'delivered') return r;
+      // busy / pending / delivering：继续等，不要提前结束
       if (i >= max) return r;
       return new Promise((resolve) => {
         setTimeout(() => resolve(tick()), 1200);
@@ -70,13 +76,16 @@ function pollUntilDelivered(outTradeNo, tries) {
 }
 
 function applyDeliveredQuota(polled) {
-  if (!polled || polled.status !== 'delivered') return;
+  if (!polled || polled.status !== 'delivered') return 0;
+  let written = 0;
   try {
-    if (polled.extraRounds != null) {
-      const ai = require('./aiChatQuota.js');
-      if (typeof ai.writeExtraRounds === 'function') {
-        ai.writeExtraRounds(Number(polled.extraRounds) || 0);
-      }
+    const ai = require('./aiChatQuota.js');
+    if (polled.extraRounds != null && typeof ai.writeExtraRounds === 'function') {
+      const server = Math.max(0, Number(polled.extraRounds) || 0);
+      const local =
+        typeof ai.readExtraRounds === 'function' ? ai.readExtraRounds() : 0;
+      written = Math.max(server, local);
+      ai.writeExtraRounds(written);
     }
     if (polled.isVip) {
       membership.writeCache({
@@ -86,14 +95,15 @@ function applyDeliveredQuota(polled) {
       });
     }
   } catch (_) {}
+  return written;
 }
 
-/** 支付后强制拉云端余额，避免轮询超时或跨页不刷新 */
+/** 支付后只拉 balance，禁止 flush 绝对覆盖刚到账额度 */
 function forceSyncQuotaAfterPay() {
   try {
     const ai = require('./aiChatQuota.js');
     if (typeof ai.syncExtraRoundsFromServer === 'function') {
-      return ai.syncExtraRoundsFromServer();
+      return ai.syncExtraRoundsFromServer({ skipFlush: true });
     }
   } catch (_) {}
   return Promise.resolve(0);
@@ -122,15 +132,21 @@ function buyProduct(productId) {
       return requestVirtualPayment(r).then(() => r);
     })
     .then((r) =>
-      pollUntilDelivered(r.outTradeNo, 20).then((polled) => {
-        applyDeliveredQuota(polled);
-        // 无论是否已 delivered，都再拉一次余额；发货延迟时后台继续 poll
+      pollUntilDelivered(r.outTradeNo, 25).then((polled) => {
         const outTradeNo = r.outTradeNo;
+        applyDeliveredQuota(polled);
+
         const finish = forceSyncQuotaAfterPay().then((extra) => {
           const polledExtra = Number(polled && polled.extraRounds) || 0;
           const synced = Number(extra) || 0;
-          const merged = Math.max(polledExtra, synced);
-          if (merged > 0) {
+          let local = 0;
+          try {
+            const ai = require('./aiChatQuota.js');
+            if (typeof ai.readExtraRounds === 'function') local = ai.readExtraRounds();
+          } catch (_) {}
+          const merged = Math.max(polledExtra, synced, local);
+          const delivered = !!(polled && polled.status === 'delivered');
+          if (delivered && merged >= 0) {
             try {
               const ai = require('./aiChatQuota.js');
               if (typeof ai.writeExtraRounds === 'function') {
@@ -141,15 +157,25 @@ function buyProduct(productId) {
           return Object.assign({}, polled || {}, {
             outTradeNo: outTradeNo,
             extraRounds: merged,
-            status: (polled && polled.status) || 'pending'
+            status: delivered ? 'delivered' : (polled && polled.status) || 'pending'
           });
         });
+
         if (!polled || polled.status !== 'delivered') {
-          // 后台再轮询一段时间，到账后写本地
-          pollUntilDelivered(outTradeNo, 30)
+          pollUntilDelivered(outTradeNo, 40)
             .then((again) => {
               applyDeliveredQuota(again);
-              return forceSyncQuotaAfterPay();
+              return forceSyncQuotaAfterPay().then((extra) => {
+                applyDeliveredQuota(
+                  Object.assign({}, again || {}, {
+                    status: 'delivered',
+                    extraRounds: Math.max(
+                      Number(again && again.extraRounds) || 0,
+                      Number(extra) || 0
+                    )
+                  })
+                );
+              });
             })
             .catch(() => {});
         }

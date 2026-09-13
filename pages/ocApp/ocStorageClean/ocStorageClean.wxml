@@ -1,8 +1,22 @@
 <view class="sc-page">
   <view class="sc-head">
-    <text class="sc-title">本地存储空间不足</text>
-    <text class="sc-sub">小程序本地文件约有 10MB 上限。可勾选删除自定义 BGM，或一键清理未引用缓存。</text>
+    <text class="sc-title">清理本地存储</text>
+    <text class="sc-sub">小程序本地约有 10MB 上限。下方为各部分占用估算，可勾选删除自定义 BGM，或一键清理未引用缓存。</text>
     <text class="sc-kv">键值存储用量：{{kvText || '读取中…'}}</text>
+  </view>
+
+  <view class="sc-section" wx:if="{{categories.length}}">
+    <text class="sc-sec-title">占用明细</text>
+    <view class="sc-cat" wx:for="{{categories}}" wx:key="id">
+      <view class="sc-cat-top">
+        <text class="sc-cat-title">{{item.title}}</text>
+        <text class="sc-cat-size">{{item.sizeText}}</text>
+      </view>
+      <view class="sc-bar">
+        <view class="sc-bar-fill" style="width: {{item.pct}}%;"></view>
+      </view>
+      <text class="sc-cat-hint">{{item.hint}}</text>
+    </view>
   </view>
 
   <view class="sc-section">

@@ -36,6 +36,7 @@ function shortBio(oc) {
 Page({
   data: {
     ocId: '',
+    isUserProfile: false,
     ocName: '',
     avatarUrl: '',
     avatarLetter: 'O',
@@ -57,12 +58,14 @@ Page({
     menuTop: 48,
     menuHeight: 32,
     loading: true,
-    empty: false
+    empty: false,
+    manageMode: false
   },
 
   onLoad(options) {
     this._alive = true;
-    const ocId = options && options.id ? decodeURIComponent(options.id) : '';
+    const isUser = !!(options && (options.user === '1' || options.user === 1));
+    const ocId = !isUser && options && options.id ? decodeURIComponent(options.id) : '';
     try {
       const sys = wx.getSystemInfoSync();
       const menu = wx.getMenuButtonBoundingClientRect
@@ -77,12 +80,12 @@ Page({
         });
       }
     } catch (_) {}
-    this.setData({ ocId: ocId });
+    this.setData({ ocId: ocId, isUserProfile: isUser });
     this.loadProfile();
   },
 
   onShow() {
-    if (this.data.ocId) this.loadProfile();
+    if (this.data.isUserProfile || this.data.ocId) this.loadProfile();
   },
 
   onUnload() {
@@ -99,6 +102,10 @@ Page({
   },
 
   async loadProfile() {
+    if (this.data.isUserProfile) {
+      this._loadUserProfile();
+      return;
+    }
     const ocId = this.data.ocId;
     if (!ocId) {
       this.setData({ loading: false, empty: true });
@@ -170,11 +177,59 @@ Page({
           fansText: douyinStore.formatCount(card.fans),
           worksCount: works.length,
           works: works,
-          isVip: isVip
+          isVip: isVip,
+          manageMode: false
         },
         this._applyRelation(card)
       )
     );
+  },
+
+  _loadUserProfile() {
+    const clips = douyinStore.getUserPosts() || [];
+    const likeTotal = clips.reduce(
+      (sum, c) => sum + douyinStore.getLikeCount(c.id),
+      0
+    );
+    const works = clips.map((c) => {
+      const imgs = Array.isArray(c.images) ? c.images : [];
+      const cover = (imgs[0] && imgs[0].path) || c.imagePath || '';
+      const likes = douyinStore.getLikeCount(c.id);
+      return {
+        id: c.id,
+        cover: cover,
+        likeText: douyinStore.formatCount(likes),
+        multi: imgs.length > 1,
+        locked: false,
+        content: String(c.content || '').slice(0, 40)
+      };
+    });
+    const coverUrl =
+      (works[0] && works[0].cover) || '';
+    if (!this._alive) return;
+    this.setData({
+      loading: false,
+      empty: !works.length,
+      ocName: '我',
+      avatarUrl: '',
+      avatarLetter: '我',
+      coverUrl: coverUrl,
+      douyinId: 'me',
+      ipRegion: '',
+      bioText: '我的作品',
+      genderAgeText: '',
+      pronoun: '我',
+      likeTotalText: douyinStore.formatCount(likeTotal),
+      followingText: '0',
+      fansText: '0',
+      followed: false,
+      followsYou: false,
+      mutual: false,
+      worksCount: works.length,
+      works: works,
+      isVip: !!membership.isMember(),
+      manageMode: true
+    });
   },
 
   onBack() {
@@ -182,6 +237,7 @@ Page({
   },
 
   onTapFollow() {
+    if (this.data.isUserProfile) return;
     const card = douyinStore.setOcFollow(this.data.ocId, true);
     this.setData(this._applyRelation(card));
     wx.showToast({
@@ -191,6 +247,7 @@ Page({
   },
 
   onTapRelation() {
+    if (this.data.isUserProfile) return;
     wx.showActionSheet({
       itemList: ['取消关注'],
       success: (res) => {
@@ -203,6 +260,7 @@ Page({
   },
 
   onTapMessage() {
+    if (this.data.isUserProfile) return;
     const ocId = this.data.ocId;
     if (!ocId) {
       wx.showToast({ title: '无法打开聊天', icon: 'none' });
@@ -228,6 +286,28 @@ Page({
       url: '/pages/ocApp/ocDouyin/ocDouyin?clipId=' + encodeURIComponent(clipId),
       fail() {
         wx.showToast({ title: '无法打开作品', icon: 'none' });
+      }
+    });
+  },
+
+  onDeleteWork(e) {
+    const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
+    const clipId = ds.id;
+    if (!clipId) return;
+    wx.showModal({
+      title: '删除内容',
+      content: '确定删除这条作品？删除后不可恢复。',
+      confirmText: '删除',
+      confirmColor: '#7c3aed',
+      success: (res) => {
+        if (!res.confirm) return;
+        const ok = douyinStore.removeClip(clipId);
+        if (!ok) {
+          wx.showToast({ title: '删除失败', icon: 'none' });
+          return;
+        }
+        wx.showToast({ title: '已删除', icon: 'none' });
+        this.loadProfile();
       }
     });
   }

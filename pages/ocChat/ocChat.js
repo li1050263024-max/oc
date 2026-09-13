@@ -1001,6 +1001,229 @@ Page({
       wx.showToast({ title: '云开发未就绪', icon: 'none' });
       return;
     }
+    const nameOf = (id) => {
+      try {
+        const hit = getFavoriteById(id);
+        return (
+          (hit && hit.result && hit.result.name) ||
+          (hit && hit.name) ||
+          String(id).slice(0, 8)
+        );
+      } catch (_) {
+        return String(id).slice(0, 8);
+      }
+    };
+    const restoreSession = (ocId, sid, sessTitle) => {
+      const ocName = nameOf(ocId);
+      wx.showLoading({ title: '恢复中…', mask: true });
+      callCloudFunction({
+        name: 'userDataSync',
+        data: { action: 'pullChatSession', ocId: ocId, sessionId: sid },
+        timeout: 40000
+      })
+        .then((res2) => {
+          const r2 = (res2 && res2.result) || {};
+          const sessData = r2.session;
+          const msgs =
+            sessData && Array.isArray(sessData.messages) ? sessData.messages : [];
+          if (!r2.ok || !msgs.length) {
+            wx.hideLoading();
+            wx.showToast({
+              title: '云端该对话无消息',
+              icon: 'none',
+              duration: 2800
+            });
+            return;
+          }
+          const chatSession = require('../../utils/chatSession.js');
+          try {
+            chatSession.setMessages(ocId, sid, msgs);
+            if (sessData.memory) {
+              chatSession.setSessionMemory(ocId, sid, sessData.memory);
+            }
+            const list = chatSession.listSessions(ocId);
+            const has = list.some((x) => x && x.id === sid);
+            if (!has) {
+              chatSession.saveSessions(
+                ocId,
+                [{ id: sid, title: sessTitle, updatedAt: Date.now(), preview: '' }].concat(
+                  list
+                )
+              );
+            }
+          } catch (_) {}
+          wx.hideLoading();
+          const applyUi = () => {
+            this._loadSession(ocId, sid);
+            this.setData({
+              sessionList: listSessions(ocId),
+              sessionPickerOpen: false
+            });
+          };
+          if (this.data.selectedId === ocId) {
+            applyUi();
+          } else {
+            revealOcInChatList(ocId);
+            this.refreshOcList();
+            this.setData({ selectedId: ocId });
+            applyUi();
+          }
+          wx.showToast({
+            title:
+              '已恢复「' +
+              ocName +
+              '」· ' +
+              sessTitle +
+              '（' +
+              msgs.length +
+              ' 条）',
+            icon: 'none',
+            duration: 3200
+          });
+        })
+        .catch((err) => {
+          try {
+            wx.hideLoading();
+          } catch (_) {}
+          wx.showToast({
+            title: (err && err.message) || '恢复失败',
+            icon: 'none'
+          });
+        });
+    };
+
+    const pickSessionForOc = (ocId, metaSessions) => {
+      wx.showLoading({ title: '读取会话…', mask: true });
+      callCloudFunction({
+        name: 'userDataSync',
+        data: { action: 'listChatSessions', ocId: ocId },
+        timeout: 40000
+      })
+        .then((resL) => {
+          const rl = (resL && resL.result) || {};
+          let sessions = Array.isArray(rl.sessions) ? rl.sessions : [];
+          if (sessions.length) {
+            wx.hideLoading();
+            const labels = sessions.slice(0, 6).map((s, i) => {
+              const title = (s && s.title) || '对话' + (i + 1);
+              const n = Number(s && s.messageCount) || 0;
+              const prev = String((s && s.preview) || '').slice(0, 12);
+              return title + ' · ' + n + '条' + (prev ? ' · ' + prev : '');
+            });
+            wx.showActionSheet({
+              itemList: labels,
+              success: (pickS) => {
+                const sess = sessions[pickS.tapIndex];
+                const sid = (sess && sess.id) || 'default';
+                restoreSession(ocId, sid, (sess && sess.title) || sid);
+              }
+            });
+            return null;
+          }
+          // list 失败或空：探测 meta 会话，只保留真有消息的
+          const candidates = (metaSessions || []).slice(0, 8);
+          if (!candidates.length) {
+            wx.hideLoading();
+            wx.showToast({ title: '该 OC 云端无对话消息', icon: 'none', duration: 2600 });
+            return null;
+          }
+          return Promise.all(
+            candidates.map((s) => {
+              const sid = (s && s.id) || 'default';
+              return callCloudFunction({
+                name: 'userDataSync',
+                data: { action: 'pullChatSession', ocId: ocId, sessionId: sid },
+                timeout: 35000
+              })
+                .then((res2) => {
+                  const r2 = (res2 && res2.result) || {};
+                  const msgs =
+                    r2.session && Array.isArray(r2.session.messages)
+                      ? r2.session.messages
+                      : [];
+                  if (!msgs.length) return null;
+                  return {
+                    id: sid,
+                    title: (s && s.title) || '对话',
+                    preview: String((s && s.preview) || '').slice(0, 16),
+                    messageCount: msgs.length,
+                    _msgs: msgs,
+                    _memory: (r2.session && r2.session.memory) || ''
+                  };
+                })
+                .catch(() => null);
+            })
+          ).then((rows) => {
+            wx.hideLoading();
+            sessions = rows.filter(Boolean);
+            if (!sessions.length) {
+              wx.showToast({ title: '云端并无该对话消息', icon: 'none', duration: 2800 });
+              return;
+            }
+            const labels = sessions.slice(0, 6).map((s, i) => {
+              const title = s.title || '对话' + (i + 1);
+              return title + ' · ' + s.messageCount + '条' + (s.preview ? ' · ' + s.preview : '');
+            });
+            wx.showActionSheet({
+              itemList: labels,
+              success: (pickS) => {
+                const sess = sessions[pickS.tapIndex];
+                if (!sess) return;
+                // 已预拉取：直接写入，避免二次空拉
+                const sid = sess.id || 'default';
+                const ocName = nameOf(ocId);
+                const chatSession = require('../../utils/chatSession.js');
+                try {
+                  chatSession.setMessages(ocId, sid, sess._msgs || []);
+                  if (sess._memory) chatSession.setSessionMemory(ocId, sid, sess._memory);
+                  const list = chatSession.listSessions(ocId);
+                  if (!list.some((x) => x && x.id === sid)) {
+                    chatSession.saveSessions(
+                      ocId,
+                      [{ id: sid, title: sess.title, updatedAt: Date.now(), preview: '' }].concat(
+                        list
+                      )
+                    );
+                  }
+                } catch (_) {}
+                const applyUi = () => {
+                  this._loadSession(ocId, sid);
+                  this.setData({
+                    sessionList: listSessions(ocId),
+                    sessionPickerOpen: false
+                  });
+                };
+                if (this.data.selectedId === ocId) applyUi();
+                else {
+                  revealOcInChatList(ocId);
+                  this.refreshOcList();
+                  this.setData({ selectedId: ocId });
+                  applyUi();
+                }
+                wx.showToast({
+                  title:
+                    '已恢复「' +
+                    ocName +
+                    '」· ' +
+                    (sess.title || sid) +
+                    '（' +
+                    sess.messageCount +
+                    ' 条）',
+                  icon: 'none',
+                  duration: 3200
+                });
+              }
+            });
+          });
+        })
+        .catch(() => {
+          try {
+            wx.hideLoading();
+          } catch (_) {}
+          wx.showToast({ title: '读取会话失败', icon: 'none' });
+        });
+    };
+
     callCloudFunction({
       name: 'userDataSync',
       data: { action: 'pull' },
@@ -1018,20 +1241,7 @@ Page({
           wx.showToast({ title: '云端暂无对话备份', icon: 'none', duration: 2600 });
           return;
         }
-        const nameOf = (id) => {
-          try {
-            const hit = getFavoriteById(id);
-            return (
-              (hit && hit.result && hit.result.name) ||
-              (hit && hit.name) ||
-              String(id).slice(0, 8)
-            );
-          } catch (_) {
-            return String(id).slice(0, 8);
-          }
-        };
         const currentId = this.data.selectedId;
-        // 优先当前 OC，再列其他有备份的 OC
         const ordered = ocIds.slice().sort((a, b) => {
           if (a === currentId) return -1;
           if (b === currentId) return 1;
@@ -1048,97 +1258,7 @@ Page({
           success: (pickOc) => {
             const ocId = ordered[pickOc.tapIndex];
             if (!ocId) return;
-            const sessions = (ocSessions[ocId] || []).slice(0, 6);
-            const sessLabels = sessions.map((s, i) => {
-              const title = (s && s.title) || '对话' + (i + 1);
-              const prev = String((s && s.preview) || '').slice(0, 16);
-              return title + (prev ? ' · ' + prev : '');
-            });
-            wx.showActionSheet({
-              itemList: sessLabels,
-              success: (pickS) => {
-                const sess = sessions[pickS.tapIndex];
-                const sid = (sess && sess.id) || 'default';
-                const ocName = nameOf(ocId);
-                const sessTitle = (sess && sess.title) || sid;
-                wx.showLoading({ title: '恢复中…', mask: true });
-                callCloudFunction({
-                  name: 'userDataSync',
-                  data: { action: 'pullChatSession', ocId: ocId, sessionId: sid },
-                  timeout: 40000
-                })
-                  .then((res2) => {
-                    const r2 = (res2 && res2.result) || {};
-                    const sessData = r2.session;
-                    const msgs =
-                      sessData && Array.isArray(sessData.messages) ? sessData.messages : [];
-                    if (!r2.ok || !msgs.length) {
-                      wx.hideLoading();
-                      wx.showToast({
-                        title: '云端该对话无消息',
-                        icon: 'none',
-                        duration: 2800
-                      });
-                      return;
-                    }
-                    const chatSession = require('../../utils/chatSession.js');
-                    try {
-                      chatSession.setMessages(ocId, sid, msgs);
-                      if (sessData.memory) {
-                        chatSession.setSessionMemory(ocId, sid, sessData.memory);
-                      }
-                      const list = chatSession.listSessions(ocId);
-                      const has = list.some((x) => x && x.id === sid);
-                      if (!has) {
-                        chatSession.saveSessions(
-                          ocId,
-                          [{ id: sid, title: sessTitle, updatedAt: Date.now(), preview: '' }].concat(
-                            list
-                          )
-                        );
-                      }
-                    } catch (_) {}
-                    wx.hideLoading();
-                    const applyUi = () => {
-                      this._loadSession(ocId, sid);
-                      this.setData({
-                        sessionList: listSessions(ocId),
-                        sessionPickerOpen: false
-                      });
-                    };
-                    if (this.data.selectedId === ocId) {
-                      applyUi();
-                    } else {
-                      // 切到该 OC 再加载会话
-                      revealOcInChatList(ocId);
-                      this.refreshOcList();
-                      this.setData({ selectedId: ocId });
-                      applyUi();
-                    }
-                    wx.showToast({
-                      title:
-                        '已恢复「' +
-                        ocName +
-                        '」· ' +
-                        sessTitle +
-                        '（' +
-                        msgs.length +
-                        ' 条）',
-                      icon: 'none',
-                      duration: 3200
-                    });
-                  })
-                  .catch((err) => {
-                    try {
-                      wx.hideLoading();
-                    } catch (_) {}
-                    wx.showToast({
-                      title: (err && err.message) || '恢复失败',
-                      icon: 'none'
-                    });
-                  });
-              }
-            });
+            pickSessionForOc(ocId, ocSessions[ocId] || []);
           }
         });
       })
