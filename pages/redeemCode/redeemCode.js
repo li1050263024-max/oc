@@ -97,6 +97,7 @@ Page({
             const delivered = r && r.status === 'delivered';
             if (r && r.extraRounds != null) {
               writeExtraRounds(Number(r.extraRounds) || 0);
+              this.setData({ extraRounds: Number(r.extraRounds) || 0 });
             }
             this._syncExtra();
             this._syncVip();

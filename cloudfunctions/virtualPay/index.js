@@ -175,30 +175,77 @@ function genOutTradeNo() {
 
 async function getOrCreateQuota(openid) {
   const col = db.collection('user_quota');
+  const oid = String(openid || '').trim();
+  if (!oid) throw new Error('缺少 openid');
+
+  // 统一以 openid 作为文档 ID，避免 where 查到旧文档导致加额与 balance 读不一致
+  let primary = null;
   try {
-    const got = await col.doc(openid).get();
+    const got = await col.doc(oid).get();
     if (got && got.data && Object.keys(got.data).length) {
-      return Object.assign({ _id: openid }, got.data);
+      primary = Object.assign({ _id: oid }, got.data);
     }
   } catch (_) {}
+
+  let legacy = null;
   try {
-    const res = await col.where({ openid }).limit(1).get();
-    if (res.data && res.data.length) return res.data[0];
+    const res = await col.where({ openid: oid }).limit(20).get();
+    const rows = ((res && res.data) || []).filter((r) => r && r._id !== oid);
+    if (rows.length) {
+      rows.sort(
+        (a, b) =>
+          Number(b.extraRounds || 0) - Number(a.extraRounds || 0) ||
+          Number(b.updateTimeMs || 0) - Number(a.updateTimeMs || 0)
+      );
+      legacy = rows[0];
+    }
   } catch (_) {}
-  const doc = {
-    openid,
-    extraRounds: 0,
-    redeemedTotal: 0,
-    extraConsumed: 0,
-    freeUsed: 0,
-    freeAllowed: 30,
-    isVip: false,
-    vipExpireAt: 0,
-    createTimeMs: Date.now(),
-    updateTimeMs: Date.now()
-  };
-  await col.doc(openid).set({ data: doc });
-  return Object.assign({ _id: openid }, doc);
+
+  if (!primary && legacy) {
+    const migrated = Object.assign({}, legacy, {
+      openid: oid,
+      updateTimeMs: Date.now()
+    });
+    delete migrated._id;
+    await col.doc(oid).set({ data: migrated });
+    primary = Object.assign({ _id: oid }, migrated);
+  }
+
+  if (!primary) {
+    const doc = {
+      openid: oid,
+      extraRounds: 0,
+      redeemedTotal: 0,
+      extraConsumed: 0,
+      freeUsed: 0,
+      freeAllowed: 30,
+      isVip: false,
+      vipExpireAt: 0,
+      createTimeMs: Date.now(),
+      updateTimeMs: Date.now()
+    };
+    await col.doc(oid).set({ data: doc });
+    return Object.assign({ _id: oid }, doc);
+  }
+
+  // 若旧文档额度更高，合并进主文档
+  if (legacy) {
+    const pExtra = Math.max(0, Number(primary.extraRounds) || 0);
+    const lExtra = Math.max(0, Number(legacy.extraRounds) || 0);
+    if (lExtra > pExtra) {
+      const patch = {
+        extraRounds: lExtra,
+        redeemedTotal: Math.max(
+          Number(primary.redeemedTotal) || 0,
+          Number(legacy.redeemedTotal) || 0
+        ),
+        updateTimeMs: Date.now()
+      };
+      await col.doc(oid).update({ data: patch });
+      primary = Object.assign({}, primary, patch);
+    }
+  }
+  return primary;
 }
 
 function computeVipExpire(quota, vipDays) {
@@ -215,6 +262,7 @@ async function deliverProduct(openid, product, orderMeta) {
   let nextExtra = Math.max(0, Number(quota.extraRounds) || 0);
   const rounds = Math.max(0, Math.floor(Number(product.rounds) || 0));
   const vipDays = Math.max(0, Math.floor(Number(product.vipDays) || 0));
+  const outTradeNo = String((orderMeta && (orderMeta.outTradeNo || orderMeta._id)) || '');
 
   if (rounds > 0) {
     nextExtra += rounds;
@@ -236,24 +284,32 @@ async function deliverProduct(openid, product, orderMeta) {
     patch.freeAllowed = patch.vipWeeklyRounds;
   }
 
-  await db.collection('user_quota').doc(quota._id).update({ data: patch });
+  // 一律写 openid 文档，保证与 balance 读路径一致
+  await db.collection('user_quota').doc(openid).update({ data: patch });
 
-  try {
-    await db.collection('redeem_logs').add({
-      data: {
-        code: 'VPAY:' + String((orderMeta && orderMeta.outTradeNo) || ''),
-        openid,
-        rounds: rounds,
-        kind: vipDays > 0 ? (rounds > 0 ? 'combo' : 'vip') : 'rounds',
-        vipDays: vipDays,
-        permanent: false,
-        source: 'virtual_pay',
-        productId: product.productId,
-        createTimeMs: Date.now(),
-        createTime: db.serverDate()
+  // redeem_logs 按订单号去重，避免 notify+poll 双记
+  const code = 'VPAY:' + outTradeNo;
+  if (outTradeNo) {
+    try {
+      const existed = await db.collection('redeem_logs').where({ code: code }).limit(1).get();
+      if (!(existed && existed.data && existed.data.length)) {
+        await db.collection('redeem_logs').add({
+          data: {
+            code: code,
+            openid,
+            rounds: rounds,
+            kind: vipDays > 0 ? (rounds > 0 ? 'combo' : 'vip') : 'rounds',
+            vipDays: vipDays,
+            permanent: false,
+            source: 'virtual_pay',
+            productId: product.productId,
+            createTimeMs: Date.now(),
+            createTime: db.serverDate()
+          }
+        });
       }
-    });
-  } catch (_) {}
+    } catch (_) {}
+  }
 
   return {
     extraRounds: nextExtra,
@@ -280,16 +336,59 @@ async function markDelivered(outTradeNo, patch) {
 }
 
 async function deliverOrderDoc(order, extras) {
-  if (!order || order.status === 'delivered') {
+  if (!order) return { ok: false, errMsg: '无订单' };
+  const outTradeNo = String(order.outTradeNo || order._id || '').trim();
+  if (!outTradeNo) return { ok: false, errMsg: '缺少订单号' };
+  if (order.status === 'delivered') {
     return { ok: true, already: true };
   }
+
+  // 原子占坑：仅 pending 可进入发货，防止 notify 与 poll 并发双发
+  let claimed = 0;
+  try {
+    const claim = await db
+      .collection('virtual_orders')
+      .where({
+        _id: outTradeNo,
+        status: _.in(['pending', 'paid'])
+      })
+      .update({
+        data: {
+          status: 'delivering',
+          deliveringAt: Date.now()
+        }
+      });
+    claimed = (claim && claim.stats && claim.stats.updated) || 0;
+  } catch (_) {
+    claimed = 0;
+  }
+  if (!claimed) {
+    try {
+      const got = await db.collection('virtual_orders').doc(outTradeNo).get();
+      const cur = got && got.data;
+      if (cur && (cur.status === 'delivered' || cur.status === 'delivering')) {
+        return { ok: true, already: true };
+      }
+      // 无 where 更新权限时的兜底：再读一次状态
+      if (cur && cur.status === 'pending') {
+        await db.collection('virtual_orders').doc(outTradeNo).update({
+          data: { status: 'delivering', deliveringAt: Date.now() }
+        });
+        claimed = 1;
+      }
+    } catch (_) {}
+  }
+  if (!claimed) {
+    return { ok: true, already: true };
+  }
+
   const product = productById(order.productId);
   if (!product) return { ok: false, errMsg: '未知商品' };
   const openid = String(order.openid || '').trim();
   if (!openid) return { ok: false, errMsg: '订单无 openid' };
 
-  const grant = await deliverProduct(openid, product, order);
-  await markDelivered(order.outTradeNo || order._id, {
+  const grant = await deliverProduct(openid, product, { outTradeNo: outTradeNo });
+  await markDelivered(outTradeNo, {
     mchOrderNo: extras && extras.mchOrderNo,
     grantRounds: grant.rounds,
     grantVipDays: grant.vipDays

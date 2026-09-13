@@ -104,13 +104,11 @@ Page({
       return rows;
     };
 
-    // 先尽量把本地删除归档推上去，再拉列表
+    // 先拉云端，再尝试推本地；避免空本地覆盖云端
     Promise.resolve()
-      .then(() => pushNotebookNow().catch(() => ({})))
       .then(() => listCloudBackup())
       .then((r) => {
         if (!r || !r.ok) {
-          // 云端失败时仍展示本地已删除归档
           const localOnly = buildRows({ favorites: [], deletedArchive: [] });
           this.setData({
             loading: false,
@@ -125,8 +123,10 @@ Page({
         this.setData({
           loading: false,
           list: rows,
-          emptyHint: rows.length ? '' : '云端暂无备份。先在设定本改动并等待同步后再来。'
+          emptyHint: rows.length ? '' : '云端暂无备份。请先在有设定本的设备上登录同步，或点下方导入。'
         });
+        // 后台合并本地删除归档（不会空盖）
+        pushNotebookNow().catch(() => {});
       })
       .catch((e) => {
         const localOnly = buildRows({ favorites: [], deletedArchive: [] });

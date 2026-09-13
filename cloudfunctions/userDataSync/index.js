@@ -155,6 +155,55 @@ async function pushNotebook(openid, event) {
   const updatedAt = Math.max(0, Number(event && event.updatedAt) || Date.now());
   const existing = await getDoc('user_notebook', openid);
   const cloudAt = existing ? Number(existing.updatedAt) || 0 : 0;
+  const cloudFavCount =
+    existing && Array.isArray(existing.favorites) ? existing.favorites.length : 0;
+
+  // 禁止空本地把非空云端盖掉（清缓存/新设备打开备份页时常见）
+  if ((!favorites || !favorites.length) && cloudFavCount > 0) {
+    const archiveIncoming = Array.isArray(event && event.deletedArchive)
+      ? event.deletedArchive
+      : [];
+    const deletedIncoming = Array.isArray(event && event.deletedOcIds)
+      ? event.deletedOcIds.map(String)
+      : [];
+    const deletedSet = new Set(
+      (Array.isArray(existing.deletedOcIds) ? existing.deletedOcIds : []).map(String)
+    );
+    deletedIncoming.forEach((id) => {
+      if (id) deletedSet.add(id);
+    });
+    const cloudFavs = existing.favorites || [];
+    const removedFromCloud = cloudFavs.filter(
+      (f) => f && f.id && deletedSet.has(String(f.id))
+    );
+    let deletedArchive = mergeDeletedArchive(
+      existing.deletedArchive,
+      archiveIncoming,
+      removedFromCloud
+    );
+    deletedArchive = pruneDeletedArchive(deletedArchive);
+    const keepFavs = cloudFavs.filter(
+      (f) => f && f.id && !deletedSet.has(String(f.id))
+    );
+    await upsertDoc('user_notebook', openid, {
+      openid: openid,
+      favorites: keepFavs,
+      families: existing.families || families,
+      deletedOcIds: deletedArchive.map((e) => e.id).slice(-300),
+      deletedArchive: deletedArchive,
+      updatedAt: Math.max(cloudAt, updatedAt),
+      syncedAt: Date.now()
+    });
+    return {
+      ok: true,
+      skipped: true,
+      updatedAt: Math.max(cloudAt, updatedAt),
+      errMsg: 'refuse_empty_overwrite',
+      favorites: keepFavs.length,
+      deletedMerged: deletedArchive.length
+    };
+  }
+
   if (existing && cloudAt > updatedAt) {
     // 本地时间戳落后时仍合并删除归档，避免已删除 OC 永远上不了云
     const deletedSet = new Set(

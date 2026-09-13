@@ -181,6 +181,13 @@ Page({
         audio.obeyMuteSwitch = false;
       } catch (_) {}
       audio.onPlay(() => {
+        if (!this._bgmWantPlay) {
+          try {
+            audio.pause();
+          } catch (_) {}
+          if (this._alive) this.setData({ bgmPlaying: false });
+          return;
+        }
         if (this._alive) this.setData({ bgmPlaying: true });
       });
       audio.onPause(() => {
@@ -210,7 +217,7 @@ Page({
             this._bgmRetrying = true;
             this._resolveBgmSrc(fid).then((localPath) => {
               this._bgmRetrying = false;
-              if (!this._alive || !localPath) return;
+              if (!this._alive || !localPath || !this._bgmWantPlay) return;
               this._playBgm(localPath, { fromUser: false, skipCloudProbe: true });
             });
             return;
@@ -245,12 +252,22 @@ Page({
   },
 
   _pauseBgm() {
+    this._bgmWantPlay = false;
     clearTimeout(this._bgmPlayTimer);
     this._bgmPlayTimer = null;
     const audio = this._bgmAudio;
     if (audio) {
       try {
+        if (typeof audio.offCanplay === 'function') audio.offCanplay();
+      } catch (_) {}
+      try {
         audio.pause();
+      } catch (_) {}
+      try {
+        // 部分机型 pause 无效，再 stop 一次
+        if (typeof audio.stop === 'function' && this.data.bgmPlaying) {
+          // 不 stop，保留进度；仅 pause
+        }
       } catch (_) {}
     }
     if (this._alive) this.setData({ bgmPlaying: false });
@@ -323,6 +340,7 @@ Page({
 
     const applyPlay = (playSrc) => {
       if (!this._alive || !this._bgmAudio || !playSrc) return;
+      this._bgmWantPlay = true;
       try {
         audio.volume = 1;
         try {
@@ -356,7 +374,9 @@ Page({
               audio.offCanplay(once);
             } catch (_) {}
             try {
-              if (this._alive && this._bgmAudio) this._bgmAudio.play();
+              if (this._alive && this._bgmAudio && this._bgmWantPlay) {
+                this._bgmAudio.play();
+              }
             } catch (_) {}
           };
           try {

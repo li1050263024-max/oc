@@ -450,6 +450,12 @@ async function listRedeemLogs(limit, openidKeyword, rangeOpts) {
   }
 
   list = filterLogsByTimeRange(list, range.fromMs, range.toMs);
+  // 虚拟支付记录只在「充值记录」页看，兑换列表排除以免一单两条
+  list = list.filter(
+    (row) =>
+      String((row && row.source) || '') !== 'virtual_pay' &&
+      String((row && row.code) || '').indexOf('VPAY:') !== 0
+  );
   if (
     !list.length &&
     !fetched.warn &&

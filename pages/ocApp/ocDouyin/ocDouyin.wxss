@@ -17,7 +17,7 @@
   justify-content: center;
 }
 
-/* 底部固定 tab 栏：发帖键居中，信息流高度需让出 tabBarH */
+/* 底部固定 tab 栏：黑底 + 白色空心发帖键 */
 .dy-tabbar {
   position: fixed;
   left: 0;
@@ -31,8 +31,8 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-around;
-  background: #161823;
-  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
+  background: #000;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.12);
 }
 
 .dy-tabbar-item {
@@ -60,53 +60,37 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 白色线条镂空加号（圆角方框 + 十字） */
+.dy-post-icon {
   position: relative;
-  width: 88rpx;
-  box-sizing: border-box;
-}
-
-.dy-compose-fab-glow {
-  position: absolute;
-  top: 50%;
-  width: 16rpx;
-  height: 58rpx;
-  margin-top: -29rpx;
-  border-radius: 12rpx;
-  z-index: 0;
-}
-
-.dy-compose-fab-glow--cyan {
-  left: 50%;
-  margin-left: -40rpx;
-  background: #25f4ee;
-}
-
-.dy-compose-fab-glow--pink {
-  left: 50%;
-  margin-left: 24rpx;
-  background: #fe2c55;
-}
-
-.dy-compose-fab-core {
-  position: relative;
-  z-index: 1;
-  width: 76rpx;
-  height: 58rpx;
+  width: 72rpx;
+  height: 52rpx;
+  border: 4rpx solid #fff;
   border-radius: 14rpx;
-  background: #fff;
-  border: 5rpx solid #161823;
   box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: transparent;
 }
 
-.dy-compose-fab-plus {
-  font-size: 40rpx;
-  font-weight: 700;
-  line-height: 1;
-  color: #161823;
-  margin-top: -2rpx;
+.dy-post-icon-h,
+.dy-post-icon-v {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: #fff;
+  border-radius: 2rpx;
+  transform: translate(-50%, -50%);
+}
+
+.dy-post-icon-h {
+  width: 28rpx;
+  height: 4rpx;
+}
+
+.dy-post-icon-v {
+  width: 4rpx;
+  height: 28rpx;
 }
 
 .dy-quota-wrap {

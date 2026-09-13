@@ -126,12 +126,24 @@ function buyProduct(productId) {
         applyDeliveredQuota(polled);
         // 无论是否已 delivered，都再拉一次余额；发货延迟时后台继续 poll
         const outTradeNo = r.outTradeNo;
-        const finish = forceSyncQuotaAfterPay().then((extra) =>
-          Object.assign(
-            { outTradeNo: outTradeNo, extraRounds: extra },
-            polled || {}
-          )
-        );
+        const finish = forceSyncQuotaAfterPay().then((extra) => {
+          const polledExtra = Number(polled && polled.extraRounds) || 0;
+          const synced = Number(extra) || 0;
+          const merged = Math.max(polledExtra, synced);
+          if (merged > 0) {
+            try {
+              const ai = require('./aiChatQuota.js');
+              if (typeof ai.writeExtraRounds === 'function') {
+                ai.writeExtraRounds(merged);
+              }
+            } catch (_) {}
+          }
+          return Object.assign({}, polled || {}, {
+            outTradeNo: outTradeNo,
+            extraRounds: merged,
+            status: (polled && polled.status) || 'pending'
+          });
+        });
         if (!polled || polled.status !== 'delivered') {
           // 后台再轮询一段时间，到账后写本地
           pollUntilDelivered(outTradeNo, 30)
