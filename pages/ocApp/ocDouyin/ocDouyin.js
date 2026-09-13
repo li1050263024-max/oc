@@ -56,9 +56,20 @@ Page({
       options && options.clipId ? decodeURIComponent(options.clipId) : '';
     try {
       const sys = wx.getSystemInfoSync();
+      const winH = Number(sys.windowHeight) || 600;
+      const winW = Number(sys.windowWidth) || 375;
+      const insetBottom =
+        (sys.safeAreaInsets && Number(sys.safeAreaInsets.bottom)) ||
+        (sys.safeArea && sys.screenHeight
+          ? Math.max(0, Number(sys.screenHeight) - Number(sys.safeArea.bottom || sys.screenHeight))
+          : 0) ||
+        0;
+      // 底部 tab 栏：100rpx + 安全区，换算为 px，信息流高度让出，避免挡住竖滑
+      const tabBarH = Math.round((100 * winW) / 750) + insetBottom;
+      this._tabBarH = tabBarH;
       this.setData({
-        windowHeight: sys.windowHeight || 600,
-        windowWidth: sys.windowWidth || 375
+        windowHeight: Math.max(200, winH - tabBarH),
+        windowWidth: winW
       });
       const menu = wx.getMenuButtonBoundingClientRect
         ? wx.getMenuButtonBoundingClientRect()
@@ -1601,6 +1612,12 @@ Page({
       url: '/pages/ocApp/ocDouyin/ocDouyinCompose',
       fail: () => wx.showToast({ title: '打开发帖页失败', icon: 'none' })
     });
+  },
+
+  onTabHome() {
+    if ((this.data.current || 0) !== 0) {
+      this.setData({ current: 0 });
+    }
   },
 
   onRefreshTap() {

@@ -1,16 +1,31 @@
 <view class="dy-page">
-  <view
-    class="dy-nav-back"
+  <view class="dy-nav-back"
     style="top: {{menuTop}}px; height: {{menuHeight}}px; width: {{menuHeight}}px;"
     catchtap="onGoOcApp"
   >
     <view class="dy-nav-chevron"></view>
   </view>
-  <view class="dy-compose-fab" catchtap="onUserPostTap">
-    <view class="dy-compose-fab-glow dy-compose-fab-glow--cyan"></view>
-    <view class="dy-compose-fab-glow dy-compose-fab-glow--pink"></view>
-    <view class="dy-compose-fab-core">
-      <text class="dy-compose-fab-plus">+</text>
+
+  <!-- 底部固定 tab：中间发帖，不覆盖信息流高度 -->
+  <view class="dy-tabbar">
+    <view class="dy-tabbar-item" catchtap="onTabHome">
+      <text class="dy-tabbar-text">首页</text>
+    </view>
+    <view class="dy-tabbar-item">
+      <text class="dy-tabbar-text">朋友</text>
+    </view>
+    <view class="dy-tabbar-post" catchtap="onUserPostTap">
+      <view class="dy-compose-fab-glow dy-compose-fab-glow--cyan"></view>
+      <view class="dy-compose-fab-glow dy-compose-fab-glow--pink"></view>
+      <view class="dy-compose-fab-core">
+        <text class="dy-compose-fab-plus">+</text>
+      </view>
+    </view>
+    <view class="dy-tabbar-item">
+      <text class="dy-tabbar-text">消息</text>
+    </view>
+    <view class="dy-tabbar-item dy-tabbar-item--on">
+      <text class="dy-tabbar-text">我</text>
     </view>
   </view>
   <view class="dy-loading" wx:if="{{loading || (generating && !feed.length)}}">

@@ -3,6 +3,14 @@
   "packOptions": {
     "ignore": [
       {
+        "value": ".git",
+        "type": "folder"
+      },
+      {
+        "value": ".cursor",
+        "type": "folder"
+      },
+      {
         "value": "cloudhosting",
         "type": "folder"
       },

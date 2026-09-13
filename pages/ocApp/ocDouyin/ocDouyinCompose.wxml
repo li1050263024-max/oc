@@ -6,7 +6,7 @@
       </view>
       <text class="compose-nav-title">发帖</text>
       <view class="compose-nav-btn compose-nav-btn--send {{canSend ? '' : 'is-disabled'}}" catchtap="onSend">
-        <text>发送</text>
+        <text>发布</text>
       </view>
     </view>
   </view>
@@ -50,6 +50,13 @@
 
     <view class="compose-bottom-space"></view>
   </scroll-view>
+
+  <view class="compose-publish-bar">
+    <view
+      class="compose-publish-btn {{canSend ? '' : 'is-disabled'}}"
+      catchtap="onSend"
+    >发布</view>
+  </view>
 
   <view class="compose-sheet-mask" wx:if="{{bgmSheetOpen}}" catchtap="onCloseBgmSheet"></view>
   <view class="compose-sheet" wx:if="{{bgmSheetOpen}}">
