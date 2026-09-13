@@ -14,7 +14,7 @@
       <view class="index-settings-item" bindtap="onGoPools">选项库</view>
       <view class="index-settings-item" bindtap="onGoFeedback">意见与反馈</view>
       <view class="index-settings-item" bindtap="onPageSettings">页面设置</view>
-      <view class="index-settings-item" bindtap="onGoRedeem">兑换码</view>
+      <view class="index-settings-item" bindtap="onGoRedeem">额度商店</view>
       <view class="index-settings-item" bindtap="onFollowOfficialAccount">关注公众号</view>
     </view>
     <view class="index-settings-mask" wx:if="{{settingsOpen}}" bindtap="onCloseSettings"></view>
@@ -489,6 +489,25 @@
         show-menu-by-longpress="{{true}}"
       />
       <text class="index-oa-hint">可查看小程序版本更新说明及官方通知</text>
+    </view>
+  </view>
+
+  <view
+    wx:if="{{membershipSheetVisible}}"
+    class="index-oa-mask"
+    catchtap="onCloseMembershipPanel"
+    catchtouchmove="preventOaMove"
+  >
+    <view class="index-vip-card" catchtap="preventOaMove">
+      <view class="index-oa-close" catchtap="onCloseMembershipPanel">×</view>
+      <text class="index-vip-title">{{membershipPanelTitle}}</text>
+      <view class="index-vip-lines">
+        <text class="index-vip-line" wx:for="{{membershipPanelLines}}" wx:key="*this">· {{item}}</text>
+      </view>
+      <text class="index-vip-footer" wx:if="{{membershipPanelFooter}}">{{membershipPanelFooter}}</text>
+      <view class="index-vip-btn" bindtap="onMembershipGoRedeem">
+        <text class="index-vip-btn-t">去额度商店</text>
+      </view>
     </view>
   </view>
 </view>

@@ -58,6 +58,7 @@ const {
   flushQuotaToCloud,
   buildQuotaSyncPayload,
   onQuotaSheetShare,
+  onQuotaSheetAd,
   onQuotaSheetRedeem,
   onQuotaSheetFollowOa,
   onQuotaSheetCloseOa,
@@ -87,6 +88,7 @@ const {
   normalizeMoneyAmount,
   withMoneyReplyRules,
   withMoneyProactiveRules,
+  shouldAllowProactiveMoney,
   rejectOcMoneyMessage
 } = require('../../utils/chatGames.js');
 
@@ -107,10 +109,10 @@ function safeBuildDiceAssistantMessages(ocId, userValue, rawReply, ocValue) {
   ];
 }
 
-function safeBuildMoneyAwareAssistantMessages(ocId, rawReply) {
+function safeBuildMoneyAwareAssistantMessages(ocId, rawReply, options) {
   try {
     if (typeof buildMoneyAwareAssistantMessages === 'function') {
-      return buildMoneyAwareAssistantMessages(ocId, rawReply);
+      return buildMoneyAwareAssistantMessages(ocId, rawReply, options);
     }
   } catch (e) {
     console.error('buildMoneyAwareAssistantMessages', e);
@@ -163,6 +165,7 @@ Page({
     renameMode: 'session',
     unreadOcIds: [],
     msgMenuIndex: -1,
+    msgDisplayOffset: 0,
     chatMoreOpen: false,
     composerToolsOpen: false,
     quotaUsed: 0,
@@ -170,6 +173,12 @@ Page({
     quotaSheetVisible: false,
     quotaSheetShareLeft: 0,
     quotaOaQrVisible: false,
+    isVip: false,
+    adClaimSheetVisible: false,
+    adClaimDetectedClick: false,
+    adClaimMakeupDone: false,
+    adClaimMakeupBusy: false,
+    adClaimRounds: 30,
     diceRolling: false,
     moneySheetVisible: false,
     moneySheetType: 'red_packet',
@@ -221,12 +230,11 @@ Page({
     this._refreshQuotaBadge();
     if (this._pickingAvatar || this._pickingBackground) return;
     this.refreshOcList();
-    if (this.data.sessionId && (this.data.messages || []).length) {
-      this._syncMessages(stripMessageUiFields(this.data.messages), false);
+    if (this._fullMessages && this._fullMessages.length) {
+      this._syncMessages(stripMessageUiFields(this._fullMessages), false);
     } else if (this.data.selectedId && this.data.sessionId) {
       this._loadSession(this.data.selectedId, this.data.sessionId);
     }
-    this.refreshOcList();
   },
 
   onChatSegmentChange(e) {
@@ -241,10 +249,15 @@ Page({
   },
 
   _refreshQuotaBadge() {
+    let isVip = false;
+    try {
+      isVip = require('../../utils/ocMembership.js').isMember();
+    } catch (_) {}
     const hint = buildQuotaHint(QUOTA_CHANNEL_DM);
     this.setData({
       quotaUsed: hint.used,
-      quotaLeft: hint.left
+      quotaLeft: hint.left,
+      isVip: isVip
     });
     // 先拉云端余额，再上报免费用量（禁止并行回写额度）
     syncExtraRoundsFromServer()
@@ -344,11 +357,59 @@ Page({
     const ocId = this.data.selectedId;
     const sessionId = this.data.sessionId;
     const prepared = prepareMessagesForDisplay(rawMessages);
-    this.setData({ messages: prepared.list, msgMenuIndex: -1 });
+    const full = prepared.list || [];
+    this._fullMessages = full;
+    // 界面只渲染最近若干条，避免 Android「height out of range > 8192」
+    const DISPLAY_MAX = 36;
+    const BUBBLE_MAX = 2200;
+    let display = full.length > DISPLAY_MAX ? full.slice(-DISPLAY_MAX) : full;
+    const msgDisplayOffset = Math.max(0, full.length - display.length);
+    display = display.map((m, i) => {
+      if (!m) return m;
+      const c = String(m.content || '');
+      const clipped = c.length > BUBBLE_MAX ? c.slice(0, BUBBLE_MAX) + '\n…' : c;
+      const vk =
+        String(m.createdAt || m.fakeAt || '') +
+        '-' +
+        (m.role || '') +
+        '-' +
+        (msgDisplayOffset + i);
+      return Object.assign({}, m, { content: clipped, _vk: vk });
+    });
+    this.setData({
+      messages: display,
+      msgDisplayOffset: msgDisplayOffset,
+      msgMenuIndex: -1
+    });
     if (persist && ocId && sessionId) {
-      setMessages(ocId, sessionId, stripMessageUiFields(prepared.list));
+      setMessages(ocId, sessionId, stripMessageUiFields(full));
     }
-    return prepared.list;
+    return full;
+  },
+
+  _getWorkingMessages() {
+    if (Array.isArray(this._fullMessages) && this._fullMessages.length) {
+      return this._fullMessages.slice();
+    }
+    return this._getStoredMessages();
+  },
+
+  _toFullIndex(displayIdx) {
+    return (Number(this.data.msgDisplayOffset) || 0) + Number(displayIdx);
+  },
+
+  _getStoredMessages() {
+    const ocId = this.data.selectedId;
+    const sessionId = this.data.sessionId;
+    if (!ocId || !sessionId) return (this.data.messages || []).slice();
+    try {
+      return avatarPage.normalizeOcChatMessages(
+        ocId,
+        getMessages(ocId, sessionId)
+      );
+    } catch (_) {
+      return (this.data.messages || []).slice();
+    }
   },
 
   _clearChatLoadingWatch() {
@@ -370,7 +431,7 @@ Page({
       if (!this.data.loading) return;
       this.setData({ loading: false, scrollTo: 'chat-bottom' });
       wx.showToast({ title: '请求超时，请重试', icon: 'none' });
-    }, 70000);
+    }, 56000);
   },
 
   onUnload() {
@@ -383,11 +444,10 @@ Page({
     const meta = sessions.find((s) => s.id === sessionId);
     const scenario = loadScenario(ocId, sessionId);
     const raw = avatarPage.normalizeOcChatMessages(ocId, getMessages(ocId, sessionId));
-    const prepared = prepareMessagesForDisplay(raw);
+    this._syncMessages(raw, false);
     this.setData({
       sessionId: sessionId,
       sessionTitle: (meta && meta.title) || '对话',
-      messages: prepared.list,
       msgMenuIndex: -1,
       scenario: scenario || null,
       scenarioTitle: scenario ? scenario.title : '',
@@ -731,13 +791,19 @@ Page({
         const result = deleteSessionsBatch(ocId, ids);
         if (!result.ok) {
           wx.showToast({
-            title: result.last ? '部分失败' : '删除失败',
+            title: result.last ? '至少保留一个对话' : '删除失败',
             icon: 'none'
           });
           return;
         }
         this._afterSessionsDeleted(ids);
-        wx.showToast({ title: '已删除 ' + result.deleted + ' 个对话', icon: 'none' });
+        wx.showToast({
+          title:
+            result.recreated
+              ? '已删除并新建空对话'
+              : '已删除 ' + result.deleted + ' 个对话',
+          icon: 'none'
+        });
       }
     });
   },
@@ -806,14 +872,17 @@ Page({
         const result = deleteSession(ocId, id);
         if (!result.ok) {
           wx.showToast({
-            title: result.last ? '部分失败' : '删除失败',
+            title: result.last ? '至少保留一个对话' : '删除失败',
             icon: 'none'
           });
           return;
         }
         this._afterSessionsDeleted([id]);
         this.setData({ sessionPickerOpen: true });
-        wx.showToast({ title: '已删除', icon: 'none' });
+        wx.showToast({
+          title: result.recreated ? '已删除并新建空对话' : '已删除',
+          icon: 'none'
+        });
       }
     });
   },
@@ -923,6 +992,51 @@ Page({
     });
   },
 
+  onMoreRestoreCloud() {
+    const ocId = this.data.selectedId;
+    this.setData({ chatMoreOpen: false });
+    if (!ocId) {
+      wx.showToast({ title: '请先选择 OC', icon: 'none' });
+      return;
+    }
+    wx.showLoading({ title: '恢复中…', mask: true });
+    let sync;
+    try {
+      sync = require('../../utils/userDataSync.js');
+    } catch (err) {
+      wx.hideLoading();
+      wx.showToast({ title: '同步模块加载失败', icon: 'none' });
+      return;
+    }
+    Promise.resolve()
+      .then(() => sync.pullChatForOc(ocId))
+      .then((r) => {
+        wx.hideLoading();
+        const sid = this.data.sessionId;
+        const sessions = listSessions(ocId);
+        if (sessions.length) {
+          const pick = sessions.find((s) => s.id === sid) ? sid : sessions[0].id;
+          this._loadSession(ocId, pick);
+          this.setData({ sessionList: sessions, sessionPickerOpen: false });
+        }
+        wx.showToast({
+          title: '已恢复 ' + (r.sessions || 0) + ' 个对话',
+          icon: 'none',
+          duration: 2600
+        });
+      })
+      .catch((err) => {
+        try {
+          wx.hideLoading();
+        } catch (_) {}
+        wx.showToast({
+          title: (err && err.message) || '恢复失败',
+          icon: 'none',
+          duration: 2800
+        });
+      });
+  },
+
   onMorePickBackground() {
     this.setData({ chatMoreOpen: false });
     this.onOpenBackgroundEdit();
@@ -957,8 +1071,9 @@ Page({
     const ocId = this.data.selectedId;
     const sessionId = this.data.sessionId;
     if (!ocId || !sessionId) return;
-    const list = (this.data.messages || []).slice();
-    const msg = list[idx];
+    const fullIdx = this._toFullIndex(idx);
+    const list = this._getWorkingMessages();
+    const msg = list[fullIdx];
     if (!msg || msg.role === 'user') return;
     const raw = String(msg.content || '').trim();
     const preview = raw.length > 28 ? raw.slice(0, 28) + '…' : raw;
@@ -971,7 +1086,7 @@ Page({
       success: (res) => {
         if (!res.confirm) return;
         const next = list.slice();
-        next.splice(idx, 1);
+        next.splice(fullIdx, 1);
         this._syncMessages(next, true);
       }
     });
@@ -984,10 +1099,11 @@ Page({
     const ocId = this.data.selectedId;
     const sessionId = this.data.sessionId;
     if (!ocId || !sessionId) return;
-    const list = this.data.messages || [];
-    const msg = list[idx];
+    const fullIdx = this._toFullIndex(idx);
+    const list = this._getWorkingMessages();
+    const msg = list[fullIdx];
     if (!msg || msg.role === 'user') return;
-    const userIdx = findPrecedingUserMessage(list, idx);
+    const userIdx = findPrecedingUserMessage(list, fullIdx);
     if (userIdx < 0) {
       wx.showToast({ title: '…', icon: 'none' });
       return;
@@ -1005,7 +1121,7 @@ Page({
     ensureAiChatAllowed({ channel: QUOTA_CHANNEL_DM, page: this })
       .then((allowed) => {
         if (!allowed) return;
-        this._regenerateChatMessage(idx, userIdx);
+        this._regenerateChatMessage(fullIdx, userIdx);
       })
       .catch(() => {
         wx.showToast({ title: '…', icon: 'none' });
@@ -1015,7 +1131,7 @@ Page({
   _regenerateChatMessage(idx, userIdx) {
     const ocId = this.data.selectedId;
     const sessionId = this.data.sessionId;
-    const list = this.data.messages || [];
+    const list = this._getWorkingMessages();
     this._recordQuotaRound();
     const prevUser = list[userIdx] || {};
     const isDice = isDiceMessage(prevUser);
@@ -1030,7 +1146,7 @@ Page({
       .slice(0, userIdx)
       .map(toAiHistoryMessage)
       .filter(Boolean)
-      .slice(-12);
+      .slice(-8);
     this.setData({ msgMenuIndex: -1, scrollTo: 'chat-bottom' });
     this._setChatLoading(true);
     try {
@@ -1047,7 +1163,9 @@ Page({
         ? withMoneyReplyRules(systemPrompt)
         : isDice
           ? systemPrompt
-          : withMoneyProactiveRules(systemPrompt, work);
+          : withMoneyProactiveRules(systemPrompt, work, {
+              allowProactiveMoney: shouldAllowProactiveMoney(userText, list)
+            });
       callCloudFunction({
           name: 'ocChat',
           data: Object.assign(
@@ -1058,12 +1176,12 @@ Page({
               breakCharacterAttempt,
               diceMode: isDice,
               moneyMode: isMoney,
-              moneyAware: !isDice && !isMoney,
+              moneyAware: !isDice && !isMoney && shouldAllowProactiveMoney(userText, list),
               channel: 'dm'
             },
             buildQuotaSyncPayload()
           ),
-          timeout: 60000
+          timeout: 55000
         })
         .then((res) => {
           const r = res.result || {};
@@ -1100,7 +1218,10 @@ Page({
               const built = (reacted.messages || []).map((m) => stampOutgoingMessage(m));
               next.splice(idx, 1, ...built);
             } else {
-              const built = safeBuildMoneyAwareAssistantMessages(ocId, r.reply).map((m) =>
+              const built = safeBuildMoneyAwareAssistantMessages(ocId, r.reply, {
+                recentMessages: list,
+                userMessage: userText
+              }).map((m) =>
                 stampOutgoingMessage(m)
               );
               // 平常对话可能变成「台词 + 红包」两条，重说时替换当前助手消息起的连续助手消息
@@ -1154,8 +1275,9 @@ Page({
     const ocId = this.data.selectedId;
     const sessionId = this.data.sessionId;
     if (!ocId || !sessionId) return;
-    const list = this.data.messages || [];
-    const msg = list[idx];
+    const fullIdx = this._toFullIndex(idx);
+    const list = this._getWorkingMessages();
+    const msg = list[fullIdx];
     if (!msg || msg.role !== 'user') return;
     if (!msg.canRecall) {
       wx.showToast({ title: '…', icon: 'none' });
@@ -1168,9 +1290,8 @@ Page({
       success: (res) => {
         if (!res.confirm) return;
         const next = list.slice();
-        next[idx] = Object.assign({}, msg, { recalled: true, content: '' });
+        next[fullIdx] = Object.assign({}, msg, { recalled: true, content: '' });
         this._syncMessages(next, true);
-        setMessages(ocId, sessionId, next);
       }
     });
   },
@@ -1283,7 +1404,7 @@ Page({
       game: roll.game,
       content: roll.content
     });
-    const history = (this.data.messages || []).slice();
+    const history = this._getWorkingMessages();
     const messages = history.concat([moneyMsg]);
     this._syncMessages(messages, true);
     this.setData({ scrollTo: 'chat-bottom', msgMenuIndex: -1 });
@@ -1294,7 +1415,7 @@ Page({
     const aiHistory = history
       .map(toAiHistoryMessage)
       .filter(Boolean)
-      .slice(-10);
+      .slice(-8);
 
     try {
       const sessionMemory = getSessionMemory(ocId, sessionId);
@@ -1319,7 +1440,7 @@ Page({
           },
           buildQuotaSyncPayload()
         ),
-        timeout: 60000
+        timeout: 55000
       })
         .then((res) => {
           const r = res.result || {};
@@ -1365,8 +1486,9 @@ Page({
   onMoneyCardTap(e) {
     const idx = Number(e.currentTarget.dataset.index);
     if (isNaN(idx) || idx < 0) return;
-    const list = this.data.messages || [];
-    const msg = list[idx];
+    const fullIdx = this._toFullIndex(idx);
+    const list = this._getWorkingMessages();
+    const msg = list[fullIdx];
     if (!isMoneyMessage(msg) || msg.role !== 'assistant') return;
     const st = msg.game && msg.game.status;
     if (st !== 'sent' && st !== 'waiting') return;
@@ -1375,12 +1497,12 @@ Page({
       itemList: [isTransfer ? '收款' : '领取', '退回'],
       success: (res) => {
         const action = res.tapIndex === 1 ? 'reject' : 'claim';
-        const next = (this.data.messages || []).slice();
-        const cur = next[idx];
+        const next = this._getWorkingMessages();
+        const cur = next[fullIdx];
         const updated =
           action === 'reject' ? rejectOcMoneyMessage(cur) : claimOcMoneyMessage(cur);
         if (!updated) return;
-        next[idx] = Object.assign({}, cur, updated);
+        next[fullIdx] = Object.assign({}, cur, updated);
         this._syncMessages(next, true);
         wx.showToast({
           title:
@@ -1431,7 +1553,7 @@ Page({
         game: roll.game,
         content: roll.content
       });
-      const history = (this.data.messages || []).slice();
+      const history = this._getWorkingMessages();
       const messages = history.concat([diceMsg]);
       this._syncMessages(messages, true);
       this.setData({ diceRolling: false });
@@ -1442,7 +1564,7 @@ Page({
       const aiHistory = history
         .map(toAiHistoryMessage)
         .filter(Boolean)
-        .slice(-10);
+        .slice(-8);
 
       try {
         const sessionMemory = getSessionMemory(ocId, sessionId);
@@ -1465,7 +1587,7 @@ Page({
             },
             buildQuotaSyncPayload()
           ),
-          timeout: 60000
+          timeout: 55000
         })
           .then((res) => {
             const r = res.result || {};
@@ -1543,7 +1665,7 @@ Page({
     const sessionId = this.data.sessionId;
     this._recordQuotaRound();
     const userMsg = stampOutgoingMessage({ role: 'user', content: text });
-    const history = (this.data.messages || []).slice();
+    const history = this._getWorkingMessages();
     const messages = history.concat([userMsg]);
     this.setData({ inputText: '', scrollTo: 'chat-bottom', msgMenuIndex: -1, composerToolsOpen: false });
     this._syncMessages(messages, true);
@@ -1554,19 +1676,21 @@ Page({
       const breakCharacterAttempt = isBreakCharacterAttempt(text);
       const sessionMemory = getSessionMemory(ocId, sessionId);
       const work = this.getSelectedWork();
+      const allowMoney = shouldAllowProactiveMoney(text, history);
       const systemPrompt = withMoneyProactiveRules(
         buildChatSystemPrompt(work, {
           scenario: this.data.scenario,
           userMessage: text,
           sessionMemory
         }),
-        work
+        work,
+        { allowProactiveMoney: allowMoney }
       );
       // 只传近期上下文；体积由 cloudChatPayload 按 UTF-8 字节再压到 100KB 内
       const aiHistory = history
         .map(toAiHistoryMessage)
         .filter(Boolean)
-        .slice(-12);
+        .slice(-8);
       callCloudFunction({
           name: 'ocChat',
           data: Object.assign(
@@ -1575,17 +1699,20 @@ Page({
               userMessage: text,
               history: aiHistory,
               breakCharacterAttempt,
-              moneyAware: true,
+              moneyAware: allowMoney,
               channel: 'dm'
             },
             buildQuotaSyncPayload()
           ),
-          timeout: 60000
+          timeout: 55000
         })
         .then((res) => {
           const r = res.result || {};
           if (r.ok && r.reply) {
-            const built = safeBuildMoneyAwareAssistantMessages(ocId, r.reply).map((m) =>
+            const built = safeBuildMoneyAwareAssistantMessages(ocId, r.reply, {
+              recentMessages: history,
+              userMessage: text
+            }).map((m) =>
               stampOutgoingMessage(m)
             );
             const next = messages.concat(built);
@@ -1632,22 +1759,23 @@ Page({
       wx.showToast({ title: '请先选择 OC', icon: 'none' });
       return;
     }
+    // 导出读本地完整会话（含界面未展示的旧消息），经微信「发送给朋友」下载到手机
     wx.showActionSheet({
-      itemList: ['导出 txt 文本', '导出 JSON 备份', '导入对话'],
+      itemList: ['导出完整 txt（发给朋友/文件传输助手）', '导出完整 JSON 备份', '导入对话'],
       success: (res) => {
         const favId = resolveFavoriteId(this.data.selectedId) || this.data.selectedId;
         const baseName = (this.data.selectedName || 'chat') + '_chat';
         if (res.tapIndex === 0) {
           const text = buildChatShareText(favId);
           if (!text) {
-            wx.showToast({ title: '导出失败', icon: 'none' });
+            wx.showToast({ title: '暂无对话可导出', icon: 'none' });
             return;
           }
           packPage.runShareTextFile(text, baseName);
         } else if (res.tapIndex === 1) {
           const pack = buildChatPack(favId);
           if (!pack) {
-            wx.showToast({ title: '导出失败', icon: 'none' });
+            wx.showToast({ title: '暂无对话可导出', icon: 'none' });
             return;
           }
           sharePackFile(pack, baseName);
@@ -1682,7 +1810,7 @@ Page({
 
   onSaveChatImage() {
     if (this.data.savingImage) return;
-    const messages = (this.data.messages || []).filter((m) => m && m.content);
+    const messages = this._getWorkingMessages().filter((m) => m && m.content);
     if (!this.data.selectedId || !messages.length) {
       wx.showToast({ title: '暂无对话可保存', icon: 'none' });
       return;
@@ -1749,6 +1877,9 @@ Page({
   onQuotaSheetShareTap() {
     onQuotaSheetShare(this);
   },
+  onQuotaSheetAdTap() {
+    onQuotaSheetAd(this);
+  },
   onQuotaSheetRedeemTap() {
     onQuotaSheetRedeem(this);
   },
@@ -1760,5 +1891,14 @@ Page({
   },
   onQuotaSheetCloseTap() {
     onQuotaSheetClose(this);
+  },
+  onAdClaimMakeup() {
+    require('../../utils/adClaimDrawer.js').onAdClaimMakeup(this);
+  },
+  onAdClaimConfirm() {
+    require('../../utils/adClaimDrawer.js').onAdClaimConfirm(this);
+  },
+  onAdClaimClose() {
+    require('../../utils/adClaimDrawer.js').onAdClaimClose(this);
   }
 });

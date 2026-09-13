@@ -148,9 +148,24 @@ function findPostById(postId) {
   return null;
 }
 
-function addUserMomentPost(content, invitedOcIds) {
+function addUserMomentPost(content, invitedOcIds, images) {
   const text = String(content || '').trim();
-  if (!text) return null;
+  const imgs = Array.isArray(images)
+    ? images
+        .map((img) => {
+          if (!img) return null;
+          const path = String(img.path || '').trim();
+          if (!path) return null;
+          return {
+            id: String(img.id || path),
+            path: path,
+            time: Number(img.time) || Date.now()
+          };
+        })
+        .filter(Boolean)
+        .slice(0, 9)
+    : [];
+  if (!text && !imgs.length) return null;
   const ids = Array.isArray(invitedOcIds)
     ? invitedOcIds.filter(Boolean).slice(0, 5)
     : [];
@@ -161,6 +176,7 @@ function addUserMomentPost(content, invitedOcIds) {
     authorType: 'user',
     avatarUrl: '',
     content: text.slice(0, 500),
+    images: imgs,
     createdAt: Date.now(),
     source: 'user',
     invitedOcIds: ids
@@ -347,6 +363,21 @@ function prepareFeedForDisplay(feed, userAvatarUrl) {
       })
     );
     const isUser = item.authorType === 'user';
+    const images = Array.isArray(item.images)
+      ? item.images
+          .map((img) => {
+            if (!img) return null;
+            const path = String(img.path || '').trim();
+            if (!path) return null;
+            return {
+              id: String(img.id || path),
+              path: path,
+              time: Number(img.time) || 0
+            };
+          })
+          .filter(Boolean)
+          .slice(0, 9)
+      : [];
     return Object.assign({}, item, {
       timeLabel: formatMomentTime(item.createdAt),
       avatarLetter: name.slice(0, 1) || (isUser ? '我' : 'O'),
@@ -356,7 +387,8 @@ function prepareFeedForDisplay(feed, userAvatarUrl) {
       liked: !!likeHit.liked,
       comments: commentList,
       commentCount: commentList.length,
-      avatarDisplay: isUser ? userAvatarUrl || '' : item.avatarDisplay || ''
+      avatarDisplay: isUser ? userAvatarUrl || '' : item.avatarDisplay || '',
+      images: images
     });
   });
 }

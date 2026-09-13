@@ -1,0 +1,9 @@
+{
+  "name": "imgSecCheck",
+  "version": "1.0.0",
+  "main": "index.js",
+  "description": "微信免费图片内容安全（openapi.security.imgSecCheck）",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

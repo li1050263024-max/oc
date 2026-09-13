@@ -696,9 +696,11 @@ Page({
       return;
     }
     await ocImage.normalizeWorkImages(work);
-    ocAlbum.syncWorkImagesFromAlbums(work);
-    const m = mergeWork(work);
     const fav = getFavoriteById(id) || {};
+    const albumCountBefore = Array.isArray(fav.ocAlbums) ? fav.ocAlbums.length : 0;
+    ocAlbum.syncWorkImagesFromAlbums(work);
+    const albumCountAfter = Array.isArray(work.ocAlbums) ? work.ocAlbums.length : 0;
+    const m = mergeWork(work);
     let profileScene = normalizeProfileScene(work.profileScene || fav.profileScene);
     const relationships = this._enrichRelationships(
       normalizeRelationships(work.relationships || fav.relationships)
@@ -715,7 +717,24 @@ Page({
       )
     );
     const ocName = (m.result && m.result.name) || '未命名';
-    const ocImagePath = m.ocImagePath || '';
+    let ocImagePath = m.ocImagePath || '';
+    // 与背景一致：校验本地文件；失效则从图册再取一张可用图
+    const resolvedPrimary = await ocImage.resolveLocalImagePath(ocImagePath);
+    if (resolvedPrimary) {
+      ocImagePath = resolvedPrimary;
+    } else {
+      const albums = ocAlbum.normalizeOcAlbums(work);
+      const flat = ocAlbum.flattenAlbumImages(albums);
+      ocImagePath = '';
+      for (let i = 0; i < flat.length; i++) {
+        const p = await ocImage.resolveLocalImagePath(flat[i] && flat[i].path);
+        if (p) {
+          ocImagePath = p;
+          break;
+        }
+      }
+      if (!ocImagePath && flat.length) ocImagePath = (flat[0] && flat[0].path) || '';
+    }
     const graph = buildRelationGraphNodes(ocName, ocImagePath, relationships, {
       aspectWH: this._getRelationAspectWH()
     });
@@ -802,8 +821,12 @@ Page({
       relationTypePickerIndex: 0
     }, () => {
       if (this.data.activeTab === 'timeline') this._rebuildTimelineSpine();
-      // 首次迁移：把预设图册写入收藏，避免仅内存存在
-      if (!Array.isArray(fav.ocAlbums) || !fav.ocAlbums.length) {
+      // 首次迁移 / 超额拆册：写回收藏
+      if (
+        !Array.isArray(fav.ocAlbums) ||
+        !fav.ocAlbums.length ||
+        albumCountAfter > albumCountBefore
+      ) {
         this._saveProfile(
           {
             ocAlbums: m.ocAlbums,

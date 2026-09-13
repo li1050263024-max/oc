@@ -585,11 +585,20 @@
     wx:if="{{quotaSheetVisible}}"
     visible="{{true}}"
     share-left="{{quotaSheetShareLeft}}"
-    oa-visible="{{quotaOaQrVisible}}"
+    is-vip="{{isVip}}"
+    bind:watchad="onQuotaSheetAdTap"
     bind:share="onQuotaSheetShareTap"
     bind:redeem="onQuotaSheetRedeemTap"
-    bind:followoa="onQuotaSheetFollowOaTap"
-    bind:closeoa="onQuotaSheetCloseOaTap"
     bind:close="onQuotaSheetCloseTap"
+  />
+  <ad-claim-sheet
+    visible="{{adClaimSheetVisible}}"
+    detected-click="{{adClaimDetectedClick}}"
+    makeup-done="{{adClaimMakeupDone}}"
+    makeup-busy="{{adClaimMakeupBusy}}"
+    rounds="{{adClaimRounds}}"
+    bind:makeup="onAdClaimMakeup"
+    bind:claim="onAdClaimConfirm"
+    bind:close="onAdClaimClose"
   />
 </view>

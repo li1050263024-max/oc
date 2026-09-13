@@ -1,0 +1,55 @@
+<view class="page oc-page safe-bottom {{uiThemeClass}}">
+  <view class="bg-solid"></view>
+  <oc-page-nav />
+  <oc-back-btn />
+  <view class="oc-page-shell backup-shell">
+    <view class="backup-head">
+      <text class="backup-title">云端备份</text>
+      <text class="backup-sub">显示云端设定本中的全部 OC；已删除的仅保留 7 天，到期后云端也会清掉。</text>
+    </view>
+
+    <view class="backup-actions">
+      <view class="backup-action oc-chip-btn" catchtap="onImportNotebook">
+        <text class="oc-chip-btn-text">导入</text>
+      </view>
+      <view class="backup-action oc-chip-btn" catchtap="onExportNotebook">
+        <text class="oc-chip-btn-text">导出全部</text>
+      </view>
+      <view class="backup-action oc-chip-btn" catchtap="loadBackup">
+        <text class="oc-chip-btn-text">刷新</text>
+      </view>
+    </view>
+
+    <view class="backup-loading" wx:if="{{loading}}">
+      <text>正在拉取云端备份…</text>
+    </view>
+
+    <view class="backup-empty" wx:elif="{{emptyHint}}">
+      <text>{{emptyHint}}</text>
+      <view class="backup-retry" catchtap="loadBackup">重新加载</view>
+    </view>
+
+    <scroll-view wx:else class="backup-list" scroll-y show-scrollbar="{{false}}">
+      <view
+        class="backup-card {{item.deleted ? 'backup-card--deleted' : ''}}"
+        wx:for="{{list}}"
+        wx:key="id"
+      >
+        <image
+          class="backup-avatar"
+          src="{{item.ocImagePath || portraitPlaceholder}}"
+          mode="aspectFill"
+        />
+        <view class="backup-main">
+          <text class="backup-name">{{item.name}}</text>
+          <text class="backup-meta">{{item.gender}} · {{item.race}}</text>
+          <text class="backup-status {{item.deleted ? 'backup-status--del' : ''}}">{{item.statusText}}</text>
+        </view>
+        <view class="backup-restore oc-chip-btn" catchtap="onRestoreTap" data-id="{{item.id}}">
+          <text class="oc-chip-btn-text">恢复</text>
+        </view>
+      </view>
+      <view class="backup-footer-space"></view>
+    </scroll-view>
+  </view>
+</view>

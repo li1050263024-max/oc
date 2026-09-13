@@ -224,6 +224,15 @@ function buildChatSystemPrompt(work, options) {
     (work && work.result && work.result.name) || '该角色';
   const bioText = trimBioForChat(work && work.generatedBio, 1600);
   const sections = [RP_CORE_RULES.replace(/\{name\}/g, name) + '\n\n'];
+  sections.push(
+    '【称呼再确认】你是【' +
+      name +
+      '】；用户不是【' +
+      name +
+      '】。用户叫你的名字时是在称呼你。对用户不要叫【' +
+      name +
+      '】。\n\n'
+  );
   const coreBlock = buildImmutableCoreBlock(work);
   if (coreBlock) sections.push(coreBlock + '\n\n');
   sections.push(buildSpeechStyleBlock(work));
@@ -303,6 +312,15 @@ function buildGroupMemberReplyPrompt(work, ctx) {
       name +
       '】；不要替其他角色发言。\n\n'
   ];
+  sections.push(
+    '【称呼再确认】你是【' +
+      name +
+      '】；用户不是【' +
+      name +
+      '】。对用户不要叫【' +
+      name +
+      '】。\n\n'
+  );
   const coreBlock = buildImmutableCoreBlock(work);
   if (coreBlock) sections.push(coreBlock + '\n\n');
   sections.push(buildSpeechStyleBlock(work));

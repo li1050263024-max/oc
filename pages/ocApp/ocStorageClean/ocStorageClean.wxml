@@ -1,0 +1,46 @@
+<view class="sc-page">
+  <view class="sc-head">
+    <text class="sc-title">本地存储空间不足</text>
+    <text class="sc-sub">小程序本地文件约有 10MB 上限。可勾选删除自定义 BGM，或一键清理未引用缓存。</text>
+    <text class="sc-kv">键值存储用量：{{kvText || '读取中…'}}</text>
+  </view>
+
+  <view class="sc-section">
+    <view class="sc-row sc-row--action" catchtap="onAutoPurge">
+      <view class="sc-row-main">
+        <text class="sc-row-title">一键清理未引用文件</text>
+        <text class="sc-row-sub">{{orphanAudioText}} · {{orphanImageHint}}</text>
+      </view>
+      <text class="sc-row-go">清理</text>
+    </view>
+  </view>
+
+  <view class="sc-section">
+    <text class="sc-sec-title">自定义本地 BGM（可勾选删除）</text>
+    <view class="sc-empty" wx:if="{{!items.length && !loading}}">暂无本地自定义 BGM</view>
+    <view
+      class="sc-item {{item.selected ? 'sc-item--on' : ''}}"
+      wx:for="{{items}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      catchtap="onToggle"
+    >
+      <view class="sc-check {{item.selected ? 'sc-check--on' : ''}}"></view>
+      <view class="sc-item-main">
+        <text class="sc-item-title">{{item.title}}</text>
+        <text class="sc-item-sub">{{item.sub}} · {{item.sizeText}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="sc-tip">
+    <text>立绘占空间较大时，请到设定本删除不用的图片。清理后可返回重试上传。</text>
+  </view>
+
+  <view class="sc-footer">
+    <view class="sc-btn sc-btn--ghost" catchtap="onExit">退出</view>
+    <view class="sc-btn sc-btn--primary {{selectedCount ? '' : 'sc-btn--disabled'}}" catchtap="onDeleteSelected">
+      删除所选{{selectedCount ? '（' + selectedCount + '）' : ''}}
+    </view>
+  </view>
+</view>

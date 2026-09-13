@@ -3,5 +3,7 @@
   "version": "1.0.0",
   "description": "DeepSeek 智能抽卡（逻辑自洽）",
   "main": "index.js",
-  "dependencies": {}
+  "dependencies": {
+    "wx-server-sdk": "3.0.5-beta.1"
+  }
 }

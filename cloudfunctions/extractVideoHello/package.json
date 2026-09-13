@@ -1,0 +1,9 @@
+{
+  "name": "extractVideoHello",
+  "version": "1.0.1",
+  "main": "index.js",
+  "description": "探测云函数调用是否有返回",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

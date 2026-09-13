@@ -83,6 +83,38 @@
       border: 1px solid #c4b5fd;
     }
     .btn-secondary:disabled { opacity: 0.45; }
+    .choice-btn {
+      /* 勿设 min-width:0：在 .row flex 里会被压成竖条，中文逐字换行 */
+      flex: 0 0 auto !important;
+      width: auto !important;
+      min-width: max-content !important;
+      max-width: none !important;
+      margin: 0 !important;
+      padding: 8px 16px !important;
+      border-radius: 999px !important;
+      border: 1px solid #e5e7eb !important;
+      background: #f3f4f6 !important;
+      color: #374151 !important;
+      font-size: 0.86rem !important;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap !important;
+      line-height: 1.35 !important;
+      writing-mode: horizontal-tb !important;
+    }
+    .row .choice-btn {
+      flex: 0 0 auto !important;
+    }
+    .choice-btn.is-on {
+      background: linear-gradient(135deg, #a78bfa, #c084fc) !important;
+      color: #fff !important;
+      border-color: transparent !important;
+    }
+    .choice-btn.is-on-orange {
+      background: #ea580c !important;
+      color: #fff !important;
+      border-color: transparent !important;
+    }
     .reply-box { margin-top: 12px; }
     .reply-box textarea {
       width: 100%;
@@ -154,6 +186,7 @@
     <div class="row" style="margin:0">
       <button type="button" id="tabFeedbackBtn" style="margin:0">意见反馈</button>
       <button type="button" id="tabUsageBtn" class="btn-secondary" style="margin:0">用量统计</button>
+      <button type="button" id="tabMembershipBtn" class="btn-secondary" style="margin:0">会员</button>
       <button type="button" id="tabRedeemCreateBtn" class="btn-secondary" style="margin:0">兑换码</button>
       <button type="button" id="tabRedeemListBtn" class="btn-secondary" style="margin:0">刷新明细</button>
     </div>
@@ -215,7 +248,7 @@
     <p class="hint" style="margin:0">
       日常只需点「刷新日汇总 / 刷新用户额度」。对话产生后约几秒会写入；
       <code>diag</code> 仅用于排障试写，不必每次跑终端。
-      后台版本：<code id="adminBuildTag">admin-v16</code>
+      后台版本：<code id="adminBuildTag">admin-v17</code>
     </p>
   </div>
   <div class="panel">
@@ -241,6 +274,51 @@
   </div>
   </div>
 
+  <!-- 模块：会员（权益面板 + 说明） -->
+  <div id="panelMembership" style="display:none">
+  <div class="panel">
+    <strong style="display:block;margin-bottom:10px">会员管理</strong>
+    <label>HTTP API 地址（与反馈相同）</label>
+    <input
+      id="membershipApiUrl"
+      type="url"
+      placeholder="https://cloud1-d3gkbz2nf0c84c381-1433404171.ap-shanghai.app.tcloudbase.com/feedbackApi"
+    />
+    <label>管理密钥</label>
+    <input id="membershipAdminKey" type="text" placeholder="oc-feedback-admin-2026" />
+    <p class="hint" style="margin:8px 0 14px">
+      用户开通会员以<strong>兑换码</strong>为主（在「兑换码」页签生成 VIP 码）。此处可配置「选择 OC」页的权益介绍面板，以及在「用量统计 → 用户额度」里对单用户开通/关闭会员。
+      请先新建云数据库集合 <code>oc_app_config</code>（所有用户不可读写）。
+    </p>
+    <strong style="display:block;margin-bottom:8px">选择 OC · 会员权益面板</strong>
+    <label>显示状态</label>
+    <div class="row" id="vipPanelVisibleBtns" style="margin-bottom:12px;gap:8px;flex-wrap:wrap">
+      <button type="button" class="choice-btn vip-vis-btn" data-visible="1">显示权益面板</button>
+      <button type="button" class="choice-btn vip-vis-btn is-on" data-visible="0">隐藏权益面板</button>
+    </div>
+    <input id="vipPanelVisible" type="hidden" value="0" />
+    <label>面板标题</label>
+    <input id="vipPanelTitle" type="text" value="会员权益" />
+    <label>权益条目（点选启用，可多选）</label>
+    <div class="row" id="vipBenefitBtns" style="margin-bottom:10px;gap:8px;flex-wrap:wrap"></div>
+    <textarea id="vipPanelLines" rows="2" style="display:none"></textarea>
+    <label>底部说明</label>
+    <input id="vipPanelFooter" type="text" value="请在「兑换码」页输入会员码开通 · 月卡 ¥9.9 · 含每周 100 对话" />
+    <div class="row" style="margin-top:12px">
+      <button type="button" id="loadVipPanelBtn" class="btn-secondary" style="margin:0">读取当前配置</button>
+      <button type="button" id="saveVipPanelBtn" style="margin:0">保存配置</button>
+    </div>
+    <p id="vipPanelStatus" class="hint" style="margin:10px 0 0"></p>
+  </div>
+  <div class="panel">
+    <strong style="display:block;margin-bottom:8px">会员开通方式</strong>
+    <p class="hint" style="margin:0">
+      1）日常：在「兑换码」生成 <code>会员月卡 / 永久会员</code> 码，用户在小程序兑换页核销。<br />
+      2）运维：在「用量统计」搜索单个用户后，可「开通会员 / 关闭会员」（需确认密码）。
+    </p>
+  </div>
+  </div>
+
   <!-- 模块：兑换码（生成 + 核销记录） -->
   <div id="panelRedeemCreate" style="display:none">
   <div class="panel">
@@ -253,21 +331,46 @@
     />
     <label>管理密钥</label>
     <input id="redeemAdminKey" type="text" placeholder="oc-feedback-admin-2026" />
+    <div style="padding:12px 14px;margin:0 0 14px;border-radius:10px;background:linear-gradient(135deg,#fff7ed,#ffedd5);border:1px solid #fdba74">
+      <strong style="display:block;margin-bottom:6px;color:#9a3412">会员月卡 ¥9.9</strong>
+      <p class="hint" style="margin:0 0 10px;color:#9a3412">权益：每周 100 对话 · 人数不限 · 抖音 50 条 · 视频抽音每周 15 次（非会员体验 3 次）· 故事集 20 个等。用户以兑换码开通；权益面板文案在「会员」页签配置。</p>
+      <div class="row" id="redeemVipTiers" style="flex-wrap:wrap;gap:8px;margin:0">
+        <button type="button" class="choice-btn redeem-vip-btn is-on-orange" data-days="30" data-price="9.9">¥9.9 → 月卡（30天·含每周100对话）</button>
+      </div>
+    </div>
     <p class="hint" style="margin:0 0 12px">
-      本页可<strong>生成兑换码</strong>并查看<strong>用户核销记录</strong>。码状态 / 分享记录请切到「刷新明细」。
-      额度为<strong>通用对话轮次</strong>（单聊群聊共用、无有效期限制）。
+      也可生成<strong>对话轮次码</strong>。码状态 / 分享记录请切到「刷新明细」。
     </p>
-    <label>打赏金额 → 额度（点选自动填入轮次）</label>
-    <div class="row" id="redeemAmountTiers" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
-      <button type="button" class="btn-secondary redeem-tier-btn" data-yuan="1" data-rounds="30" style="flex:0;width:auto;margin:0">¥1 → 30 轮</button>
-      <button type="button" class="btn-secondary redeem-tier-btn" data-yuan="3" data-rounds="150" style="flex:0;width:auto;margin:0">¥3 → 150 轮</button>
-      <button type="button" class="btn-secondary redeem-tier-btn" data-yuan="6" data-rounds="350" style="flex:0;width:auto;margin:0">¥6 → 350 轮</button>
-      <button type="button" class="btn-secondary redeem-tier-btn" data-yuan="10" data-rounds="800" style="flex:0;width:auto;margin:0">¥10 → 800 轮</button>
+    <label>码类型</label>
+    <div class="row" id="redeemKindBtns" style="margin-bottom:12px;gap:10px;flex-wrap:wrap;align-items:center">
+      <button type="button" class="choice-btn redeem-kind-btn is-on" data-kind="rounds">对话轮次</button>
+      <button type="button" class="choice-btn redeem-kind-btn" data-kind="vip">会员月卡</button>
+      <button type="button" class="choice-btn redeem-kind-btn" data-kind="combo">会员+轮次</button>
+    </div>
+    <input id="redeemKindValue" type="hidden" value="rounds" />
+    <div id="redeemRoundsTierBlock">
+      <label>对话轮次档位</label>
+      <div class="row" id="redeemAmountTiers" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <button type="button" class="choice-btn redeem-tier-btn" data-yuan="3" data-rounds="150">¥3 → 150 点</button>
+        <button type="button" class="choice-btn redeem-tier-btn" data-yuan="5" data-rounds="350">¥5 → 350 点</button>
+        <button type="button" class="choice-btn redeem-tier-btn" data-yuan="10" data-rounds="1000">¥10 → 1000 点</button>
+      </div>
+    </div>
+    <div class="row" id="redeemWeeklyBlock" style="display:none;margin-bottom:12px">
+      <div style="flex:1;min-width:160px">
+        <label>每周对话轮数</label>
+        <input id="redeemWeeklyRounds" type="number" min="1" max="100000" value="100" />
+        <p class="hint" style="margin:6px 0 0">会员生效后的每周免费对话上限（默认 100）</p>
+      </div>
     </div>
     <div class="row">
-      <div style="flex:1;min-width:120px">
-        <label>可兑换额度（轮）</label>
-        <input id="redeemRounds" type="number" min="1" max="100000" value="30" />
+      <div style="flex:1;min-width:120px" id="redeemRoundsFieldWrap">
+        <label>额度轮数（可兑换）</label>
+        <input id="redeemRounds" type="number" min="0" max="100000" value="30" />
+      </div>
+      <div style="flex:1;min-width:100px" id="redeemVipDaysWrap">
+        <label>会员天数</label>
+        <input id="redeemVipDays" type="number" min="0" max="3650" value="30" />
       </div>
       <div style="flex:1;min-width:100px">
         <label>生成数量</label>
@@ -278,34 +381,29 @@
         <input id="redeemMaxUses" type="number" min="1" max="10000" value="1" />
       </div>
     </div>
+    <div id="redeemExtraExpireBlock" style="display:none;margin:4px 0 12px">
+      <label>额度轮数有效期</label>
+      <div class="row" id="redeemExpireModeBtns" style="margin-bottom:8px;gap:8px;flex-wrap:wrap">
+        <button type="button" class="choice-btn redeem-expire-btn is-on" data-mode="unlimited">不限时间</button>
+        <button type="button" class="choice-btn redeem-expire-btn" data-mode="limited">限制时间</button>
+      </div>
+      <input id="redeemExpireMode" type="hidden" value="unlimited" />
+      <div id="redeemExpireDaysWrap" style="display:none">
+        <label>额度有效天数</label>
+        <input id="redeemRoundsExpireDays" type="number" min="1" max="3650" value="30" />
+      </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin:8px 0"><input id="redeemPermanent" type="checkbox" /> 永久会员（勾选后忽略天数）</label>
     <label>备注（可选，点选档位会自动填写）</label>
-    <input id="redeemNote" type="text" placeholder="例如：打赏¥1" />
+    <input id="redeemNote" type="text" placeholder="例如：打赏¥1 / 会员30天" />
     <button type="button" id="createRedeemBtn">生成兑换码</button>
     <p id="redeemCreateStatus" class="hint" style="margin:10px 0 0"></p>
     <div id="redeemCreatedBox" style="margin-top:8px"></div>
-  </div>
-  <div class="panel">
-    <div class="row" style="margin-bottom:8px;align-items:center">
-      <strong style="flex:1">兑换记录（用户核销）</strong>
-      <button type="button" id="loadRedeemLogsBtn" class="btn-secondary" style="flex:0;width:auto;margin:0">刷新兑换记录</button>
-    </div>
-    <label>用户 ID / openid / 兑换码（支持完整或片段）</label>
-    <div class="row">
-      <input
-        id="redeemLogsSearchInput"
-        type="text"
-        placeholder="例如 o6B4y3bVOWejuAOYyvhdVd9REdfI 或兑换码"
-        style="margin-bottom:0"
-      />
-      <button type="button" id="redeemLogsSearchBtn" style="flex:0;min-width:100px;margin:0">搜索</button>
-      <button type="button" id="redeemLogsSearchClearBtn" class="btn-secondary" style="flex:0;min-width:100px;margin:0">清空</button>
-    </div>
-    <p id="redeemLogsStatus" class="hint" style="margin:8px 0">进入本页会自动加载；可按用户 id 或兑换码搜索</p>
-    <div id="redeemLogsList"></div>
+    <p class="hint" style="margin:12px 0 0">核销记录、码状态、分享记录请到「刷新明细」查看（兑换与分享已分开）。</p>
   </div>
   </div>
 
-  <!-- 模块：刷新明细（码状态 + 分享记录） -->
+  <!-- 模块：刷新明细（码状态 + 兑换核销 + 分享记录） -->
   <div id="panelRedeemList" style="display:none">
   <div class="panel">
     <strong style="display:block;margin-bottom:10px">刷新明细</strong>
@@ -320,15 +418,48 @@
       <input id="redeemListAdminKey" type="text" placeholder="oc-feedback-admin-2026" />
       <button type="button" id="loadRedeemBtn">刷新码明细</button>
     </div>
-    <p class="hint" style="margin:0">查看已生成兑换码状态（可用 / 已用尽 / 停用）。生成新码 / 核销记录请切到「兑换码」。</p>
+    <p class="hint" style="margin:0">本页分三块：① 已生成兑换码状态 ② 兑换核销记录（默认近 3 天）③ 分享获额记录。</p>
   </div>
   <div class="panel">
+    <strong style="display:block;margin-bottom:8px">① 兑换码状态</strong>
     <p id="redeemStatus" class="hint" style="margin:0">点击「刷新码明细」查看</p>
     <div id="redeemList"></div>
   </div>
   <div class="panel">
     <div class="row" style="margin-bottom:8px;align-items:center">
-      <strong style="flex:1">分享获额记录</strong>
+      <strong style="flex:1">② 兑换核销记录</strong>
+      <button type="button" id="loadRedeemLogsBtn" class="btn-secondary" style="flex:0;width:auto;margin:0">刷新兑换记录</button>
+    </div>
+    <p class="hint" style="margin:0 0 10px">默认只显示最近 3 天；改时间筛选或搜索用户 ID / 兑换码可看更多。</p>
+    <div class="row" style="flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:10px">
+      <div style="flex:1;min-width:140px">
+        <label>开始日期</label>
+        <input id="redeemLogsFromDate" type="date" style="margin-bottom:0" />
+      </div>
+      <div style="flex:1;min-width:140px">
+        <label>结束日期</label>
+        <input id="redeemLogsToDate" type="date" style="margin-bottom:0" />
+      </div>
+      <button type="button" id="redeemLogsRangeBtn" style="flex:0;min-width:100px;margin:0">按时间筛选</button>
+      <button type="button" id="redeemLogsRecent3Btn" class="btn-secondary" style="flex:0;min-width:90px;margin:0">近3天</button>
+    </div>
+    <label>用户 ID / openid / 兑换码（支持完整或片段）</label>
+    <div class="row">
+      <input
+        id="redeemLogsSearchInput"
+        type="text"
+        placeholder="例如 o6B4y3bVOWejuAOYyvhdVd9REdfI 或兑换码"
+        style="margin-bottom:0"
+      />
+      <button type="button" id="redeemLogsSearchBtn" style="flex:0;min-width:100px;margin:0">搜索</button>
+      <button type="button" id="redeemLogsSearchClearBtn" class="btn-secondary" style="flex:0;min-width:100px;margin:0">清空</button>
+    </div>
+    <p id="redeemLogsStatus" class="hint" style="margin:8px 0">进入本页自动加载近 3 天兑换记录</p>
+    <div id="redeemLogsList"></div>
+  </div>
+  <div class="panel">
+    <div class="row" style="margin-bottom:8px;align-items:center">
+      <strong style="flex:1">③ 分享获额记录</strong>
       <button type="button" id="loadShareLogsBtn" class="btn-secondary" style="flex:0;width:auto;margin:0">刷新分享记录</button>
     </div>
     <label>用户 ID / openid（支持完整或片段）</label>
@@ -342,7 +473,7 @@
       <button type="button" id="shareLogsSearchBtn" style="flex:0;min-width:100px;margin:0">搜索</button>
       <button type="button" id="shareLogsSearchClearBtn" class="btn-secondary" style="flex:0;min-width:100px;margin:0">清空</button>
     </div>
-    <p id="shareLogsStatus" class="hint" style="margin:8px 0">用户通过分享续期成功后会出现在此；可按用户 id 搜索</p>
+    <p id="shareLogsStatus" class="hint" style="margin:8px 0">与兑换核销分开；用户通过分享续期成功后会出现在此</p>
     <div id="shareLogsList"></div>
   </div>
   </div>
@@ -802,10 +933,12 @@
     const userQuotaListEl = document.getElementById('userQuotaList');
     const panelFeedback = document.getElementById('panelFeedback');
     const panelUsage = document.getElementById('panelUsage');
+    const panelMembership = document.getElementById('panelMembership');
     const panelRedeemCreate = document.getElementById('panelRedeemCreate');
     const panelRedeemList = document.getElementById('panelRedeemList');
     const tabFeedbackBtn = document.getElementById('tabFeedbackBtn');
     const tabUsageBtn = document.getElementById('tabUsageBtn');
+    const tabMembershipBtn = document.getElementById('tabMembershipBtn');
     const tabRedeemCreateBtn = document.getElementById('tabRedeemCreateBtn');
     const tabRedeemListBtn = document.getElementById('tabRedeemListBtn');
 
@@ -823,10 +956,12 @@
     function switchTab(which) {
       panelFeedback.style.display = which === 'feedback' ? 'block' : 'none';
       panelUsage.style.display = which === 'usage' ? 'block' : 'none';
+      if (panelMembership) panelMembership.style.display = which === 'membership' ? 'block' : 'none';
       panelRedeemCreate.style.display = which === 'redeemCreate' ? 'block' : 'none';
       panelRedeemList.style.display = which === 'redeemList' ? 'block' : 'none';
       tabFeedbackBtn.className = which === 'feedback' ? '' : 'btn-secondary';
       tabUsageBtn.className = which === 'usage' ? '' : 'btn-secondary';
+      if (tabMembershipBtn) tabMembershipBtn.className = which === 'membership' ? '' : 'btn-secondary';
       tabRedeemCreateBtn.className = which === 'redeemCreate' ? '' : 'btn-secondary';
       tabRedeemListBtn.className = which === 'redeemList' ? '' : 'btn-secondary';
     }
@@ -838,15 +973,23 @@
       if (typeof loadUsage === 'function') loadUsage();
       if (typeof loadUserQuota === 'function') loadUserQuota();
     });
+    if (tabMembershipBtn) {
+      tabMembershipBtn.addEventListener('click', function () {
+        switchTab('membership');
+        syncMembershipApiFields();
+        if (typeof loadVipPanel === 'function') loadVipPanel();
+      });
+    }
     tabRedeemCreateBtn.addEventListener('click', function () {
       switchTab('redeemCreate');
       syncRedeemApiFields();
-      if (typeof loadRedeemLogs === 'function') loadRedeemLogs();
     });
     tabRedeemListBtn.addEventListener('click', function () {
       switchTab('redeemList');
       syncRedeemApiFields();
+      if (typeof setRedeemLogsRecent3Dates === 'function') setRedeemLogsRecent3Dates();
       loadRedeemList();
+      if (typeof loadRedeemLogs === 'function') loadRedeemLogs();
       if (typeof loadShareLogs === 'function') loadShareLogs();
     });
 
@@ -997,6 +1140,13 @@
       }
     }
 
+    function formatVipLabel(row) {
+      if (!row || !row.isVip) return '普通用户';
+      var exp = Number(row.vipExpireAt) || 0;
+      if (!exp) return '会员 · 永久';
+      return '会员 · 至 ' + formatTimeMs(exp);
+    }
+
     function renderUserQuota(list, searchKeyword) {
       if (!list || !list.length) {
         userQuotaListEl.innerHTML =
@@ -1013,13 +1163,17 @@
           var used = Number(row.quotaUsed != null ? row.quotaUsed : row.extraConsumed) || 0;
           var left = Number(row.quotaLeft != null ? row.quotaLeft : row.extraRounds) || 0;
           var total = Number(row.redeemedTotal) || 0;
-          var oid = String(row.openid || '');
+          var oid = String(row.openid || row._id || '');
+          var vipLabel = formatVipLabel(row);
           return (
             '<article class="item">' +
             '<div class="meta">' +
             '<span class="openid">' +
             escapeHtml(oid || '—') +
             '</span>' +
+            '<span>会员 <b>' +
+            escapeHtml(vipLabel) +
+            '</b></span>' +
             '<span>本周免费 <b>' +
             freeUsed +
             '</b>/' +
@@ -1037,15 +1191,21 @@
             (row.weekKey ? ' · 周 ' + escapeHtml(row.weekKey) : '') +
             '</time>' +
             (allowClear && oid
-              ? '<div class="item-actions">' +
+              ? '<div class="item-actions" style="display:flex;flex-wrap:wrap;gap:8px">' +
+                '<button type="button" class="btn-secondary vip-open-btn" data-openid="' +
+                escapeHtml(oid) +
+                '">开通会员</button>' +
+                '<button type="button" class="btn-secondary vip-close-btn" data-openid="' +
+                escapeHtml(oid) +
+                '">关闭会员</button>' +
                 '<button type="button" class="btn-secondary quota-clear-btn" data-openid="' +
                 escapeHtml(oid) +
                 '" style="background:linear-gradient(135deg,#f87171,#ef4444)">强制清空该用户额度</button>' +
                 '</div>'
               : !kw
-                ? '<p class="hint" style="margin:8px 0 0;font-size:0.75rem">请先搜索精确到<strong>单个用户</strong>后再清空额度（不支持一键清空全部）。</p>'
+                ? '<p class="hint" style="margin:8px 0 0;font-size:0.75rem">请先搜索精确到<strong>单个用户</strong>后再操作额度/会员（不支持批量）。</p>'
                 : list.length > 1
-                  ? '<p class="hint" style="margin:8px 0 0;font-size:0.75rem">当前匹配多人，请缩小到唯一用户后再清空。</p>'
+                  ? '<p class="hint" style="margin:8px 0 0;font-size:0.75rem">当前匹配多人，请缩小到唯一用户后再操作。</p>'
                   : '') +
             '</article>'
           );
@@ -1099,13 +1259,243 @@
       }
     }
 
+    async function setUserVipByOpenid(openid, enable) {
+      var oid = String(openid || '').trim();
+      if (!oid) {
+        alert('缺少 openid');
+        return;
+      }
+      var vipDays = 30;
+      var permanent = false;
+      if (enable) {
+        var daysRaw = window.prompt('开通会员天数（填 0 并下一步可设永久；默认 30）：', '30');
+        if (daysRaw == null) return;
+        vipDays = Math.max(0, Math.floor(Number(daysRaw) || 0));
+        if (vipDays <= 0) {
+          permanent = window.confirm('天数为 0：是否开通「永久会员」？\n点取消则放弃开通。');
+          if (!permanent) return;
+        }
+      } else {
+        if (!window.confirm('确认关闭该用户会员？\n\n' + oid)) return;
+      }
+      var pwd = window.prompt('请输入确认密码：', '');
+      if (pwd == null) return;
+      if (String(pwd).trim() !== '223356') {
+        alert('确认密码错误');
+        return;
+      }
+      const base = String(usageApiUrlEl.value || DEFAULT_USAGE_API)
+        .trim()
+        .replace(/\/$/, '');
+      const adminKey = String(usageAdminKeyEl.value || '').trim();
+      userQuotaStatusEl.textContent = enable ? '正在开通会员…' : '正在关闭会员…';
+      userQuotaStatusEl.className = 'hint';
+      try {
+        const data = await postFeedbackAction(base, adminKey, 'userVipSet', {
+          openid: oid,
+          enable: !!enable,
+          vipDays: vipDays,
+          permanent: !!permanent,
+          confirmPassword: String(pwd).trim(),
+          note: enable ? 'admin-ui-open' : 'admin-ui-close'
+        });
+        if (!data.ok) throw new Error(data.err || data.errMsg || '操作失败');
+        userQuotaStatusEl.textContent =
+          (enable ? '已开通会员 · ' : '已关闭会员 · ') + oid.slice(0, 18) + '…';
+        userQuotaStatusEl.className = 'ok';
+        var inp = document.getElementById('userQuotaSearchInput');
+        if (inp) inp.value = oid;
+        await loadUserQuota(oid);
+      } catch (e) {
+        userQuotaStatusEl.textContent = '会员操作失败：' + (e.message || e);
+        userQuotaStatusEl.className = 'err';
+        alert('会员操作失败：' + (e.message || e));
+      }
+    }
+
     if (userQuotaListEl) {
       userQuotaListEl.addEventListener('click', function (ev) {
         var t = ev.target;
-        if (!t || !t.classList || !t.classList.contains('quota-clear-btn')) return;
-        clearUserQuotaByOpenid(t.getAttribute('data-openid') || '');
+        if (!t || !t.classList) return;
+        if (t.classList.contains('quota-clear-btn')) {
+          clearUserQuotaByOpenid(t.getAttribute('data-openid') || '');
+          return;
+        }
+        if (t.classList.contains('vip-open-btn')) {
+          setUserVipByOpenid(t.getAttribute('data-openid') || '', true);
+          return;
+        }
+        if (t.classList.contains('vip-close-btn')) {
+          setUserVipByOpenid(t.getAttribute('data-openid') || '', false);
+        }
       });
     }
+
+    // —— 会员权益面板配置 ——
+    const membershipApiUrlEl = document.getElementById('membershipApiUrl');
+    const membershipAdminKeyEl = document.getElementById('membershipAdminKey');
+    const vipPanelStatusEl = document.getElementById('vipPanelStatus');
+    function syncMembershipApiFields() {
+      if (!membershipApiUrlEl) return;
+      var saved = localStorage.getItem('oc_usage_api') || '';
+      membershipApiUrlEl.value =
+        saved && !/\/usageStats\/?$/i.test(saved) ? saved : DEFAULT_USAGE_API;
+      if (membershipAdminKeyEl) {
+        membershipAdminKeyEl.value =
+          localStorage.getItem('oc_feedback_admin_key') || DEFAULT_KEY;
+      }
+    }
+    var VIP_BENEFIT_PRESETS = [
+      '月卡 ¥9.9（兑换码开通）',
+      '每周对话额度 100 轮（非会员每周 30 轮）',
+      '朋友圈 / 抖音：选择 OC 人数不限',
+      '抖音信息流：最多展示 50 条（普通用户 10 条）',
+      '视频抽音：每周 15 次（非会员每周体验 3 次）',
+      '抖音路人评论：20 条（普通用户 5 条）',
+      '故事集：不再区分会员，可自由创建'
+    ];
+
+    function setVipVisibleButtons(on) {
+      var hid = document.getElementById('vipPanelVisible');
+      if (hid) hid.value = on ? '1' : '0';
+      var btns = document.querySelectorAll('.vip-vis-btn');
+      for (var i = 0; i < btns.length; i++) {
+        var b = btns[i];
+        var v = b.getAttribute('data-visible') === '1';
+        b.className = 'choice-btn vip-vis-btn' + (v === !!on ? ' is-on' : '');
+      }
+    }
+
+    function syncVipLinesFromButtons() {
+      var box = document.getElementById('vipBenefitBtns');
+      var linesEl = document.getElementById('vipPanelLines');
+      if (!box || !linesEl) return;
+      var picked = [];
+      var btns = box.querySelectorAll('.vip-line-btn.is-on');
+      for (var i = 0; i < btns.length; i++) {
+        var t = String(btns[i].getAttribute('data-line') || '').trim();
+        if (t) picked.push(t);
+      }
+      linesEl.value = picked.join('\n');
+    }
+
+    function renderVipBenefitButtons(selectedLines) {
+      var box = document.getElementById('vipBenefitBtns');
+      if (!box) return;
+      var selected = {};
+      (selectedLines || []).forEach(function (x) {
+        var s = String(x || '').trim();
+        if (s) selected[s] = true;
+      });
+      var all = VIP_BENEFIT_PRESETS.slice();
+      Object.keys(selected).forEach(function (s) {
+        if (all.indexOf(s) < 0) all.push(s);
+      });
+      box.innerHTML = '';
+      all.forEach(function (line) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'choice-btn vip-line-btn' + (selected[line] ? ' is-on' : '');
+        btn.setAttribute('data-line', line);
+        btn.textContent = line;
+        btn.addEventListener('click', function () {
+          if (btn.classList.contains('is-on')) btn.classList.remove('is-on');
+          else btn.classList.add('is-on');
+          syncVipLinesFromButtons();
+        });
+        box.appendChild(btn);
+      });
+      syncVipLinesFromButtons();
+    }
+
+    function fillVipPanelForm(panel) {
+      var p = panel || {};
+      var title = document.getElementById('vipPanelTitle');
+      var footer = document.getElementById('vipPanelFooter');
+      setVipVisibleButtons(!!p.visible);
+      if (title) title.value = p.title || '会员权益';
+      if (footer) footer.value = p.footer || '';
+      var lines = Array.isArray(p.lines) && p.lines.length
+        ? p.lines
+        : VIP_BENEFIT_PRESETS.slice();
+      renderVipBenefitButtons(lines);
+    }
+
+    var vipVisBox = document.getElementById('vipPanelVisibleBtns');
+    if (vipVisBox) {
+      vipVisBox.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.classList || !t.classList.contains('vip-vis-btn')) return;
+        setVipVisibleButtons(t.getAttribute('data-visible') === '1');
+      });
+    }
+    async function loadVipPanel() {
+      if (!vipPanelStatusEl) return;
+      syncMembershipApiFields();
+      const base = String(membershipApiUrlEl.value || DEFAULT_USAGE_API)
+        .trim()
+        .replace(/\/$/, '');
+      const adminKey = String(membershipAdminKeyEl.value || '').trim();
+      vipPanelStatusEl.textContent = '读取中…';
+      vipPanelStatusEl.className = 'hint';
+      try {
+        const data = await postFeedbackAction(base, adminKey, 'membershipPanelGet', {});
+        if (!data.ok) throw new Error(data.err || '读取失败');
+        fillVipPanelForm(data.membershipPanel || {});
+        vipPanelStatusEl.textContent =
+          '已读取 · 面板' +
+          (data.membershipPanel && data.membershipPanel.visible ? '显示中' : '已关闭') +
+          (data.warn ? ' · ' + data.warn : '');
+        vipPanelStatusEl.className = 'ok';
+      } catch (e) {
+        vipPanelStatusEl.textContent =
+          '读取失败：' + (e.message || e) + '（请部署最新 feedbackApi）';
+        vipPanelStatusEl.className = 'err';
+      }
+    }
+    async function saveVipPanel() {
+      if (!vipPanelStatusEl) return;
+      syncMembershipApiFields();
+      const base = String(membershipApiUrlEl.value || DEFAULT_USAGE_API)
+        .trim()
+        .replace(/\/$/, '');
+      const adminKey = String(membershipAdminKeyEl.value || '').trim();
+      const vis = document.getElementById('vipPanelVisible');
+      const title = document.getElementById('vipPanelTitle');
+      const lines = document.getElementById('vipPanelLines');
+      const footer = document.getElementById('vipPanelFooter');
+      syncVipLinesFromButtons();
+      vipPanelStatusEl.textContent = '保存中…';
+      vipPanelStatusEl.className = 'hint';
+      try {
+        const data = await postFeedbackAction(base, adminKey, 'membershipPanelSet', {
+          visible: !!(vis && String(vis.value) === '1'),
+          title: title ? title.value : '',
+          linesText: lines ? lines.value : '',
+          footer: footer ? footer.value : ''
+        });
+        if (!data.ok) throw new Error(data.err || '保存失败');
+        fillVipPanelForm(data.membershipPanel || {});
+        localStorage.setItem('oc_usage_api', base);
+        localStorage.setItem('oc_feedback_admin_key', adminKey);
+        vipPanelStatusEl.textContent =
+          '已保存 · 面板' +
+          (data.membershipPanel && data.membershipPanel.visible ? '显示' : '关闭');
+        vipPanelStatusEl.className = 'ok';
+      } catch (e) {
+        vipPanelStatusEl.textContent = '保存失败：' + (e.message || e);
+        vipPanelStatusEl.className = 'err';
+        alert('保存失败：' + (e.message || e));
+      }
+    }
+    var loadVipPanelBtn = document.getElementById('loadVipPanelBtn');
+    var saveVipPanelBtn = document.getElementById('saveVipPanelBtn');
+    if (loadVipPanelBtn) loadVipPanelBtn.addEventListener('click', loadVipPanel);
+    if (saveVipPanelBtn) saveVipPanelBtn.addEventListener('click', saveVipPanel);
+    // 默认渲染权益按钮（含每周 100 对话）
+    renderVipBenefitButtons(VIP_BENEFIT_PRESETS.slice());
+    setVipVisibleButtons(false);
+
 
     /** 从兑换记录按 openid 聚合（兼容云端尚未部署 userQuotaList） */
     function aggregateUsersFromRedeemLogs(logs) {
@@ -1381,10 +1771,97 @@
     const redeemListApiUrlEl = document.getElementById('redeemListApiUrl');
     const redeemListAdminKeyEl = document.getElementById('redeemListAdminKey');
     const redeemRoundsEl = document.getElementById('redeemRounds');
+    const redeemVipDaysEl = document.getElementById('redeemVipDays');
+    const redeemPermanentEl = document.getElementById('redeemPermanent');
     const redeemCountEl = document.getElementById('redeemCount');
     const redeemMaxUsesEl = document.getElementById('redeemMaxUses');
     const redeemNoteEl = document.getElementById('redeemNote');
     const createRedeemBtn = document.getElementById('createRedeemBtn');
+
+    function getRedeemKind() {
+      var hid = document.getElementById('redeemKindValue');
+      var v = hid ? String(hid.value || '').trim() : '';
+      if (v === 'vip' || v === 'combo' || v === 'rounds') return v;
+      return 'rounds';
+    }
+
+    function setRedeemExpireMode(mode) {
+      var m = mode === 'limited' ? 'limited' : 'unlimited';
+      var hid = document.getElementById('redeemExpireMode');
+      if (hid) hid.value = m;
+      var btns = document.querySelectorAll('.redeem-expire-btn');
+      for (var i = 0; i < btns.length; i++) {
+        var on = btns[i].getAttribute('data-mode') === m;
+        btns[i].className = 'choice-btn redeem-expire-btn' + (on ? ' is-on' : '');
+      }
+      var wrap = document.getElementById('redeemExpireDaysWrap');
+      if (wrap) wrap.style.display = m === 'limited' ? '' : 'none';
+    }
+
+    function syncRedeemFormByKind() {
+      var k = getRedeemKind();
+      var tier = document.getElementById('redeemRoundsTierBlock');
+      var weekly = document.getElementById('redeemWeeklyBlock');
+      var roundsWrap = document.getElementById('redeemRoundsFieldWrap');
+      var expire = document.getElementById('redeemExtraExpireBlock');
+      var vipDaysWrap = document.getElementById('redeemVipDaysWrap');
+      if (tier) tier.style.display = k === 'rounds' ? '' : 'none';
+      if (weekly) weekly.style.display = k === 'vip' || k === 'combo' ? '' : 'none';
+      if (roundsWrap) roundsWrap.style.display = k === 'vip' ? 'none' : '';
+      if (expire) expire.style.display = k === 'combo' || k === 'rounds' ? '' : 'none';
+      if (vipDaysWrap) vipDaysWrap.style.display = k === 'rounds' ? 'none' : '';
+      if (k === 'vip' && redeemRoundsEl) redeemRoundsEl.value = '0';
+      if (k === 'rounds' && redeemVipDaysEl) {
+        redeemVipDaysEl.value = '0';
+        if (redeemPermanentEl) redeemPermanentEl.checked = false;
+      }
+      if (k === 'vip' || k === 'combo') {
+        var wEl = document.getElementById('redeemWeeklyRounds');
+        if (wEl && (!wEl.value || Number(wEl.value) <= 0)) wEl.value = '100';
+        // 月卡 / 组合码默认 30 天（未勾选永久时）
+        if (
+          redeemVipDaysEl &&
+          !(redeemPermanentEl && redeemPermanentEl.checked) &&
+          (!redeemVipDaysEl.value || Number(redeemVipDaysEl.value) <= 0)
+        ) {
+          redeemVipDaysEl.value = '30';
+        }
+      }
+      if (k === 'combo' && redeemRoundsEl && Number(redeemRoundsEl.value) <= 0) {
+        redeemRoundsEl.value = '30';
+      }
+    }
+
+    function setRedeemKind(kind) {
+      var k = kind === 'vip' || kind === 'combo' ? kind : 'rounds';
+      var hid = document.getElementById('redeemKindValue');
+      if (hid) hid.value = k;
+      var btns = document.querySelectorAll('.redeem-kind-btn');
+      for (var i = 0; i < btns.length; i++) {
+        var on = btns[i].getAttribute('data-kind') === k;
+        btns[i].className = 'choice-btn redeem-kind-btn' + (on ? ' is-on' : '');
+      }
+      syncRedeemFormByKind();
+    }
+
+    var redeemKindBtns = document.getElementById('redeemKindBtns');
+    if (redeemKindBtns) {
+      redeemKindBtns.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.classList || !t.classList.contains('redeem-kind-btn')) return;
+        setRedeemKind(t.getAttribute('data-kind'));
+      });
+    }
+    var redeemExpireModeBtns = document.getElementById('redeemExpireModeBtns');
+    if (redeemExpireModeBtns) {
+      redeemExpireModeBtns.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.classList || !t.classList.contains('redeem-expire-btn')) return;
+        setRedeemExpireMode(t.getAttribute('data-mode'));
+      });
+    }
+    setRedeemExpireMode('unlimited');
+    syncRedeemFormByKind();
     const loadRedeemBtn = document.getElementById('loadRedeemBtn');
     const loadRedeemLogsBtn = document.getElementById('loadRedeemLogsBtn');
     const redeemStatusEl = document.getElementById('redeemStatus');
@@ -1510,6 +1987,53 @@
       }
     }
 
+    function redeemKindLabel(row) {
+      var kind = String((row && row.kind) || '').toLowerCase();
+      if (row && row.kindLabel) return String(row.kindLabel);
+      if (kind === 'vip') return '会员';
+      if (kind === 'combo') return '会员+轮次';
+      if ((row && Number(row.vipDays) > 0) || (row && row.permanent)) return '会员';
+      return '对话轮次';
+    }
+
+    function toDateInputValue(ms) {
+      var d = new Date(ms);
+      var y = d.getFullYear();
+      var m = d.getMonth() + 1;
+      var day = d.getDate();
+      return (
+        y +
+        '-' +
+        (m < 10 ? '0' : '') +
+        m +
+        '-' +
+        (day < 10 ? '0' : '') +
+        day
+      );
+    }
+
+    function setRedeemLogsRecent3Dates() {
+      var fromEl = document.getElementById('redeemLogsFromDate');
+      var toEl = document.getElementById('redeemLogsToDate');
+      var now = Date.now();
+      if (fromEl) fromEl.value = toDateInputValue(now - 3 * 24 * 60 * 60 * 1000);
+      if (toEl) toEl.value = toDateInputValue(now);
+    }
+
+    function parseDateInputStartMs(yyyyMmDd) {
+      var s = String(yyyyMmDd || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+      var t = new Date(s.replace(/-/g, '/') + ' 00:00:00').getTime();
+      return Number.isFinite(t) ? t : null;
+    }
+
+    function parseDateInputEndMs(yyyyMmDd) {
+      var s = String(yyyyMmDd || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+      var t = new Date(s.replace(/-/g, '/') + ' 23:59:59').getTime();
+      return Number.isFinite(t) ? t : null;
+    }
+
     function renderRedeemList(list) {
       if (!list || !list.length) {
         redeemListEl.innerHTML = '<p class="empty">暂无兑换码，请先生成</p>';
@@ -1520,21 +2044,32 @@
           var enabled = row.enabled !== false;
           var used = Number(row.usedCount) || 0;
           var maxUses = Number(row.maxUses) || 1;
+          var kindText = redeemKindLabel(row);
           var badge = enabled
             ? used >= maxUses
               ? '<span class="badge badge-read">已用尽</span>'
               : '<span class="badge badge-read">可用</span>'
             : '<span class="badge badge-unread">已停用</span>';
+          var vipBits = [];
+          if (row.permanent) vipBits.push('永久会员');
+          else if (Number(row.vipDays) > 0) vipBits.push('会员' + Number(row.vipDays) + '天');
+          if (Number(row.weeklyRounds) > 0) vipBits.push('每周' + Number(row.weeklyRounds) + '对话');
           return (
             '<article class="item">' +
             '<div class="meta">' +
             badge +
+            '<span class="badge badge-read">' +
+            escapeHtml(kindText) +
+            '</span>' +
             '<span class="openid"><b>' +
             escapeHtml(row.code || '') +
             '</b></span>' +
             '<span>额度 <b>' +
             (row.rounds || 0) +
-            '</b> 轮（通用）</span>' +
+            '</b> 轮</span>' +
+            (vipBits.length
+              ? '<span>' + escapeHtml(vipBits.join(' · ')) + '</span>'
+              : '') +
             '<span>已用 ' +
             used +
             ' / ' +
@@ -1567,7 +2102,7 @@
     function renderRedeemLogs(list) {
       if (!list || !list.length) {
         redeemLogsListEl.innerHTML =
-          '<p class="empty">暂无核销记录。若用户已兑换仍为空：请确认已建集合 <code>redeem_logs</code>，并重新部署云函数 <code>redeemCode</code> / <code>feedbackApi</code>。</p>';
+          '<p class="empty">暂无核销记录。默认仅近 3 天；可改时间或搜索用户 ID / 兑换码。若确认有兑换仍为空：请建集合 <code>redeem_logs</code> 并部署 <code>feedbackApi</code>。</p>';
         return;
       }
       redeemLogsListEl.innerHTML = list
@@ -1579,15 +2114,23 @@
           var total = Number(row.redeemedTotal) || 0;
           var freeUsed = Number(row.freeUsed) || 0;
           var freeAllowed = Number(row.freeAllowed) || 30;
+          var kindText = redeemKindLabel(row);
+          var vipLine = '';
+          if (row.permanent) vipLine = '永久会员';
+          else if (Number(row.vipDays) > 0) vipLine = '会员 +' + Number(row.vipDays) + ' 天';
           return (
             '<article class="item">' +
             '<div class="meta">' +
+            '<span class="badge badge-read">' +
+            escapeHtml(kindText) +
+            '</span>' +
             '<span class="openid">' +
             escapeHtml(row.code || '') +
             '</span>' +
             '<span>+' +
             (row.rounds || 0) +
             ' 轮</span>' +
+            (vipLine ? '<span>' + escapeHtml(vipLine) + '</span>' : '') +
             '<span class="openid" title="openid">' +
             escapeHtml(row.openid || '') +
             '</span>' +
@@ -1671,8 +2214,8 @@
       }
     }
 
-    async function loadRedeemLogs(openidKeyword) {
-      loadRedeemLogsBtn.disabled = true;
+    async function loadRedeemLogs(openidKeyword, opts) {
+      if (loadRedeemLogsBtn) loadRedeemLogsBtn.disabled = true;
       redeemLogsStatusEl.textContent = '刷新中…';
       redeemLogsStatusEl.className = 'hint';
       try {
@@ -1684,15 +2227,42 @@
             : String(
                 (document.getElementById('redeemLogsSearchInput') || {}).value || ''
               ).trim();
+        var forceRecent3 = !!(opts && opts.recent3);
+        var forceCustom = !!(opts && opts.customRange);
+        var fromEl = document.getElementById('redeemLogsFromDate');
+        var toEl = document.getElementById('redeemLogsToDate');
+        if (forceRecent3) setRedeemLogsRecent3Dates();
         var payload = {
-          limit: 100,
+          limit: 200,
           _ts: Date.now()
         };
         if (kw) payload.openid = kw;
+        // 有搜索词：默认不限时间；仅当用户点了「按时间筛选」才带时间
+        // 无搜索词：带日期（默认近 3 天或手选）
+        if (!kw || forceCustom) {
+          var fromMs = parseDateInputStartMs(fromEl && fromEl.value);
+          var toMs = parseDateInputEndMs(toEl && toEl.value);
+          if (fromMs == null || toMs == null) {
+            setRedeemLogsRecent3Dates();
+            fromMs = parseDateInputStartMs(fromEl && fromEl.value);
+            toMs = parseDateInputEndMs(toEl && toEl.value);
+          }
+          if (fromMs != null) payload.fromMs = fromMs;
+          if (toMs != null) payload.toMs = toMs;
+        }
         const data = await postRedeemAction('redeemLogs', payload, true);
         var n = (data.list || []).length;
         var nowLabel = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+        var rangeTip =
+          data.rangeMode === 'recent3d'
+            ? '近3天 · '
+            : data.rangeMode === 'custom'
+              ? '时间筛选 · '
+              : data.rangeMode === 'search'
+                ? '搜索（不限时间）· '
+                : '';
         redeemLogsStatusEl.textContent =
+          rangeTip +
           (kw
             ? '搜索「' + kw.slice(0, 18) + (kw.length > 18 ? '…' : '') + '」· '
             : '') +
@@ -1711,7 +2281,7 @@
           '\n请建集合 redeem_logs，并重新部署 feedbackApi。';
         redeemLogsStatusEl.className = 'err';
       } finally {
-        loadRedeemLogsBtn.disabled = false;
+        if (loadRedeemLogsBtn) loadRedeemLogsBtn.disabled = false;
       }
     }
 
@@ -1763,8 +2333,23 @@
       redeemCreateStatusEl.className = 'hint';
       redeemCreatedBoxEl.innerHTML = '';
       try {
+        var kind = getRedeemKind();
+        var permanent = !!(redeemPermanentEl && redeemPermanentEl.checked);
+        var vipDays = Number(redeemVipDaysEl && redeemVipDaysEl.value) || 0;
+        var weeklyEl = document.getElementById('redeemWeeklyRounds');
+        var weeklyRounds = Number(weeklyEl && weeklyEl.value) || 100;
+        var expireModeEl = document.getElementById('redeemExpireMode');
+        var expireMode = expireModeEl ? String(expireModeEl.value || '') : 'unlimited';
+        var expireDaysEl = document.getElementById('redeemRoundsExpireDays');
+        var roundsExpireDays =
+          expireMode === 'limited' ? Math.max(1, Number(expireDaysEl && expireDaysEl.value) || 30) : 0;
         const data = await postRedeemAction('redeemCreate', {
-          rounds: Number(redeemRoundsEl.value) || 120,
+          kind: kind,
+          rounds: Number(redeemRoundsEl.value) || 0,
+          weeklyRounds: weeklyRounds,
+          roundsExpireDays: roundsExpireDays,
+          vipDays: vipDays,
+          permanent: permanent,
           count: Number(redeemCountEl.value) || 1,
           maxUses: Number(redeemMaxUsesEl.value) || 1,
           note: String(redeemNoteEl.value || '').trim()
@@ -1772,8 +2357,17 @@
         const codes = (data.codes || []).map(function (c) {
           return c.code;
         });
-        redeemCreateStatusEl.textContent =
-          '已生成 ' + codes.length + ' 个，每个 +' + (data.rounds || 0) + ' 轮';
+        var tip = '已生成 ' + codes.length + ' 个';
+        if (data.kind === 'vip' || data.kind === 'combo' || data.permanent) {
+          tip += data.permanent ? ' · 永久会员' : ' · 会员 ' + (data.vipDays || 0) + ' 天';
+          if (data.weeklyRounds) tip += ' · 每周 ' + data.weeklyRounds + ' 轮';
+        }
+        if (data.rounds) {
+          tip += ' · 额度 +' + data.rounds + ' 轮';
+          if (data.roundsExpireDays) tip += '（' + data.roundsExpireDays + ' 天内）';
+          else tip += '（不限时）';
+        }
+        redeemCreateStatusEl.textContent = tip;
         redeemCreateStatusEl.className = 'ok';
         redeemCreatedBoxEl.innerHTML =
           '<div class="item" style="margin:0"><p class="content" style="font-family:ui-monospace,monospace">' +
@@ -1834,20 +2428,50 @@
         var yuan = t.getAttribute('data-yuan') || '';
         var rounds = Number(t.getAttribute('data-rounds')) || 0;
         if (redeemRoundsEl && rounds > 0) redeemRoundsEl.value = String(rounds);
+        setRedeemKind('rounds');
         if (redeemNoteEl) redeemNoteEl.value = yuan ? '打赏¥' + yuan : '';
         var btns = redeemTierBox.querySelectorAll('.redeem-tier-btn');
         for (var i = 0; i < btns.length; i++) {
-          btns[i].className = 'btn-secondary redeem-tier-btn';
-          btns[i].style.cssText = 'flex:0;width:auto;margin:0';
+          btns[i].className = 'choice-btn redeem-tier-btn';
         }
-        t.className = 'redeem-tier-btn';
-        t.style.cssText = 'flex:0;width:auto;margin:0';
+        t.className = 'choice-btn redeem-tier-btn is-on';
+      });
+    }
+    var redeemVipBox = document.getElementById('redeemVipTiers');
+    if (redeemVipBox) {
+      redeemVipBox.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.classList || !t.classList.contains('redeem-vip-btn')) return;
+        var days = Number(t.getAttribute('data-days')) || 0;
+        var permanent = t.getAttribute('data-permanent') === '1';
+        setRedeemKind('vip');
+        if (redeemVipDaysEl) redeemVipDaysEl.value = String(days);
+        if (redeemPermanentEl) redeemPermanentEl.checked = !!permanent;
+        if (redeemRoundsEl) redeemRoundsEl.value = '0';
+        var weeklyEl = document.getElementById('redeemWeeklyRounds');
+        if (weeklyEl) weeklyEl.value = '100';
+        if (redeemNoteEl) {
+          var price = t.getAttribute('data-price') || '';
+          var w = weeklyEl ? String(weeklyEl.value || '100') : '100';
+          redeemNoteEl.value = permanent
+            ? '永久会员（含每周' + w + '对话）'
+            : price
+              ? '会员月卡¥' + price + '（含每周' + w + '对话）'
+              : '会员' + days + '天（含每周' + w + '对话）';
+        }
+        var btns = redeemVipBox.querySelectorAll('.redeem-vip-btn');
+        for (var i = 0; i < btns.length; i++) {
+          btns[i].className = 'choice-btn redeem-vip-btn';
+        }
+        t.className = 'choice-btn redeem-vip-btn is-on-orange';
       });
     }
     loadRedeemBtn.addEventListener('click', loadRedeemList);
-    loadRedeemLogsBtn.addEventListener('click', function () {
-      loadRedeemLogs();
-    });
+    if (loadRedeemLogsBtn) {
+      loadRedeemLogsBtn.addEventListener('click', function () {
+        loadRedeemLogs();
+      });
+    }
     if (loadShareLogsBtn) {
       loadShareLogsBtn.addEventListener('click', function () {
         loadShareLogs();
@@ -1858,6 +2482,19 @@
       var redeemInp = document.getElementById('redeemLogsSearchInput');
       var redeemBtn = document.getElementById('redeemLogsSearchBtn');
       var redeemClear = document.getElementById('redeemLogsSearchClearBtn');
+      var rangeBtn = document.getElementById('redeemLogsRangeBtn');
+      var recent3Btn = document.getElementById('redeemLogsRecent3Btn');
+      if (rangeBtn) {
+        rangeBtn.addEventListener('click', function () {
+          loadRedeemLogs(redeemInp ? redeemInp.value : '', { customRange: true });
+        });
+      }
+      if (recent3Btn) {
+        recent3Btn.addEventListener('click', function () {
+          if (redeemInp) redeemInp.value = '';
+          loadRedeemLogs('', { recent3: true });
+        });
+      }
       if (redeemBtn) {
         redeemBtn.addEventListener('click', function () {
           loadRedeemLogs(redeemInp ? redeemInp.value : '');
@@ -1866,7 +2503,7 @@
       if (redeemClear) {
         redeemClear.addEventListener('click', function () {
           if (redeemInp) redeemInp.value = '';
-          loadRedeemLogs('');
+          loadRedeemLogs('', { recent3: true });
         });
       }
       if (redeemInp) {

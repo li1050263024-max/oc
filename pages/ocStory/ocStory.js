@@ -1,24 +1,18 @@
+const storyStore = require('../../utils/storyStore.js');
 const {
-
   buildOcPickerList,
-
   buildStoryPromptParts,
-
   getStoriesFromItem,
-
   getStoryFromFavorite,
-
   upsertStoryToFavorite,
-
   saveStoryWithHistory,
-
   deleteStoryFromFavorite,
-
   newStoryId,
-
-  storyPreviewParagraphs
-
-} = require('../../utils/storyStore.js');
+  storyPreviewParagraphs,
+  ensureCollectionsMigrated,
+  createCollection,
+  renameCollection
+} = storyStore;
 
 const { getFavoriteById, ensureCurrentWorkInFavorites, workFromFavoriteItem } = require('../../utils/favorite.js');
 const ocImage = require('../../utils/ocImage.js');
@@ -66,6 +60,8 @@ Page({
 
     continueInput: '',
 
+    continueCostHint: '',
+
     continuing: false,
 
     storyWritingExiting: false,
@@ -74,11 +70,15 @@ Page({
 
     continueContext: null,
 
-    pasteStoryTitle: '',
-
-    pasteStoryContent: '',
-
     expandedStoryIds: {},
+
+    storyCollections: [],
+
+    expandedCollectionIds: {},
+
+    vipLimitModalVisible: false,
+
+    oaQrVisible: false,
 
     storySegmentOptions: [
       { key: 'bio', label: '小传' },
@@ -245,7 +245,11 @@ Page({
 
       patch.savedStories = [];
 
+      patch.storyCollections = [];
+
       patch.expandedStoryIds = {};
+
+      patch.expandedCollectionIds = {};
 
     } else {
 
@@ -259,15 +263,41 @@ Page({
 
 
 
+  _buildStoryCollections(favId) {
+    if (!favId) {
+      return { storyCollections: [], savedStories: [], expandedStoryIds: {} };
+    }
+    const migrated = ensureCollectionsMigrated(favId);
+    const expandedCol = this.data.expandedCollectionIds || {};
+    const hasColState = Object.keys(expandedCol).length > 0;
+    const nextExpandedCol = Object.assign({}, expandedCol);
+    const storyCollections = migrated.collections.map((c, i) => {
+      const stories = this._mapSavedStories(
+        migrated.stories.filter((s) => String(s.collectionId || '') === c.id)
+      );
+      if (!hasColState && i === 0) nextExpandedCol[c.id] = true;
+      return {
+        id: c.id,
+        name: c.name,
+        isDefault: !!c.isDefault,
+        count: stories.length,
+        stories: stories
+      };
+    });
+    const savedStories = this._mapSavedStories(migrated.stories);
+    return {
+      storyCollections: storyCollections,
+      savedStories: savedStories,
+      expandedStoryIds: this._buildDefaultExpandedStoryIds(savedStories),
+      expandedCollectionIds: nextExpandedCol
+    };
+  },
+
   _loadStoriesFor(favoriteId, patch) {
 
     let fid = favoriteId;
 
     if (fid === '__work__') fid = ensureCurrentWorkInFavorites() || '';
-
-    const item = fid ? getFavoriteById(fid) : null;
-
-    const raw = getStoriesFromItem(item);
 
     if (!patch) patch = {};
 
@@ -283,9 +313,7 @@ Page({
 
     }
 
-    patch.savedStories = this._mapSavedStories(raw);
-
-    patch.expandedStoryIds = this._buildDefaultExpandedStoryIds(patch.savedStories);
+    Object.assign(patch, this._buildStoryCollections(fid));
 
     this._currentFavId = fid;
 
@@ -377,21 +405,9 @@ Page({
 
     if (!ok) return false;
 
-    const item = getFavoriteById(favId);
-
-    const savedStories = this._mapSavedStories(getStoriesFromItem(item));
-
-    this.setData({
-
-      storyId: id,
-
-      saved: true,
-
-      savedStories,
-
-      expandedStoryIds: this._buildDefaultExpandedStoryIds(savedStories)
-
-    });
+    this.setData(
+      Object.assign({ storyId: id, saved: true }, this._buildStoryCollections(favId))
+    );
 
     return true;
 
@@ -497,6 +513,87 @@ Page({
 
   },
 
+  onToggleCollection(e) {
+    const id = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id;
+    if (!id) return;
+    const key = 'expandedCollectionIds.' + id;
+    this.setData({
+      [key]: !this.data.expandedCollectionIds[id]
+    });
+  },
+
+  onCreateCollection() {
+    const cur = this._currentOc();
+    const favId = this._favoriteIdFor(cur);
+    if (!favId) {
+      wx.showToast({ title: '请先选择 OC', icon: 'none' });
+      return;
+    }
+    const openCreate = () => {
+      wx.showModal({
+        title: '新建故事集',
+        editable: true,
+        placeholderText: '输入故事集名称',
+        success: (res) => {
+          if (!res.confirm) return;
+          const r = createCollection(favId, res.content);
+          if (!r.ok) {
+            if (r.needVip) {
+              this.setData({ vipLimitModalVisible: true });
+              return;
+            }
+            wx.showToast({ title: r.errMsg || '创建失败', icon: 'none' });
+            return;
+          }
+          this.setData(this._buildStoryCollections(favId));
+          wx.showToast({ title: '已创建', icon: 'success' });
+        }
+      });
+    };
+    try {
+      require('../../utils/ocMembership.js').syncMembership().finally(openCreate);
+    } catch (_) {
+      openCreate();
+    }
+  },
+
+  onRenameCollection(e) {
+    const id = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id;
+    const name = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.name) || '';
+    const cur = this._currentOc();
+    const favId = this._favoriteIdFor(cur);
+    if (!favId || !id) return;
+    wx.showModal({
+      title: '重命名故事集',
+      editable: true,
+      placeholderText: '输入新名称',
+      content: name,
+      success: (res) => {
+        if (!res.confirm) return;
+        const r = renameCollection(favId, id, res.content);
+        if (!r.ok) {
+          wx.showToast({ title: r.errMsg || '重命名失败', icon: 'none' });
+          return;
+        }
+        this.setData(this._buildStoryCollections(favId));
+        wx.showToast({ title: '已重命名', icon: 'success' });
+      }
+    });
+  },
+
+  onCloseVipLimitModal() {
+    this.setData({ vipLimitModalVisible: false });
+  },
+
+  onOpenVipOaFromLimit() {
+    this.setData({ vipLimitModalVisible: false, oaQrVisible: true });
+  },
+
+  onCloseOaQr() {
+    this.setData({ oaQrVisible: false });
+  },
+
+
   onEditStory(e) {
 
     const storyId = e.currentTarget.dataset.id;
@@ -590,17 +687,7 @@ Page({
 
         }
 
-        const item = getFavoriteById(favId);
-
-        const savedStories = this._mapSavedStories(getStoriesFromItem(item));
-
-        const patch = {
-
-          savedStories,
-
-          expandedStoryIds: this._buildDefaultExpandedStoryIds(savedStories)
-
-        };
+        const patch = this._buildStoryCollections(favId);
 
         if (this.data.storyId === storyId) {
 
@@ -627,17 +714,16 @@ Page({
 
 
   _openContinueSheet(context) {
-
+    let continueCostHint = '';
+    try {
+      continueCostHint = require('../../utils/ocCredits.js').getStoryContinueCostHint();
+    } catch (_) {}
     this.setData({
-
       continueSheetVisible: true,
-
       continueInput: '',
-
-      continueContext: context
-
+      continueContext: context,
+      continueCostHint: continueCostHint
     });
-
   },
 
 
@@ -802,14 +888,6 @@ Page({
 
 
 
-  onUserInput(e) {
-
-    this.setData({ userInput: e.detail.value || '' });
-
-  },
-
-
-
   onStoryTitleInput(e) {
 
     this.setData({ storyTitle: e.detail.value || '' });
@@ -818,111 +896,72 @@ Page({
 
 
 
-  onPasteStoryTitleInput(e) {
-
-    this.setData({ pasteStoryTitle: e.detail.value || '' });
-
-  },
-
-
-
-  onPasteStoryContentInput(e) {
-
-    this.setData({ pasteStoryContent: e.detail.value || '' });
-
-  },
-
-
-
-  onSavePastedStory() {
-
+  _openStorySubPage(which) {
     const cur = this._currentOc();
-
     if (!cur) {
-
       wx.showToast({ title: '请先选择 OC', icon: 'none' });
-
       return;
-
     }
-
-    const title = (this.data.pasteStoryTitle || '').trim();
-
-    const content = (this.data.pasteStoryContent || '').trim();
-
-    if (!title) {
-
-      wx.showToast({ title: '请填写故事题目', icon: 'none' });
-
-      return;
-
-    }
-
-    if (!content) {
-
-      wx.showToast({ title: '请粘贴故事正文', icon: 'none' });
-
-      return;
-
-    }
-
     const favId = this._favoriteIdFor(cur);
-
     if (!favId) {
-
       wx.showToast({ title: '未找到设定本记录', icon: 'none' });
-
       return;
-
     }
-
-    const id = newStoryId();
-
-    const entry = {
-
-      id,
-
-      title,
-
-      userPrompt: '',
-
-      content,
-
-      time: Date.now()
-
-    };
-
-    const ok = upsertStoryToFavorite(favId, entry);
-
-    if (!ok) {
-
-      wx.showToast({ title: '保存失败', icon: 'none' });
-
+    const ocName = encodeURIComponent(cur.name || 'OC');
+    if (which === 'upload') {
+      wx.navigateTo({
+        url:
+          '/pages/ocStory/ocStoryUpload?favId=' +
+          encodeURIComponent(favId) +
+          '&ocName=' +
+          ocName,
+        events: {
+          uploaded: () => {
+            this.setData(this._buildStoryCollections(favId));
+          }
+        },
+        fail: () => wx.showToast({ title: '页面打开失败', icon: 'none' })
+      });
       return;
-
     }
-
-    const item = getFavoriteById(favId);
-
-    const savedStories = this._mapSavedStories(getStoriesFromItem(item));
-
-    this.setData({
-
-      pasteStoryTitle: '',
-
-      pasteStoryContent: '',
-
-      savedStories,
-
-      expandedStoryIds: this._buildDefaultExpandedStoryIds(savedStories)
-
+    if (!cur.hasBio) {
+      wx.showToast({ title: '请先在 OC 小传中生成小传', icon: 'none' });
+      return;
+    }
+    wx.navigateTo({
+      url:
+        '/pages/ocStory/ocStoryGenerate?favId=' +
+        encodeURIComponent(favId) +
+        '&ocName=' +
+        ocName +
+        '&hasBio=1',
+      events: {
+        saved: () => {
+          this.setData(
+            Object.assign(
+              {
+                story: '',
+                storyId: '',
+                storyTitle: '',
+                userInput: '',
+                saved: false
+              },
+              this._buildStoryCollections(favId)
+            )
+          );
+        }
+      },
+      fail: () => wx.showToast({ title: '页面打开失败', icon: 'none' })
     });
-
-    wx.showToast({ title: '故事已保存', icon: 'success' });
-
   },
 
+  onTapStoryDir() {
+    this._openStorySubPage('generate');
+  },
 
+  onTapPasteStory() {
+    this._openStorySubPage('upload');
+  },
 
   onStoryInput(e) {
 
@@ -932,131 +971,6 @@ Page({
 
 
 
-  onGenerate() {
-
-    const cur = this._currentOc();
-
-    if (!cur || !cur.hasBio) {
-
-      wx.showToast({ title: '请先在 OC 小传中生成小传', icon: 'none' });
-
-      return;
-
-    }
-
-    if (this.data.loading) return;
-
-    const userInput = (this.data.userInput || '').trim();
-
-    if (!userInput) {
-
-      wx.showToast({ title: '请输入故事方向', icon: 'none' });
-
-      return;
-
-    }
-
-    const favId = this._favoriteIdFor(cur);
-
-    const parts = buildStoryPromptParts(favId);
-
-    if (!parts) {
-
-      wx.showToast({ title: '缺少 OC 小传', icon: 'none' });
-
-      return;
-
-    }
-
-    if (!wx.cloud) {
-
-      wx.showToast({ title: '请使用支持云开发的基础库', icon: 'none' });
-
-      return;
-
-    }
-
-
-
-    this.setData({
-
-      loading: true,
-
-      story: '',
-
-      storyId: '',
-
-      storyTitle: '',
-
-      saved: false
-
-    });
-
-    wx.cloud
-
-      .callFunction({
-
-        name: 'generateOcStory',
-
-        data: {
-
-          ocSetting: parts.ocSetting,
-
-          ocBio: parts.ocBio,
-
-          userInput: userInput
-
-        },
-
-        timeout: 60000
-
-      })
-
-      .then((res) => {
-
-        const r = res.result || {};
-
-        if (r.ok && r.story) {
-
-          this.setData({
-
-            story: r.story,
-
-            storyId: newStoryId(),
-
-            saved: false
-
-          });
-
-        } else {
-
-          wx.showToast({ title: r.errMsg || '生成失败', icon: 'none', duration: 3000 });
-
-        }
-
-      })
-
-      .catch((err) => {
-
-        const msg = (err && (err.errMsg || err.message)) || '';
-
-        wx.showToast({
-
-          title: /timeout|超时/i.test(msg) ? '请求超时，请稍后重试' : msg || '调用失败',
-
-          icon: 'none',
-
-          duration: 3000
-
-        });
-
-      })
-
-      .finally(() => this.setData({ loading: false }));
-
-  },
-
-
 
   _collapseStoryDraft() {
 
@@ -1064,27 +978,18 @@ Page({
 
     const favId = cur ? this._favoriteIdFor(cur) : '';
 
-    const item = favId ? getFavoriteById(favId) : null;
-
-    const savedStories = this._mapSavedStories(getStoriesFromItem(item));
-
-    this.setData({
-
-      userInput: '',
-
-      story: '',
-
-      storyId: '',
-
-      storyTitle: '',
-
-      saved: false,
-
-      savedStories,
-
-      expandedStoryIds: this._buildDefaultExpandedStoryIds(savedStories)
-
-    });
+    this.setData(
+      Object.assign(
+        {
+          userInput: '',
+          story: '',
+          storyId: '',
+          storyTitle: '',
+          saved: false
+        },
+        this._buildStoryCollections(favId)
+      )
+    );
 
   },
 

@@ -25,8 +25,7 @@ Component({
       { key: 'notebook', label: '设定本', icon: 'book' },
       { key: 'story', label: 'oc故事', icon: 'pen' },
       { key: 'chat', label: 'oc聊天', icon: 'chat' },
-      { key: 'moments', label: '朋友圈', icon: 'moments' },
-      { key: 'douyin', label: '抖音', icon: 'douyin' }
+      { key: 'ocapp', label: 'OC APP', icon: 'ocapp' }
     ]
   },
 
@@ -107,6 +106,8 @@ Component({
 
       if (key === current) {
         if (key === 'home') nav.goHome();
+        // 朋友圈/抖音子页也标成 ocapp：再点 Tab 应回到 OC APP 大厅
+        if (key === 'ocapp') nav.switchMainTab('ocapp');
         return;
       }
 
@@ -119,11 +120,7 @@ Component({
         wx.showToast({ title: '请先在设定本中保存 OC', icon: 'none', duration: 2800 });
         return;
       }
-      if (key === 'moments' && !hasAnyOcForSocial()) {
-        wx.showToast({ title: '请先在设定本中保存 OC', icon: 'none', duration: 2800 });
-        return;
-      }
-      if (key === 'douyin' && !hasAnyOcForSocial()) {
+      if (key === 'ocapp' && !hasAnyOcForSocial()) {
         wx.showToast({ title: '请先在设定本中保存 OC', icon: 'none', duration: 2800 });
         return;
       }

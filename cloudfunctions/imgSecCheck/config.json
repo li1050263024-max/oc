@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "openapi": ["security.imgSecCheck"]
+  },
+  "timeout": 20,
+  "memorySize": 256
+}

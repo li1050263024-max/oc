@@ -47,7 +47,7 @@
     {
       "root": "pages/ocStory",
       "name": "ocStory",
-      "pages": ["ocStory"]
+      "pages": ["ocStory", "ocStoryUpload", "ocStoryGenerate"]
     },
     {
       "root": "pages/ocStoryChapter",
@@ -57,7 +57,7 @@
     {
       "root": "pages/ocNotebook",
       "name": "ocNotebook",
-      "pages": ["ocNotebook"]
+      "pages": ["ocNotebook", "ocFamilyList", "ocCloudBackup"]
     },
     {
       "root": "pages/ocProfileDetail",
@@ -85,14 +85,22 @@
       "pages": ["ocGroupChat"]
     },
     {
-      "root": "pages/ocMoments",
-      "name": "ocMoments",
-      "pages": ["ocMoments"]
+      "root": "pages/ocApp",
+      "name": "ocApp",
+      "pages": [
+        "ocApp",
+        "ocMoments/ocMoments",
+        "ocDouyin/ocDouyin",
+        "ocDouyin/ocDouyinCompose",
+        "ocDouyinProfile/ocDouyinProfile",
+        "ocWatchOc/ocWatchOc",
+        "ocStorageClean/ocStorageClean"
+      ]
     },
     {
-      "root": "pages/ocDouyin",
-      "name": "ocDouyin",
-      "pages": ["ocDouyin"]
+      "root": "pages/ocDouyinBgmPack",
+      "name": "ocDouyinBgmPack",
+      "pages": ["index"]
     },
     {
       "root": "pages/feedback",
@@ -113,25 +121,23 @@
   "preloadRule": {
     "pages/index/index": {
       "network": "all",
-      "packages": [
-        "pools",
-        "favorites",
-        "ocNotebook",
-        "ocBioHub",
-        "ocChat",
-        "ocMoments",
-        "ocDouyin",
-        "ocStory",
-        "ocGroupChat"
-      ]
+      "packages": ["pools", "favorites", "ocNotebook", "ocBioHub", "ocChat"]
     },
     "pages/ocNotebook/ocNotebook": {
       "network": "all",
-      "packages": ["ocBioHub", "ocChat", "ocMoments", "ocProfileDetail"]
+      "packages": ["ocBioHub", "ocChat", "ocProfileDetail"]
     },
     "pages/ocBioHub/ocBioHub": {
       "network": "all",
-      "packages": ["ocBio", "ocBioRead", "ocStory", "ocChat"]
+      "packages": ["ocBio", "ocBioRead", "ocChat"]
+    },
+    "pages/ocApp/ocApp": {
+      "network": "wifi",
+      "packages": ["ocDouyinBgmPack"]
+    },
+    "pages/ocApp/ocDouyin/ocDouyin": {
+      "network": "all",
+      "packages": ["ocDouyinBgmPack"]
     }
   },
   "window": {

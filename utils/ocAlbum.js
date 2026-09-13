@@ -1,8 +1,11 @@
 /** OC 立绘图册 */
 const ocImage = require('./ocImage.js');
 
-const MAX_IMAGES_PER_ALBUM = 50;
+/** 单册上限 15：所有图册统一（立绘 / 自拍 / 他拍 / 合影 / 自定义） */
+const MAX_IMAGES_PER_ALBUM = 15;
 const ALBUM_CARD_PREVIEW_COUNT = 10;
+const ALBUM_LIMIT_HINT =
+  '每个图册最多 15 张（立绘与其它图册相同）；超额自动拆到「原名·续N」。填写描述可帮助朋友圈/抖音按场景配图。';
 
 const PRESET_ART_ID = 'preset_art';
 
@@ -30,19 +33,64 @@ function normalizeAlbumImage(img) {
 
 function normalizeAlbum(raw, fallbackName) {
   const a = raw && typeof raw === 'object' ? raw : {};
+  // 不在此处截断：超额由 splitOverflowAlbums 拆到新图册，避免静默丢图
   const images = (Array.isArray(a.images) ? a.images : [])
     .map(normalizeAlbumImage)
-    .filter(Boolean)
-    .slice(0, MAX_IMAGES_PER_ALBUM);
+    .filter(Boolean);
   images.sort((x, y) => (x.time || 0) - (y.time || 0));
   const presetMeta = PRESET_ALBUMS.find((p) => p.id === a.id);
   return {
     id: String(a.id || newAlbumId()),
     name: String(a.name || (presetMeta && presetMeta.name) || fallbackName || '未命名图册').trim() || '未命名图册',
+    description: String(a.description || '').trim().slice(0, 120),
     preset: !!(a.preset || presetMeta),
     images: images,
     createdAt: Number(a.createdAt) || Date.now()
   };
+}
+
+function continuationAlbumName(baseName, part) {
+  const base = String(baseName || '未命名图册')
+    .replace(/·续\d+$/, '')
+    .trim() || '未命名图册';
+  return (base + '·续' + part).slice(0, 24);
+}
+
+/**
+ * 单册超过 15 张时：原册保留最新 15 张，更早的超额图按 15 张一批拆到新图册
+ */
+function splitOverflowAlbums(albums) {
+  const list = Array.isArray(albums) ? albums : [];
+  const out = [];
+  list.forEach((raw) => {
+    const alb = normalizeAlbum(raw);
+    const imgs = (alb.images || []).slice().sort((a, b) => (a.time || 0) - (b.time || 0));
+    if (imgs.length <= MAX_IMAGES_PER_ALBUM) {
+      alb.images = imgs;
+      out.push(alb);
+      return;
+    }
+    const keep = imgs.slice(-MAX_IMAGES_PER_ALBUM);
+    const overflow = imgs.slice(0, imgs.length - MAX_IMAGES_PER_ALBUM);
+    alb.images = keep;
+    out.push(alb);
+    let part = 1;
+    for (let i = 0; i < overflow.length; i += MAX_IMAGES_PER_ALBUM) {
+      const chunk = overflow.slice(i, i + MAX_IMAGES_PER_ALBUM);
+      out.push(
+        normalizeAlbum({
+          id: newAlbumId(),
+          name: continuationAlbumName(alb.name, part),
+          description: alb.description || '',
+          preset: false,
+          images: chunk,
+          createdAt: Date.now() + part
+        })
+      );
+      part += 1;
+    }
+  });
+  return out;
 }
 
 function createPresetAlbums() {
@@ -83,21 +131,26 @@ function ensurePresetAlbums(list) {
 
 /**
  * 从旧版 ocImages 迁移到图册；无图册时创建预设并把历史立绘放进「立绘」
+ * 已有 ocAlbums 结构时以图册为准，允许删空（避免最后一张被扁平列表回填）
  */
 function normalizeOcAlbums(work) {
   const w = work || {};
-  let albums = Array.isArray(w.ocAlbums) ? w.ocAlbums.map((a) => normalizeAlbum(a)) : [];
+  const hadAlbumsField = Array.isArray(w.ocAlbums);
+  let albums = hadAlbumsField ? w.ocAlbums.map((a) => normalizeAlbum(a)) : [];
   albums = ensurePresetAlbums(albums);
 
   const legacy = ocImage.normalizeOcImageList(w.ocImages || []);
   const hasAny = albums.some((a) => (a.images || []).length > 0);
-  if (!hasAny && legacy.length) {
+  if (!hadAlbumsField && !hasAny && legacy.length) {
     const art = albums.find((a) => a.id === PRESET_ART_ID) || albums[0];
     if (art) {
-      art.images = legacy.slice(0, MAX_IMAGES_PER_ALBUM);
+      // 历史立绘可能超过 15 张，交给 splitOverflowAlbums 拆册
+      art.images = legacy.slice();
     }
   }
 
+  albums = splitOverflowAlbums(albums);
+  albums = ensurePresetAlbums(albums);
   return albums;
 }
 
@@ -110,7 +163,11 @@ function flattenAlbumImages(albums) {
     .slice()
     .sort((a, b) => Number(b && b.id === PRESET_ART_ID) - Number(a && a.id === PRESET_ART_ID));
   ordered.forEach((alb) => {
-    (alb.images || []).forEach((img) => {
+    // 图册内最新在前，保证头像/主图取到刚上传的
+    const imgs = ((alb && alb.images) || [])
+      .slice()
+      .sort((x, y) => (Number(y.time) || 0) - (Number(x.time) || 0));
+    imgs.forEach((img) => {
       if (!img || !img.path || seen.has(img.path)) return;
       seen.add(img.path);
       out.push(img);
@@ -121,7 +178,11 @@ function flattenAlbumImages(albums) {
 
 function syncWorkImagesFromAlbums(work) {
   if (!work || typeof work !== 'object') return work;
-  const albums = normalizeOcAlbums(work);
+  // 已有图册时以图册为唯一来源，清空扁平列表再规范化，防止删空回填
+  const source = Array.isArray(work.ocAlbums)
+    ? { ocAlbums: work.ocAlbums, ocImages: [] }
+    : work;
+  const albums = normalizeOcAlbums(source);
   work.ocAlbums = albums;
   const flat = flattenAlbumImages(albums);
   work.ocImages = flat;
@@ -140,11 +201,15 @@ function buildAlbumCards(albums) {
     const preview = albumCardPreview(a);
     return Object.assign({}, a, {
       count: (a.images || []).length,
+      maxImages: MAX_IMAGES_PER_ALBUM,
       previewImages: preview,
       previewCount: preview.length,
       canAddMore: (a.images || []).length < MAX_IMAGES_PER_ALBUM,
       featured: a.id === PRESET_ART_ID,
-      coverPath: preview.length ? preview[0].path : ''
+      coverPath: preview.length ? preview[0].path : '',
+      descHint: String(a.description || '').trim()
+        ? String(a.description).trim().slice(0, 36)
+        : ''
     });
   });
 }
@@ -167,6 +232,14 @@ function renameAlbum(albums, albumId, name) {
   if (!target) return list;
   const nextName = String(name || '').trim();
   if (nextName) target.name = nextName.slice(0, 24);
+  return list;
+}
+
+function setAlbumDescription(albums, albumId, description) {
+  const list = (albums || []).map((a) => normalizeAlbum(a));
+  const target = list.find((a) => a.id === albumId);
+  if (!target) return list;
+  target.description = String(description || '').trim().slice(0, 120);
   return list;
 }
 
@@ -204,6 +277,63 @@ function addImageToAlbum(albums, albumId, image) {
   return list;
 }
 
+function nextContinuationPart(albums, baseName) {
+  const prefix = String(baseName || '未命名图册')
+    .replace(/·续\d+$/, '')
+    .trim() || '未命名图册';
+  let max = 0;
+  (albums || []).forEach((a) => {
+    const n = String((a && a.name) || '');
+    if (n === prefix) return;
+    const m = n.match(/^(.+)·续(\d+)$/);
+    if (!m) return;
+    if (String(m[1]) !== prefix) return;
+    max = Math.max(max, Number(m[2]) || 0);
+  });
+  return max + 1;
+}
+
+/**
+ * 批量加入图册；本册满 15 张后自动新建「原名·续N」承接超额
+ * @returns {{ albums: Array, added: number, spillAlbumIds: string[] }}
+ */
+function addImagesToAlbumWithOverflow(albums, albumId, images) {
+  const list = (albums || []).map((a) => normalizeAlbum(a));
+  const origin = list.find((a) => a && a.id === albumId);
+  if (!origin) return { albums: list, added: 0, spillAlbumIds: [] };
+  let currentId = albumId;
+  let added = 0;
+  const spillAlbumIds = [];
+  const baseName = origin.name;
+
+  (images || []).forEach((image) => {
+    const img = normalizeAlbumImage(image);
+    if (!img) return;
+    let target = list.find((a) => a && a.id === currentId);
+    if (!target) return;
+    if (target.images.some((x) => x.path === img.path)) return;
+    if (target.images.length >= MAX_IMAGES_PER_ALBUM) {
+      const part = nextContinuationPart(list, baseName);
+      const spill = normalizeAlbum({
+        id: newAlbumId(),
+        name: continuationAlbumName(baseName, part),
+        description: origin.description || '',
+        preset: false,
+        images: [],
+        createdAt: Date.now() + part
+      });
+      list.push(spill);
+      currentId = spill.id;
+      spillAlbumIds.push(spill.id);
+      target = spill;
+    }
+    target.images.push(img);
+    added += 1;
+  });
+
+  return { albums: list, added: added, spillAlbumIds: spillAlbumIds };
+}
+
 function removeImageFromAlbum(albums, albumId, imageId) {
   const list = (albums || []).map((a) => normalizeAlbum(a));
   const target = list.find((a) => a.id === albumId);
@@ -215,10 +345,12 @@ function removeImageFromAlbum(albums, albumId, imageId) {
 module.exports = {
   MAX_IMAGES_PER_ALBUM,
   ALBUM_CARD_PREVIEW_COUNT,
+  ALBUM_LIMIT_HINT,
   PRESET_ART_ID,
   PRESET_ALBUMS,
   newAlbumId,
   normalizeAlbum,
+  splitOverflowAlbums,
   normalizeOcAlbums,
   createPresetAlbums,
   ensurePresetAlbums,
@@ -229,8 +361,10 @@ module.exports = {
   buildAlbumLayout,
   findAlbum,
   renameAlbum,
+  setAlbumDescription,
   removeAlbum,
   addAlbum,
   addImageToAlbum,
+  addImagesToAlbumWithOverflow,
   removeImageFromAlbum
 };

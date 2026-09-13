@@ -1,0 +1,38 @@
+<view class="page oc-page safe-bottom {{uiThemeClass}}">
+  <view class="bg-solid"></view>
+  <oc-page-nav />
+  <oc-back-btn />
+  <view class="oc-page-shell story-sub-shell">
+    <scroll-view class="story-sub-panel" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="story-sub-inner">
+        <text class="story-sub-lead" wx:if="{{ocName}}">为「{{ocName}}」上传故事</text>
+        <view class="section-card">
+          <view class="field-label">上传故事</view>
+          <text class="story-paste-hint">将完整故事粘贴到下方，保存至当前 OC</text>
+          <input
+            class="story-title-input"
+            placeholder="故事题目（必填）"
+            maxlength="80"
+            value="{{pasteStoryTitle}}"
+            bindinput="onPasteStoryTitleInput"
+          />
+          <textarea
+            class="story-paste-input"
+            placeholder="粘贴故事正文…"
+            maxlength="-1"
+            value="{{pasteStoryContent}}"
+            bindinput="onPasteStoryContentInput"
+            show-confirm-bar="{{false}}"
+            auto-height
+            cursor-spacing="24"
+          />
+        </view>
+        <view class="story-btn-outside">
+          <view class="pixel-btn pixel-btn-primary gen-btn" catchtap="onSavePastedStory">
+            <text class="gen-btn-text">上传故事</text>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

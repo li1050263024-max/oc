@@ -1,0 +1,9 @@
+{
+  "name": "manageStrangerTemplates",
+  "version": "1.0.0",
+  "main": "index.js",
+  "description": "路人评论热梗 / 回复模板库",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

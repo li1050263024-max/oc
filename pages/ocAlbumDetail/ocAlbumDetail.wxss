@@ -18,14 +18,30 @@
 }
 
 .main {
-  padding: 140rpx 28rpx 48rpx;
+  /* 加大与返回按钮的间距 */
+  padding: 200rpx 28rpx 48rpx;
 }
 
 .album-hero {
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  margin-bottom: 32rpx;
+}
+
+.album-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
   margin-bottom: 28rpx;
+}
+
+.album-hero-titles {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
 }
 
 .album-hero-title {
@@ -40,41 +56,70 @@
   color: rgba(60, 48, 96, 0.55);
 }
 
-.album-hero-preset {
-  align-self: flex-start;
-  margin-top: 6rpx;
-  font-size: 20rpx;
-  color: #6d28d9;
-  border: 1rpx solid rgba(109, 40, 217, 0.28);
-  border-radius: 8rpx;
-  padding: 4rpx 12rpx;
-}
-
-.action-row {
+.album-hero-side {
+  flex-shrink: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 14rpx;
-  margin-bottom: 28rpx;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12rpx;
+  padding-top: 6rpx;
 }
 
-.action-btn {
-  padding: 14rpx 26rpx;
+.side-btn {
+  padding: 10rpx 22rpx;
   border-radius: 999rpx;
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #4a3d78;
-  background: rgba(255, 255, 255, 0.62);
+  background: rgba(255, 255, 255, 0.72);
   border: 1rpx solid rgba(90, 70, 140, 0.18);
 }
 
-.action-btn--primary {
-  color: #fff;
-  background: linear-gradient(135deg, #5b4b8a, #6d28d9);
-  border-color: transparent;
-}
-
-.action-btn--danger {
+.side-btn--danger {
   color: #c45c5c;
   border-color: rgba(196, 92, 92, 0.35);
+}
+
+.album-desc-input {
+  width: 100%;
+  min-height: 200rpx;
+  padding: 24rpx 26rpx;
+  margin-bottom: 28rpx;
+  border-radius: 20rpx;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1rpx solid rgba(90, 70, 140, 0.16);
+  font-size: 28rpx;
+  line-height: 1.5;
+  color: #2f2750;
+  box-sizing: border-box;
+}
+
+.upload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  height: 108rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #5b4b8a, #6d28d9);
+  box-shadow: 0 10rpx 24rpx rgba(109, 40, 217, 0.22);
+}
+
+.upload-btn--disabled {
+  opacity: 0.55;
+}
+
+.upload-btn-plus {
+  font-size: 40rpx;
+  font-weight: 300;
+  color: #fff;
+  line-height: 1;
+}
+
+.upload-btn-text {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 1rpx;
 }
 
 .grid {
@@ -156,8 +201,9 @@
   bottom: 0;
   display: flex;
   flex-direction: column;
-  padding-top: calc(24rpx + env(safe-area-inset-top));
+  padding-top: calc(88px + env(safe-area-inset-top));
   padding-bottom: env(safe-area-inset-bottom);
+  box-sizing: border-box;
 }
 
 .album-preview-head {
@@ -167,7 +213,8 @@
   align-items: center;
   justify-content: center;
   gap: 16rpx;
-  padding: 12rpx 88rpx 20rpx;
+  padding: 8rpx 96rpx 16rpx 24rpx;
+  box-sizing: border-box;
 }
 
 .album-preview-title {
@@ -183,12 +230,13 @@
 
 .album-preview-close {
   position: absolute;
-  right: 24rpx;
-  top: 4rpx;
+  right: 20rpx;
+  top: 96px;
+  z-index: 3;
   width: 64rpx;
   height: 64rpx;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;

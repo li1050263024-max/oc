@@ -1,0 +1,13 @@
+{
+  "permissions": [],
+  "timeout": 60,
+  "memorySize": 256,
+  "envVariables": {
+    "XPAY_OFFER_ID": "",
+    "XPAY_APP_KEY": "",
+    "XPAY_APP_KEY_SANDBOX": "",
+    "XPAY_ENV": "0",
+    "WX_APPID": "wxc2a46482e8eac885",
+    "WX_SECRET": ""
+  }
+}

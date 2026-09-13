@@ -1,5 +1,4 @@
-const https = require('https');
-
+const { chatCompletions } = require('./aiText.js');
 const SYSTEM_PROMPT =
   '你是中文二次元 OC 角色扮演写作助手。用户会提供【OC 设定】【人物小传】【剧情上下文】。' +
   '你要以该角色第一人称，写 **恰好 1 条** 发给用户的微信私聊消息（或群聊发言）。' +
@@ -10,49 +9,6 @@ const SYSTEM_PROMPT =
   '4. 口语化，10～80 字；只输出 JSON：{"messages":[{"content":"..."}]}，messages 长度必须为 1。\n' +
   '5. 不得与【禁止重复】列表中的文案相同或高度雷同；不同角色、不同场景也不能复用同一句。';
 
-function postJson(hostname, path, headers, body) {
-  const data = JSON.stringify(body);
-  return new Promise((resolve, reject) => {
-    const req = https.request(
-      {
-        hostname,
-        port: 443,
-        path,
-        method: 'POST',
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(data)
-        }
-      },
-      (res) => {
-        let chunks = '';
-        res.on('data', (d) => {
-          chunks += d;
-        });
-        res.on('end', () => {
-          try {
-            const json = JSON.parse(chunks);
-            if (json.error) {
-              reject(new Error(json.error.message || JSON.stringify(json.error)));
-            } else {
-              resolve(json);
-            }
-          } catch (e) {
-            reject(new Error(chunks.slice(0, 200) || e.message));
-          }
-        });
-      }
-    );
-    req.on('error', reject);
-    req.setTimeout(50000, () => {
-      req.destroy();
-      reject(new Error('请求超时'));
-    });
-    req.write(data);
-    req.end();
-  });
-}
 
 function parseMessages(text, postCount) {
   const raw = String(text || '').trim();
@@ -91,10 +47,6 @@ function normalizeProactivePlain(text) {
 }
 
 exports.main = async (event) => {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    return { ok: false, errMsg: '请为云函数配置环境变量 DEEPSEEK_API_KEY' };
-  }
 
   const modeRaw = event && event.mode != null ? String(event.mode).trim() : 'chat';
   const mode = modeRaw === 'proactive' ? 'proactive' : modeRaw === 'group' ? 'group' : 'chat';
@@ -120,28 +72,12 @@ exports.main = async (event) => {
     }
     const temperature = Number(event && event.temperature);
     try {
-      const result = await postJson(
-        'api.deepseek.com',
-        '/v1/chat/completions',
-        { Authorization: `Bearer ${apiKey}` },
-        {
-          model: 'deepseek-v4-flash',
-          thinking: { type: 'disabled' },
-          messages: [
+      const result = await chatCompletions([
             { role: 'system', content: systemPrompt.slice(0, 5800) },
             { role: 'user', content: userMessage.slice(0, 2000) }
-          ],
-          temperature: temperature > 0.5 && temperature < 1.2 ? temperature : 0.88,
-          max_tokens: 200,
-          top_p: 0.92
-        }
-      );
+          ], { temperature: temperature > 0.5 && temperature < 1.2 ? temperature : 0.88, maxTokens: 200 });
 
-      const text =
-        result.choices &&
-        result.choices[0] &&
-        result.choices[0].message &&
-        result.choices[0].message.content;
+      const text = result && result.text;
 
       let content = normalizeProactivePlain(text);
       if (!content) {
@@ -200,27 +136,12 @@ exports.main = async (event) => {
   }
 
   try {
-    const result = await postJson(
-      'api.deepseek.com',
-      '/v1/chat/completions',
-      { Authorization: `Bearer ${apiKey}` },
-      {
-        model: 'deepseek-v4-flash',
-        thinking: { type: 'disabled' },
-        messages: [
+    const result = await chatCompletions([
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userContent }
-        ],
-        temperature: 0.82,
-        max_tokens: 480
-      }
-    );
+        ], { temperature: 0.82, maxTokens: 480 });
 
-    const text =
-      result.choices &&
-      result.choices[0] &&
-      result.choices[0].message &&
-      result.choices[0].message.content;
+    const text = result && result.text;
 
     let messages = parseMessages(text, postCount);
     if (messages.length > postCount) messages = messages.slice(0, postCount);

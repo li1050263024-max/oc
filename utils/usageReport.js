@@ -13,6 +13,7 @@ const LLM_CLOUD_FUNCS = {
   generateOcBio: true,
   generateOcStory: true,
   generateOcMoments: true,
+  generateOcDouyinComment: true,
   generateOcFakeChat: true,
   generatePoolItem: true,
   expandOcPool: true,

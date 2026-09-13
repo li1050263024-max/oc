@@ -118,9 +118,10 @@
                 <text class="chat-more-icon">⋯</text>
               </view>
               <view wx:if="{{chatMoreOpen}}" class="chat-more-menu chat-more-menu--head" catchtap="">
+                <view class="chat-more-item" catchtap="onMoreRestoreCloud">从云端恢复聊天</view>
                 <view class="chat-more-item" catchtap="onMorePickBackground">背景</view>
-                <view class="chat-more-item" catchtap="onMorePickBackup">备份</view>
-                <view class="chat-more-item" catchtap="onMorePickSave">保存</view>
+                <view class="chat-more-item" catchtap="onMorePickBackup">导出完整记录</view>
+                <view class="chat-more-item" catchtap="onMorePickSave">保存长图</view>
               </view>
             </view>
             </block>
@@ -222,7 +223,7 @@
         <view class="chat-inner">
           <view class="msg-hint" wx:if="{{!selectedId}}">{{ocPanelOpen ? '请从列表选择一名 OC' : '点击左侧列表选择 OC'}}</view>
           <view class="msg-hint" wx:elif="{{messages.length === 0}}">{{scenario ? '已载入情景，说点什么开始演绎吧' : '说点什么，让 TA 回应你吧'}}</view>
-          <block wx:for="{{messages}}" wx:for-index="msgIdx" wx:key="msgIdx">
+          <block wx:for="{{messages}}" wx:for-index="msgIdx" wx:key="_vk">
             <view class="msg-time-divider" wx:if="{{item.showTimeDivider && item.timeLabel}}">
               <text class="msg-time-divider-text">{{item.timeLabel}}</text>
             </view>
@@ -620,11 +621,20 @@
     wx:if="{{quotaSheetVisible}}"
     visible="{{true}}"
     share-left="{{quotaSheetShareLeft}}"
-    oa-visible="{{quotaOaQrVisible}}"
+    is-vip="{{isVip}}"
+    bind:watchad="onQuotaSheetAdTap"
     bind:share="onQuotaSheetShareTap"
     bind:redeem="onQuotaSheetRedeemTap"
-    bind:followoa="onQuotaSheetFollowOaTap"
-    bind:closeoa="onQuotaSheetCloseOaTap"
     bind:close="onQuotaSheetCloseTap"
+  />
+  <ad-claim-sheet
+    visible="{{adClaimSheetVisible}}"
+    detected-click="{{adClaimDetectedClick}}"
+    makeup-done="{{adClaimMakeupDone}}"
+    makeup-busy="{{adClaimMakeupBusy}}"
+    rounds="{{adClaimRounds}}"
+    bind:makeup="onAdClaimMakeup"
+    bind:claim="onAdClaimConfirm"
+    bind:close="onAdClaimClose"
   />
 </view>

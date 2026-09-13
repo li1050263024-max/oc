@@ -1,0 +1,33 @@
+@import './ocStory.wxss';
+
+.story-sub-shell {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+}
+
+.story-sub-panel {
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+.story-sub-inner {
+  padding: 24rpx 28rpx 48rpx;
+  box-sizing: border-box;
+}
+
+.story-sub-lead {
+  display: block;
+  font-size: 26rpx;
+  color: var(--diffuse-subtle, #7c7c8a);
+  margin-bottom: 16rpx;
+  line-height: 1.5;
+}
+
+.story-input--box {
+  padding: 12rpx 14rpx;
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 10rpx;
+  border: 1rpx solid var(--theme-border-mid2);
+  min-height: 200rpx;
+}

@@ -1,0 +1,74 @@
+<view class="compose-page">
+  <view class="compose-nav" style="padding-top: {{statusBar}}px;">
+    <view class="compose-nav-inner" style="height: {{navHeight}}px;">
+      <view class="compose-nav-btn" catchtap="onClose">
+        <text>关闭</text>
+      </view>
+      <text class="compose-nav-title">发帖</text>
+      <view class="compose-nav-btn compose-nav-btn--send {{canSend ? '' : 'is-disabled'}}" catchtap="onSend">
+        <text>发送</text>
+      </view>
+    </view>
+  </view>
+
+  <scroll-view class="compose-body" scroll-y show-scrollbar="{{false}}">
+    <view class="compose-images">
+      <view class="compose-img-item" wx:for="{{images}}" wx:key="path">
+        <image class="compose-img" src="{{item.path}}" mode="aspectFill" />
+        <view class="compose-img-del" catchtap="onRemoveImage" data-index="{{index}}">×</view>
+      </view>
+      <view class="compose-img-add" wx:if="{{images.length < 9}}" catchtap="onAddImages">
+        <text class="compose-img-add-plus">+</text>
+        <text class="compose-img-add-t">选图</text>
+      </view>
+    </view>
+
+    <textarea
+      class="compose-caption"
+      placeholder="写文案…"
+      placeholder-class="compose-ph"
+      maxlength="500"
+      value="{{caption}}"
+      bindinput="onCaptionInput"
+      auto-height
+      show-confirm-bar="{{false}}"
+    />
+    <text class="compose-count">{{caption.length}}/500</text>
+
+    <view class="compose-bgm" catchtap="onPickBgm">
+      <view class="compose-bgm-left">
+        <text class="compose-bgm-label">BGM</text>
+        <text class="compose-bgm-name">{{bgmName || '选择背景音乐（可选）'}}</text>
+      </view>
+      <text class="compose-bgm-arrow">›</text>
+    </view>
+    <view class="compose-bgm-clear" wx:if="{{bgmName}}" catchtap="onClearBgm">清除 BGM</view>
+
+    <view class="compose-oc">
+      <text class="compose-oc-label">以我的身份发布</text>
+    </view>
+
+    <view class="compose-bottom-space"></view>
+  </scroll-view>
+
+  <view class="compose-sheet-mask" wx:if="{{bgmSheetOpen}}" catchtap="onCloseBgmSheet"></view>
+  <view class="compose-sheet" wx:if="{{bgmSheetOpen}}">
+    <view class="compose-sheet-handle"></view>
+    <text class="compose-sheet-title">选择 BGM</text>
+    <view class="compose-sheet-loading" wx:if="{{bgmLoading}}">加载曲库中…</view>
+    <scroll-view class="compose-sheet-list" scroll-y wx:elif="{{bgmTracks.length}}">
+      <view
+        class="compose-track {{item.active ? 'compose-track--on' : ''}}"
+        wx:for="{{bgmTracks}}"
+        wx:key="fileID"
+        catchtap="onSelectTrack"
+        data-index="{{index}}"
+      >
+        <text class="compose-track-name">{{item.name || '未命名'}}</text>
+      </view>
+    </scroll-view>
+    <view class="compose-sheet-empty" wx:else>
+      <text>{{bgmHint || '曲库为空，可先在抖音页用视频提取 BGM'}}</text>
+    </view>
+  </view>
+</view>

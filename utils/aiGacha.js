@@ -5,6 +5,27 @@ const coherentGacha = require('./coherentGacha.js');
 const poolAiEnrich = require('./poolAiEnrich.js');
 const { buildCompactDrawContext } = require('./ocContext.js');
 const { normalizeResult } = require('./ocResult.js');
+const {
+  namesPoolWithoutUsed,
+  ensureUniqueOcName,
+  getUsedOcNames
+} = require('./favorite.js');
+
+function preparePoolsForDraw(pools, work) {
+  const poolCopy = { ...(pools || {}) };
+  const excludeFavoriteId =
+    (work && work.notebookFavoriteId) || (work && work._favoriteId) || '';
+  poolCopy.names = namesPoolWithoutUsed(poolCopy.names || [], {
+    excludeFavoriteId: excludeFavoriteId
+  });
+  return { poolCopy, excludeFavoriteId, usedNames: getUsedOcNames({ excludeFavoriteId }) };
+}
+
+function finalizeUniqueName(data, pools, locked) {
+  if (!data || (locked && locked.name === true)) return data;
+  data.name = ensureUniqueOcName(data.name, (pools && pools.names) || []);
+  return data;
+}
 
 function hasCloud() {
   return typeof wx !== 'undefined' && !!wx.cloud;
@@ -95,7 +116,8 @@ function mergeCloudLayer1(cloudData, pools, locked, current) {
 }
 
 function drawLayer1(pools, locked, current, work) {
-  const poolCopy = { ...pools };
+  const prepared = preparePoolsForDraw(pools, work);
+  const poolCopy = prepared.poolCopy;
   const lk = locked || {};
   const localDraw = () =>
     lk && Object.keys(lk).some((k) => lk[k] === true) && current
@@ -104,7 +126,7 @@ function drawLayer1(pools, locked, current, work) {
 
   const finalizeL1 = (data) => {
     if (lk && current) poolAiEnrich.ensureLayer1LockedInPools(data, lk, poolCopy);
-    return data;
+    return finalizeUniqueName(data, poolCopy, lk);
   };
 
   const applied = !!(work && work.gachaScopeApplied);
@@ -113,15 +135,17 @@ function drawLayer1(pools, locked, current, work) {
     return Promise.resolve(finalizeL1(localDraw()));
   }
 
+  const cloudPools = trimPoolsForLayer(poolCopy, 1);
   return new Promise((resolve) => {
     wx.cloud.callFunction({
       name: 'drawOcCoherent',
       data: {
         layer: 1,
-        pools: trimPoolsForLayer(pools, 1),
+        pools: cloudPools,
         locked: lk,
         current: current || null,
-        contextText: buildCompactDrawContext(work || {}, 1)
+        contextText: buildCompactDrawContext(work || {}, 1),
+        excludeNames: prepared.usedNames
       },
       timeout: 90000,
       success(res) {

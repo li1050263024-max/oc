@@ -341,35 +341,60 @@ const MONEY_REPLY_RULES =
   '台词要与 ACCEPT 一致：ACCEPT:1 不要说退回；ACCEPT:0 不要说收下。\n' +
   '台词中不要出现「系统」「指令」「ACCEPT」。禁止提真实支付。';
 
-/** 客户端/云端共用：平常对话主动发包 */
+/** 客户端/云端共用：仅白名单场景可主动发包，平常聊天禁止 */
 const MONEY_PROACTIVE_RULES =
-  '\n\n【虚拟红包/转账·主动】这是角色扮演，可主动给对方发虚拟红包或转账（非真实支付）。\n' +
-  '请先写角色台词，再在末尾追加且只追加一次：\n' +
+  '\n\n【虚拟红包/转账·主动·白名单】默认 TYPE:none。平常闲聊、调情、寒暄、讲日常一律禁止发钱。\n' +
+  '请先写角色台词，末尾追加且只追加一次：\n' +
   '<<<MONEY\nTYPE:none|red_packet|transfer\nAMOUNT:数字\n>>>\n' +
-  '或等价一行：SEND:none / SEND:red_packet:金额 / SEND:transfer:金额\n' +
-  '选择依据（必须结合人设、对话气氛与本条内容）：\n' +
-  '- 想讨好、哄人、道歉补偿、过节祝福、炫耀财力、照顾对方、撒娇塞钱、关系升温 → 用 red_packet 或 transfer\n' +
-  '- 人设抠门、清高、疏远、正在吵架且不愿示好 → TYPE:none\n' +
-  '金额规则（强制）：\n' +
-  '- 常规下限：认真转账/红包默认 ≥ 1 元；即使人设很穷，也不要只转 0.01（太敷衍）\n' +
-  '- 玩笑例外：仅在逗对方、调侃、赌气玩笑时，才可用 1 元以下甚至 0.01\n' +
-  '- 硬性上限：红包 AMOUNT ≤ 200；转账不设上限\n' +
-  '- 按人设财力：有钱就大方，清贫就小额但仍真诚（见【财力参考】）\n' +
-  '- 富豪/知名有钱角色（如钢铁侠、霸总、财阀等）：关系不错时转账尽量 ≥ 1000，随手给钱常见几千～十几万，严禁寒酸到几十几百（除非故意玩笑）\n' +
-  '- 「倾尽所有」例外：人设虽穷但深情，或与用户聊到很动感情/告白/承诺/补偿时，可用 transfer 转一笔贴合身份、却像清空余额的金额\n' +
-  '  · 这种金额必须「有零有整」、忌整数整十整百（禁止 10/50/100/200/520 等好看整数）\n' +
-  '  · 示例风格：86.43、327.18、1586.72、2037.55（像账户里剩多少转多少）\n' +
-  '  · 穷学生倾尽所有可在几十～几百带小数；打工族可到一千多带小数；勿写成富翁级\n' +
-  '不要每条都发；但当语境明显适合给钱时，应当主动发，不要总是 none。\n' +
-  '方向规则（最高优先级，严禁搞反）：\n' +
-  '- TYPE:red_packet/transfer 表示【你（角色）→用户】给你发钱；台词必须是「我转给你 / 给你红包 / 收下」口吻\n' +
-  '- 严禁把本条说成用户转给你：禁止「谢谢你转给我」「你怎么转这么多」「收到了你的转账」等\n' +
-  '- 只有上文明确是「用户向你发了红包/转账」时，才可以谢用户给钱\n' +
-  '台词规则（重要）：\n' +
-  '- 禁止写系统通知式文案，例如「[红包]」「[转账]」「X元已发送」「已发送」\n' +
-  '- 发红包时台词里禁止出现具体金额（金额只写在标记里，领取前对方看不到）\n' +
-  '- 转账台词可以说「转给你一点」「把我剩下的都给你」，尽量少报具体数字；数字只放在标记里\n' +
-  '- 不要解释标记。';
+  '或：SEND:none / SEND:red_packet:金额 / SEND:transfer:金额\n' +
+  '仅当本轮用户消息属于下列之一时，才可 red_packet/transfer，否则必须 none：\n' +
+  'A) 用户主动提到钱/红包/转账/打钱/借钱/给我钱/生活费等；\n' +
+  'B) 用户正在哭穷、卖惨、诉苦缺钱、交不起房租学费、救急、求补偿；\n' +
+  'C) 用户刚给你发了红包/转账，你礼尚往来回一份（可回也可只口头谢，不强制）。\n' +
+  '禁止：用户没提钱、也没卖惨哭穷时，因关系好/人设有钱/想讨好而主动塞钱。\n' +
+  '金额：认真给钱 ≥ 1 元；红包 ≤ 200；转账见【财力参考】。近几轮刚发过则本轮 none。\n' +
+  '方向：【角色→用户】发钱；严禁写成用户转给你。\n' +
+  '台词禁止「[红包]」「[转账]」「X元已发送」；红包台词勿报金额；拿不准就 none。\n';
+
+/**
+ * 是否允许本轮主动发红包/转账（客户端硬闸，防止平常聊天乱发卡）
+ * @param {string} userMessage
+ * @param {Array} [recentMessages]
+ */
+function shouldAllowProactiveMoney(userMessage, recentMessages) {
+  const t = String(userMessage || '');
+  if (
+    /红包|转账|转你|转给|打钱|打给|给我钱|借我|借点|差钱|没钱|穷|哭穷|卖惨|救急|生活费|零花|伙食费|房租|学费|交不起|帮我付|替我付|充值|养我|包养|心意钱|给我点钱|发个红包|转点钱|转些|打些钱/.test(
+      t
+    )
+  ) {
+    return true;
+  }
+  if (
+    /(卖惨|哭穷|诉苦).{0,12}(钱|穷|费|交不)|交不起.{0,8}(房租|学费|网费|医药)|真的没钱|钱包空|吃土|揭不开锅|断粮/.test(
+      t
+    )
+  ) {
+    return true;
+  }
+  if (Array.isArray(recentMessages)) {
+    const recent = recentMessages.slice(-10);
+    // 用户刚发过红包/转账 → 允许礼尚往来
+    if (
+      recent.some(
+        (m) =>
+          m &&
+          m.role === 'user' &&
+          m.kind === KIND_MONEY &&
+          m.game &&
+          (m.game.type === MONEY_TYPE_RED || m.game.type === MONEY_TYPE_TRANSFER)
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 function collectPersonaTextFromWork(work) {
   if (!work) return '';
@@ -447,10 +472,10 @@ function buildMoneyAmountGuide(workOrText) {
   const tier = estimateWealthTier(text);
   const affectionate = isAffectionatePersona(text);
   let guide =
-    '\n\n【财力参考·强制】根据人设财力选金额；红包不得超过 ' +
+    '\n\n【财力参考】仅在你决定发钱时参考金额；默认仍应 TYPE:none，不要因有钱就发。\n' +
+    '红包不得超过 ' +
     RED_PACKET_MAX +
-    '；转账不设上限。\n' +
-    '常规认真转账/红包 ≥ 1 元；仅玩笑/逗对方才可用 1 元以下。\n';
+    '；常规认真给钱 ≥ 1 元。\n';
 
   if (tier === 'ultra_rich') {
     guide +=
@@ -626,28 +651,9 @@ function parseMoneyTypeToken(raw) {
 }
 
 function inferMoneyFromSpeech(speech) {
-  const s = String(speech || '');
-  if (!s) return null;
-  // 明确不发
-  if (/不[会能]?(发红包|转账)|没钱|下次|算了/.test(s) && !/(给你|给你转|发个红包|红包拿|转你)/.test(s)) {
-    return null;
-  }
-  let type = null;
-  if (/转账|转你|转给|打给你|打了|转了/.test(s)) type = MONEY_TYPE_TRANSFER;
-  if (/红包|塞你|塞给|压岁|心意/.test(s)) type = type || MONEY_TYPE_RED;
-  if (!type) return null;
-  let amount = null;
-  const m1 = s.match(
-    /(?:红包|转账|转了|转你|给你|打了|打给你)?\s*[¥￥]?\s*([0-9]+(?:\.[0-9]+)?)\s*元?/
-  );
-  const m2 = s.match(/([0-9]+(?:\.[0-9]+)?)\s*块/);
-  if (m1) amount = m1[1];
-  else if (m2) amount = m2[1];
-  else if (/6\.66|666/.test(s)) amount = 6.66;
-  else if (/8\.88|888/.test(s)) amount = 8.88;
-  else if (/520/.test(s)) amount = 520;
-  else amount = type === MONEY_TYPE_TRANSFER ? 50 : 8.88;
-  return { type: type, amount: normalizeMoneyAmount(amount, type) };
+  // 已关闭「从台词猜红包/转账」：模型聊到钱就误发卡，导致一聊就转账。
+  // 仅认 <<<MONEY>>> / SEND: 显式标记。
+  return null;
 }
 
 /** 平常对话：解析角色是否主动发红包/转账 */
@@ -759,7 +765,8 @@ function sanitizeMoneySpeech(speech, money) {
   return s;
 }
 
-function buildMoneyAwareAssistantMessages(ocId, rawReply) {
+function buildMoneyAwareAssistantMessages(ocId, rawReply, options) {
+  const opts = options || {};
   const parsed = parseMoneyAwareReply(rawReply);
   const out = [];
   let speech = sanitizeMoneySpeech(parsed.speech, parsed.money);
@@ -770,8 +777,24 @@ function buildMoneyAwareAssistantMessages(ocId, rawReply) {
       content: speech
     });
   }
-  if (parsed.money) {
-    const built = createMoneySend(parsed.money.type, parsed.money.amount, 'oc');
+  let money = parsed.money;
+  const allow = shouldAllowProactiveMoney(opts.userMessage, opts.recentMessages);
+  if (money && !allow) money = null;
+  // 近几条助手已发过红包/转账则本轮强制不发卡
+  if (money && Array.isArray(opts.recentMessages)) {
+    const recent = opts.recentMessages.slice(-12);
+    const hasRecentMoney = recent.some(
+      (m) =>
+        m &&
+        m.role === 'assistant' &&
+        m.kind === KIND_MONEY &&
+        m.game &&
+        (m.game.type === MONEY_TYPE_RED || m.game.type === MONEY_TYPE_TRANSFER)
+    );
+    if (hasRecentMoney) money = null;
+  }
+  if (money) {
+    const built = createMoneySend(money.type, money.amount, 'oc');
     out.push(Object.assign({ role: 'assistant', ocId: ocId }, built));
   }
   if (!out.length) {
@@ -790,9 +813,17 @@ function withMoneyReplyRules(systemPrompt) {
   return String(systemPrompt || '');
 }
 
-function withMoneyProactiveRules(systemPrompt, workOrText) {
-  // 完整主动发红包规则由云函数 moneyAware 附加；客户端只传财力参考
-  return String(systemPrompt || '') + buildMoneyAmountGuide(workOrText);
+function withMoneyProactiveRules(systemPrompt, workOrText, options) {
+  const opts = options || {};
+  const base = String(systemPrompt || '');
+  // 未命中白名单时明确禁止，避免只靠云函数规则仍被模型乱发
+  if (opts.allowProactiveMoney === false) {
+    return (
+      base +
+      '\n\n【本轮禁止发红包/转账】用户未提钱、也未哭穷卖惨。必须普通聊天；禁止 <<<MONEY>>> / SEND: 发钱标记。\n'
+    );
+  }
+  return base + buildMoneyAmountGuide(workOrText);
 }
 
 function resolveOcMoneyMessage(msg, action) {
@@ -863,6 +894,7 @@ module.exports = {
   sanitizeMoneySpeech,
   MONEY_REPLY_RULES,
   MONEY_PROACTIVE_RULES,
+  shouldAllowProactiveMoney,
   withMoneyReplyRules,
   withMoneyProactiveRules,
   buildMoneyAmountGuide,

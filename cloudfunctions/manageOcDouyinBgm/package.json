@@ -1,0 +1,9 @@
+{
+  "name": "manageOcDouyinBgm",
+  "version": "1.0.0",
+  "main": "index.js",
+  "description": "OC 抖音云端 BGM 曲库：列表 / 登记 / 删除",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

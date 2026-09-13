@@ -1,0 +1,108 @@
+.ad-claim-root {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 10060;
+}
+
+.ad-claim-mask {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.ad-claim-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: 38vh;
+  padding: 18px 18px 28px;
+  padding-bottom: calc(28px + constant(safe-area-inset-bottom));
+  padding-bottom: calc(28px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, #faf8ff 0%, #f3effc 100%);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid rgba(139, 92, 246, 0.16);
+  box-shadow: 0 -10px 32px rgba(109, 40, 217, 0.12);
+  box-sizing: border-box;
+}
+
+.ad-claim-handle {
+  width: 36px;
+  height: 4px;
+  margin: 4px auto 18px;
+  border-radius: 999px;
+  background: rgba(109, 40, 217, 0.22);
+}
+
+.ad-claim-title {
+  display: block;
+  font-size: 18px;
+  font-weight: 650;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.ad-claim-sub {
+  display: block;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #7c7c8a;
+  margin-bottom: 20px;
+}
+
+.ad-claim-btn {
+  margin-top: 14px;
+  padding: 18px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(139, 92, 246, 0.16);
+  box-shadow: 0 2px 8px rgba(109, 40, 217, 0.06);
+  text-align: center;
+}
+
+.ad-claim-btn--primary {
+  background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+  border-color: transparent;
+  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.28);
+}
+
+.ad-claim-btn--primary .ad-claim-btn-t {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.ad-claim-btn--ok {
+  background: linear-gradient(
+    135deg,
+    rgba(233, 224, 255, 0.95) 0%,
+    rgba(255, 255, 255, 0.98) 100%
+  );
+  border-color: rgba(139, 92, 246, 0.28);
+}
+
+.ad-claim-btn--ok .ad-claim-btn-t {
+  color: #6d28d9;
+  font-weight: 600;
+}
+
+.ad-claim-btn--ghost .ad-claim-btn-t {
+  color: #374151;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.ad-claim-btn--disabled {
+  opacity: 0.45;
+}
+
+.ad-claim-btn-t {
+  font-size: 15px;
+  color: #374151;
+}
+

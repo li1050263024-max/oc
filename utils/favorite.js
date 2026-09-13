@@ -1,16 +1,37 @@
 const STORAGE_FAVORITES = 'oc_favorites';
 const STORAGE_OC_WORK = 'oc_work_in_progress';
+/** 设定本统一上限（会员/非会员相同）；已超额老用户可保留，但无法再新增超过此数 */
+const MAX_NOTEBOOK_OCS = 50;
 const { normalizeResult } = require('./ocResult.js');
 const { isLayer3Ready } = require('./ocWork.js');
 const ocImage = require('./ocImage.js');
 const ocAlbum = require('./ocAlbum.js');
-const { safeGetFavorites, safeSetFavorites } = require('./favoriteStore.js');
+const { safeGetFavorites, safeSetFavorites, readRawFavorites } = require('./favoriteStore.js');
 const {
   normalizeRelationships,
   normalizeRelationEdges,
   normalizeTimelineEvents,
   normalizeProfileScene
 } = require('./ocProfileData.js');
+
+function getNotebookOcCount() {
+  return safeGetFavorites().length;
+}
+
+/** 是否还能新增一条（已有条目更新不受限；已超额时也不能再新增） */
+function canAddNotebookOc() {
+  return getNotebookOcCount() < MAX_NOTEBOOK_OCS;
+}
+
+function notebookLimitTip() {
+  return '设定本最多 ' + MAX_NOTEBOOK_OCS + ' 个 OC';
+}
+
+function toastNotebookLimit() {
+  try {
+    wx.showToast({ title: notebookLimitTip(), icon: 'none' });
+  } catch (_) {}
+}
 
 function buildFavoriteItem(work, id) {
   const synced = Object.assign({}, work || {});
@@ -40,6 +61,9 @@ function buildFavoriteItem(work, id) {
     chatAvatarPath: work.chatAvatarPath || '',
     chatBackgroundPath: work.chatBackgroundPath || '',
     ocStories: Array.isArray(work.ocStories) ? work.ocStories.map((s) => ({ ...s })) : [],
+    ocStoryCollections: Array.isArray(work.ocStoryCollections)
+      ? work.ocStoryCollections.map((c) => ({ ...c }))
+      : [],
     relationships: Array.isArray(work.relationships)
       ? normalizeRelationships(work.relationships)
       : [],
@@ -94,6 +118,21 @@ function preserveFavoriteStories(item, existingItem, work) {
   return item;
 }
 
+function preserveFavoriteStoryCollections(item, existingItem, work) {
+  if (!sameOcName(item, existingItem)) return item;
+  const existing =
+    existingItem && Array.isArray(existingItem.ocStoryCollections)
+      ? existingItem.ocStoryCollections
+      : [];
+  const incoming =
+    work && Array.isArray(work.ocStoryCollections) ? work.ocStoryCollections : null;
+  if (incoming && incoming.length) return item;
+  if (existing.length) {
+    item.ocStoryCollections = existing.map((c) => ({ ...c }));
+  }
+  return item;
+}
+
 function preserveFavoriteChatBackground(item, existingItem, work) {
   if (work && work.chatBackgroundPath) return item;
   if (existingItem && existingItem.chatBackgroundPath) {
@@ -123,12 +162,32 @@ function preserveFavoriteProfileFields(item, existingItem, work) {
   return item;
 }
 
+/** 设定本列表标记：收藏星标 / 置顶（与关系网无关） */
+function preserveNotebookListFlags(item, existingItem) {
+  if (!existingItem) return item;
+  if (existingItem.notebookStarred) item.notebookStarred = true;
+  if (existingItem.notebookPinned) {
+    item.notebookPinned = true;
+    item.notebookPinnedAt = Number(existingItem.notebookPinnedAt) || existingItem.time || Date.now();
+  }
+  return item;
+}
+
 /**
  * 设定本保存：更新已有收藏或按姓名合并，否则新增
+ * @param {object} [options]
+ * @param {boolean} [options.silent] 达上限时不弹 Toast（批量导入用）
  * @returns {string|false} 收藏项 id
  */
-function upsertOcToFavorites(work) {
+function upsertOcToFavorites(work, options) {
   if (!work || !work.result) return false;
+  try {
+    const tomb = require('./ocDeletedIds.js');
+    if (work.notebookFavoriteId && tomb.isOcDeleted(work.notebookFavoriteId)) {
+      return false;
+    }
+  } catch (_) {}
+  const silent = !!(options && options.silent);
   const name = String(work.result.name || '').trim() || '未命名';
   if (!work.result.name || !String(work.result.name).trim()) {
     work.result = Object.assign({}, work.result, { name: name });
@@ -138,7 +197,8 @@ function upsertOcToFavorites(work) {
 
   let idx = -1;
   if (work.notebookFavoriteId) {
-    idx = list.findIndex((i) => i.id === work.notebookFavoriteId);
+    const fid = String(work.notebookFavoriteId);
+    idx = list.findIndex((i) => i && String(i.id) === fid);
   }
   // 无绑定 id 时按姓名合并，避免同一 OC 被反复存成多条
   if (idx < 0 && name) {
@@ -155,9 +215,11 @@ function upsertOcToFavorites(work) {
   const item = buildFavoriteItem(work, idx >= 0 ? list[idx].id : '');
   if (idx >= 0) {
     preserveFavoriteStories(item, list[idx], work);
+    preserveFavoriteStoryCollections(item, list[idx], work);
     preserveFavoriteImages(item, list[idx], work);
     preserveFavoriteChatBackground(item, list[idx], work);
     preserveFavoriteProfileFields(item, list[idx], work);
+    preserveNotebookListFlags(item, list[idx]);
     if (list[idx].chatRemark && !item.chatRemark) {
       item.chatRemark = list[idx].chatRemark;
     }
@@ -167,6 +229,10 @@ function upsertOcToFavorites(work) {
     item.time = Date.now();
     list[idx] = item;
   } else {
+    if (list.length >= MAX_NOTEBOOK_OCS) {
+      if (!silent) toastNotebookLimit();
+      return false;
+    }
     list.unshift(item);
   }
   if (!safeSetFavorites(list)) return false;
@@ -176,9 +242,13 @@ function upsertOcToFavorites(work) {
 /**
  * 将完整 OC 存档写入收藏列表（新增一条）
  */
-function saveOcToFavorites(work) {
+function saveOcToFavorites(work, options) {
   if (!work || !work.result) return false;
   let list = safeGetFavorites();
+  if (list.length >= MAX_NOTEBOOK_OCS) {
+    if (!(options && options.silent)) toastNotebookLimit();
+    return false;
+  }
   const item = buildFavoriteItem(work);
   list.unshift(item);
   return safeSetFavorites(list);
@@ -210,6 +280,9 @@ function workFromFavoriteItem(item) {
     chatAvatarPath: item.chatAvatarPath || '',
     chatBackgroundPath: item.chatBackgroundPath || '',
     ocStories: Array.isArray(item.ocStories) ? item.ocStories.map((s) => ({ ...s })) : [],
+    ocStoryCollections: Array.isArray(item.ocStoryCollections)
+      ? item.ocStoryCollections.map((c) => ({ ...c }))
+      : [],
     relationships: normalizeRelationships(item.relationships),
     relationEdges: normalizeRelationEdges(item.relationEdges),
     timelineEvents: normalizeTimelineEvents(item.timelineEvents),
@@ -224,8 +297,10 @@ function workFromFavoriteItem(item) {
 /** 将收藏项载入进行中存档，供小传/对话等页使用 */
 function loadFavoriteToWork(favoriteId) {
   if (!favoriteId) return null;
-  const list = wx.getStorageSync(STORAGE_FAVORITES) || [];
-  const item = list.find((i) => i.id === favoriteId);
+  try {
+    if (require('./ocDeletedIds.js').isOcDeleted(favoriteId)) return null;
+  } catch (_) {}
+  const item = getFavoriteById(favoriteId);
   const work = workFromFavoriteItem(item);
   if (!work) return null;
   wx.setStorageSync(STORAGE_OC_WORK, work);
@@ -239,19 +314,26 @@ function getFavorites() {
 
 function getFavoriteById(favoriteId) {
   if (!favoriteId) return null;
-  return getFavorites().find((i) => i.id === favoriteId) || null;
+  const id = String(favoriteId);
+  return getFavorites().find((i) => i && String(i.id) === id) || null;
 }
 
 function updateFavoriteItem(favoriteId, work) {
   if (!favoriteId || !work || !work.result) return false;
   try {
     let list = getFavorites();
-    const idx = list.findIndex((i) => i.id === favoriteId);
+    const idx = list.findIndex((i) => i && String(i.id) === String(favoriteId));
     if (idx < 0) return false;
     ocImage.syncPrimaryImagePath(work);
     const item = buildFavoriteItem(work, favoriteId);
     if (!Array.isArray(work.ocStories) && Array.isArray(list[idx].ocStories)) {
       item.ocStories = list[idx].ocStories.map((s) => ({ ...s }));
+    }
+    if (
+      !Array.isArray(work.ocStoryCollections) &&
+      Array.isArray(list[idx].ocStoryCollections)
+    ) {
+      item.ocStoryCollections = list[idx].ocStoryCollections.map((c) => ({ ...c }));
     }
     if (Array.isArray(work.ocAlbums)) {
       ocAlbum.syncWorkImagesFromAlbums(item);
@@ -288,6 +370,7 @@ function updateFavoriteItem(favoriteId, work) {
     if (work.chatRemark) {
       item.chatRemark = work.chatRemark;
     }
+    preserveNotebookListFlags(item, list[idx]);
     item.time = Date.now();
     list[idx] = item;
     return safeSetFavorites(list);
@@ -297,21 +380,202 @@ function updateFavoriteItem(favoriteId, work) {
   }
 }
 
+function wipeOcWorkStorage() {
+  try {
+    wx.removeStorageSync(STORAGE_OC_WORK);
+  } catch (_) {
+    try {
+      wx.setStorageSync(STORAGE_OC_WORK, {});
+    } catch (__) {}
+  }
+}
+
+function clearStalePagesForDeleted(idSet, names) {
+  const nameSet = {};
+  (names || []).forEach((n) => {
+    const s = String(n || '').trim();
+    if (s) nameSet[s] = true;
+  });
+  try {
+    const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : [];
+    pages.forEach((p) => {
+      if (!p || !p.data) return;
+      const fid = String(p.data.notebookFavoriteId || p.data.favoriteId || '');
+      const pageName = String(
+        (p.data.result && p.data.result.name) || p.data.ocName || p.data.name || ''
+      ).trim();
+      const hit = (fid && idSet[fid]) || (pageName && nameSet[pageName]);
+      if (!hit) return;
+      try {
+        p.setData({
+          notebookFavoriteId: '',
+          favoriteId: '',
+          notebookSaved: false,
+          result: null
+        });
+      } catch (_) {}
+    });
+  } catch (_) {}
+}
+
+function clearWorkBindingForDeletedIds(idSet, deletedItems) {
+  if (!idSet || !Object.keys(idSet).length) return;
+  const names = [];
+  (deletedItems || []).forEach((item) => {
+    if (!item || !idSet[String(item.id)]) return;
+    const n = String((item.result && item.result.name) || '').trim();
+    if (n) names.push(n);
+  });
+  try {
+    const work = wx.getStorageSync(STORAGE_OC_WORK) || {};
+    const boundId = work && work.notebookFavoriteId ? String(work.notebookFavoriteId) : '';
+    const workName = String((work && work.result && work.result.name) || '').trim();
+    const idHit = !!(boundId && idSet[boundId]);
+    const nameHit = !!(workName && names.indexOf(workName) >= 0);
+    if (idHit || nameHit) {
+      wipeOcWorkStorage();
+    }
+  } catch (_) {}
+  clearStalePagesForDeleted(idSet, names);
+}
+
 function deleteFavoriteItem(favoriteId) {
-  if (!favoriteId) return false;
-  const list = getFavorites().filter((i) => i.id !== favoriteId);
-  return safeSetFavorites(list, { allowShrink: true });
+  const id = String(favoriteId || '').trim();
+  if (!id) return false;
+  const raw =
+    typeof readRawFavorites === 'function' ? readRawFavorites() : getFavorites();
+  const deletedItems = raw.filter((i) => i && String(i.id) === id);
+  const names = deletedItems
+    .map((i) => String((i.result && i.result.name) || '').trim())
+    .filter(Boolean);
+  try {
+    require('./ocDeletedIds.js').addOcIds([id], names);
+  } catch (_) {}
+  try {
+    require('./ocDeletedArchive.js').addDeletedItems(deletedItems);
+  } catch (_) {}
+  const list = raw.filter((i) => i && String(i.id) !== id);
+  safeSetFavorites(list, { allowShrink: true });
+  const idSet = {};
+  idSet[id] = true;
+  clearWorkBindingForDeletedIds(idSet, deletedItems);
+  try {
+    const trash = require('./chatListTrash.js');
+    if (typeof trash.removeOcFromChatList === 'function') trash.removeOcFromChatList(id);
+  } catch (_) {}
+  try {
+    const sync = require('./userDataSync.js');
+    if (typeof sync.markOcDeleted === 'function') sync.markOcDeleted(id);
+    if (typeof sync.flushNotebookSoon === 'function') sync.flushNotebookSoon();
+  } catch (_) {}
+  return true;
 }
 
 function deleteFavoriteItems(favoriteIds) {
   const idSet = {};
   (favoriteIds || []).forEach((id) => {
-    if (id) idSet[id] = true;
+    const s = String(id || '').trim();
+    if (s) idSet[s] = true;
   });
   const keys = Object.keys(idSet);
   if (!keys.length) return false;
-  const list = getFavorites().filter((i) => i && !idSet[i.id]);
-  return safeSetFavorites(list, { allowShrink: true });
+  const raw =
+    typeof readRawFavorites === 'function' ? readRawFavorites() : getFavorites();
+  const deletedItems = raw.filter((i) => i && idSet[String(i.id)]);
+  const names = deletedItems
+    .map((i) => String((i.result && i.result.name) || '').trim())
+    .filter(Boolean);
+  try {
+    require('./ocDeletedIds.js').addOcIds(keys, names);
+  } catch (_) {}
+  try {
+    require('./ocDeletedArchive.js').addDeletedItems(deletedItems);
+  } catch (_) {}
+  const list = raw.filter((i) => i && !idSet[String(i.id)]);
+  safeSetFavorites(list, { allowShrink: true });
+  clearWorkBindingForDeletedIds(idSet, deletedItems);
+  try {
+    const trash = require('./chatListTrash.js');
+    keys.forEach((id) => {
+      if (typeof trash.removeOcFromChatList === 'function') trash.removeOcFromChatList(id);
+    });
+  } catch (_) {}
+  try {
+    const sync = require('./userDataSync.js');
+    keys.forEach((id) => {
+      if (typeof sync.markOcDeleted === 'function') sync.markOcDeleted(id);
+    });
+    if (typeof sync.flushNotebookSoon === 'function') sync.flushNotebookSoon();
+  } catch (_) {}
+  return true;
+}
+
+/**
+ * 设定本里已占用的角色姓名（用于抽卡避重）
+ * @param {{ excludeFavoriteId?: string }} [opts]
+ * @returns {string[]}
+ */
+function getUsedOcNames(opts) {
+  const excludeId = opts && opts.excludeFavoriteId ? String(opts.excludeFavoriteId) : '';
+  const seen = {};
+  const out = [];
+  safeGetFavorites().forEach((item) => {
+    if (!item || !item.result) return;
+    if (excludeId && String(item.id) === excludeId) return;
+    const name = String(item.result.name || '').trim();
+    if (!name || name === '未命名' || seen[name]) return;
+    seen[name] = true;
+    out.push(name);
+  });
+  return out;
+}
+
+/**
+ * 从姓名池剔除已占用名；若剔空则退回原池（仍尽量避开）
+ * @param {string[]} names
+ * @param {{ excludeFavoriteId?: string, usedExtra?: string[] }} [opts]
+ */
+function namesPoolWithoutUsed(names, opts) {
+  const used = {};
+  getUsedOcNames(opts).forEach((n) => {
+    used[n] = true;
+  });
+  ((opts && opts.usedExtra) || []).forEach((n) => {
+    const s = String(n || '').trim();
+    if (s) used[s] = true;
+  });
+  const list = (names || []).map((n) => String(n || '').trim()).filter(Boolean);
+  const free = list.filter((n) => !used[n]);
+  if (free.length) return free;
+  return list;
+}
+
+/**
+ * 若姓名已被占用，从池中另抽一个；池耗尽则加后缀
+ */
+function ensureUniqueOcName(name, namePool, opts) {
+  const used = {};
+  getUsedOcNames(opts).forEach((n) => {
+    used[n] = true;
+  });
+  ((opts && opts.usedExtra) || []).forEach((n) => {
+    const s = String(n || '').trim();
+    if (s) used[s] = true;
+  });
+  let next = String(name || '').trim();
+  if (next && !used[next]) return next;
+  const pool = namesPoolWithoutUsed(namePool || [], opts);
+  if (pool.length) {
+    next = pool[Math.floor(Math.random() * pool.length)];
+    if (next && !used[next]) return next;
+  }
+  const base = String(name || pool[0] || '未命名').trim() || '未命名';
+  const suffixes = ['贰', '叁', '肆', '伍', '陸', '柒', '捌', '玖', '甲', '乙'];
+  for (let i = 0; i < suffixes.length; i++) {
+    const cand = base + '·' + suffixes[i];
+    if (!used[cand]) return cand;
+  }
+  return base + '·' + String(Date.now()).slice(-4);
 }
 
 /**
@@ -352,9 +616,24 @@ function consolidateFavoriteDuplicatesByName() {
 function ensureCurrentWorkInFavorites() {
   const work = wx.getStorageSync(STORAGE_OC_WORK) || {};
   if (!work.result || !isLayer3Ready(work)) return null;
+  try {
+    const tomb = require('./ocDeletedIds.js');
+    if (work.notebookFavoriteId && tomb.isOcDeleted(work.notebookFavoriteId)) {
+      wipeOcWorkStorage();
+      return null;
+    }
+  } catch (_) {}
   if (work.notebookFavoriteId) {
     const existing = getFavoriteById(work.notebookFavoriteId);
-    const samePerson = existing && sameOcName(work, existing);
+    if (!existing) {
+      // 设定本已无此条（刚删除或未写入）：禁止按姓名另存成新 OC
+      delete work.notebookFavoriteId;
+      try {
+        wx.setStorageSync(STORAGE_OC_WORK, work);
+      } catch (_) {}
+      return null;
+    }
+    const samePerson = sameOcName(work, existing);
     if (!samePerson) {
       // 旧绑定已指向别的角色：断开，避免把哈利波特小传等灌进新抽卡
       delete work.notebookFavoriteId;
@@ -366,6 +645,14 @@ function ensureCurrentWorkInFavorites() {
         (!Array.isArray(work.ocStories) || !work.ocStories.length)
       ) {
         work.ocStories = existing.ocStories.map((s) => ({ ...s }));
+      }
+      if (
+        existing &&
+        Array.isArray(existing.ocStoryCollections) &&
+        existing.ocStoryCollections.length &&
+        (!Array.isArray(work.ocStoryCollections) || !work.ocStoryCollections.length)
+      ) {
+        work.ocStoryCollections = existing.ocStoryCollections.map((c) => ({ ...c }));
       }
       if (existing && Array.isArray(existing.ocAlbums) && !Array.isArray(work.ocAlbums)) {
         work.ocAlbums = existing.ocAlbums.map((a) => ocAlbum.normalizeAlbum(a));
@@ -418,11 +705,49 @@ function hasLocalOcSetting() {
 function syncBioToFavorite(favoriteId, generatedBio) {
   if (!favoriteId) return false;
   let list = safeGetFavorites();
-  const idx = list.findIndex((i) => i.id === favoriteId);
+  const idx = list.findIndex((i) => i && String(i.id) === String(favoriteId));
   if (idx < 0) return false;
   list[idx].generatedBio = generatedBio || '';
   list[idx].time = Date.now();
   return safeSetFavorites(list);
+}
+
+/** 从云端/本地删除归档恢复一条 OC 到设定本 */
+function restoreFavoriteItem(item) {
+  if (!item || !item.id || !item.result) return { ok: false, errMsg: '无效存档' };
+  const id = String(item.id);
+  try {
+    require('./ocDeletedIds.js').removeOcIds([id]);
+  } catch (_) {}
+  try {
+    require('./ocDeletedArchive.js').removeIds([id]);
+  } catch (_) {}
+  try {
+    const sync = require('./userDataSync.js');
+    if (typeof sync.markOcRestored === 'function') sync.markOcRestored(id);
+  } catch (_) {}
+  const list = safeGetFavorites();
+  const idx = list.findIndex((i) => i && String(i.id) === id);
+  if (idx >= 0) {
+    list[idx] = Object.assign({}, item, { time: Date.now() });
+  } else {
+    if (list.length >= MAX_NOTEBOOK_OCS) {
+      return { ok: false, errMsg: notebookLimitTip() };
+    }
+    list.unshift(Object.assign({}, item, { time: Date.now() }));
+  }
+  if (!safeSetFavorites(list, { allowShrink: true })) {
+    return { ok: false, errMsg: '写入失败，本地存储可能已满' };
+  }
+  try {
+    const trash = require('./chatListTrash.js');
+    if (typeof trash.unhideOcFromChatList === 'function') trash.unhideOcFromChatList(id);
+  } catch (_) {}
+  try {
+    const sync = require('./userDataSync.js');
+    if (typeof sync.flushNotebookSoon === 'function') sync.flushNotebookSoon();
+  } catch (_) {}
+  return { ok: true, id: id };
 }
 
 /** 新抽卡前断开与旧收藏的绑定，避免 upsert 覆盖已有 OC */
@@ -457,6 +782,11 @@ function beginFreshGachaWork() {
 
 module.exports = {
   STORAGE_FAVORITES,
+  MAX_NOTEBOOK_OCS,
+  getNotebookOcCount,
+  canAddNotebookOc,
+  notebookLimitTip,
+  toastNotebookLimit,
   buildFavoriteItem,
   upsertOcToFavorites,
   saveOcToFavorites,
@@ -468,9 +798,13 @@ module.exports = {
   deleteFavoriteItem,
   deleteFavoriteItems,
   consolidateFavoriteDuplicatesByName,
+  getUsedOcNames,
+  namesPoolWithoutUsed,
+  ensureUniqueOcName,
   ensureCurrentWorkInFavorites,
   hasLocalOcSetting,
   syncBioToFavorite,
+  restoreFavoriteItem,
   detachWorkFromFavoriteLink,
   beginFreshGachaWork
 };

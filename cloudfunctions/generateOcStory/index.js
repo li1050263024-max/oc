@@ -1,4 +1,4 @@
-const https = require('https');
+const { chatCompletions } = require('./aiText.js');
 
 const CONTINUE_SYSTEM_PROMPT =
   '你是中文二次元 OC 故事续写助手。用户会提供【OC 设定】【人物小传】【已写故事全文】与【续写方向】。' +
@@ -11,56 +11,7 @@ const REVISE_SYSTEM_PROMPT =
   '请根据修改意见对全文进行润色、增删或改写，输出完整修订后的正文（不是仅输出改动片段）。' +
   '保持角色性格、口癖与叙事风格一致；不得输出「修改说明」「润色如下」等元话语；直接输出修订后全文。';
 
-function postJson(hostname, path, headers, body) {
-  const data = JSON.stringify(body);
-  return new Promise((resolve, reject) => {
-    const req = https.request(
-      {
-        hostname,
-        port: 443,
-        path,
-        method: 'POST',
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(data)
-        }
-      },
-      (res) => {
-        let chunks = '';
-        res.on('data', (d) => {
-          chunks += d;
-        });
-        res.on('end', () => {
-          try {
-            const json = JSON.parse(chunks);
-            if (json.error) {
-              reject(new Error(json.error.message || JSON.stringify(json.error)));
-            } else {
-              resolve(json);
-            }
-          } catch (e) {
-            reject(new Error(chunks.slice(0, 200) || e.message));
-          }
-        });
-      }
-    );
-    req.on('error', reject);
-    req.setTimeout(57000, () => {
-      req.destroy();
-      reject(new Error('请求超时'));
-    });
-    req.write(data);
-    req.end();
-  });
-}
-
 exports.main = async (event) => {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    return { ok: false, errMsg: '请为云函数配置环境变量 DEEPSEEK_API_KEY' };
-  }
-
   const ocSetting = event && event.ocSetting != null ? String(event.ocSetting).trim() : '';
   const ocBio = event && event.ocBio != null ? String(event.ocBio).trim() : '';
   const userInput = event && event.userInput != null ? String(event.userInput).trim() : '';
@@ -137,28 +88,14 @@ exports.main = async (event) => {
   }
 
   try {
-    const result = await postJson(
-      'api.deepseek.com',
-      '/v1/chat/completions',
-      { Authorization: `Bearer ${apiKey}` },
-      {
-        model: 'deepseek-v4-flash',
-        thinking: { type: 'disabled' },
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userContent }
-        ],
-        temperature: isContinue ? 0.82 : isRevise ? 0.75 : 0.88,
-        max_tokens: isContinue ? 1200 : isRevise ? 2000 : 1400
-      }
+    const result = await chatCompletions(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userContent }
+      ],
+      { temperature: 0.85, maxTokens: 1400 }
     );
-
-    const text =
-      result.choices &&
-      result.choices[0] &&
-      result.choices[0].message &&
-      result.choices[0].message.content;
-
+    const text = result && result.text;
     if (!text || !String(text).trim()) {
       return { ok: false, errMsg: '模型未返回有效内容' };
     }

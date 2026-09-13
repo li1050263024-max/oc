@@ -217,7 +217,7 @@ async function maybeInjectFakeMessagesOnAppOpen(openTime, options) {
   if (!chatted.length) {
     clearChatBadge();
     clearGroupChatBadge();
-    console.warn('[ocFakeNotify] no chatted oc found');
+    // 尚未聊过任何 OC：正常跳过，不刷黄字
     return { skipped: true, reason: 'no_chatted_oc' };
   }
 

@@ -250,26 +250,24 @@ function applyGroupMoneyMemberReact(userMoneyMsg, member, rawReply) {
 }
 
 const GROUP_MONEY_PROACTIVE_RULES =
-  '\n\n【群聊·虚拟红包/转账】可按人设与语境独立决定是否发红包/转账（非真实支付）。\n' +
-  '禁止跟风：其它成员发了，你不必发；可不愿意发、装没看见、或只口头回应。\n' +
+  '\n\n【群聊·虚拟红包/转账·白名单】默认 TYPE:none。平常闲聊禁止发钱。\n' +
+  '仅当用户本轮提到钱/红包/转账，或哭穷卖惨缺钱救急，或用户刚发过红包转账时，才可发；否则必须 none。\n' +
+  '禁止因关系好、人设有钱、想讨好而随手塞钱；禁止跟风连发。\n' +
   '若要发，台词后追加且只追加一次：\n' +
   '<<<MONEY\nTYPE:none|red_packet|transfer\nMODE:normal|lucky|targeted\nTO:user|成员名或id|all\nAMOUNT:数字\n>>>\n' +
-  '说明：\n' +
-  '- TYPE:none 表示不发\n' +
-  '- red_packet：MODE=normal 普通人均相同；lucky 拼手气；targeted 指定 TO 中的对象\n' +
-  '- transfer：转账，TO 必须是单个（user 或某一成员），AMOUNT 为转账额\n' +
-  '- TO 可以是 user、其它群成员（不一定是用户）、或 all（仅红包群发）\n' +
-  '- 红包总额 ≤ 200；转账不限；金额贴合人设财力\n' +
-  '- 方向：TYPE 非 none 时是【你→TO】给你发钱；台词用「我转给你/给你红包」；严禁说成对方转给你\n' +
-  '- 台词禁止「X元已发送」「[红包]」系统式通知；红包台词勿报金额\n';
+  '说明：TYPE:none 为默认；红包 ≤ 200；方向【你→TO】；拿不准就 none。\n';
 
-function withGroupMoneyProactiveRules(systemPrompt, work) {
+function withGroupMoneyProactiveRules(systemPrompt, work, options) {
+  const opts = options || {};
+  const base = String(systemPrompt || '');
+  if (opts.allowProactiveMoney === false) {
+    return (
+      base +
+      '\n\n【本轮禁止发红包/转账】用户未提钱、也未哭穷卖惨。禁止 <<<MONEY>>> 发钱标记。\n'
+    );
+  }
   // 群聊红包格式与单聊不同，须客户端带上；财力参考保留，体积由 cloudChatPayload 再压
-  return (
-    String(systemPrompt || '') +
-    GROUP_MONEY_PROACTIVE_RULES +
-    buildMoneyAmountGuide(work)
-  );
+  return base + GROUP_MONEY_PROACTIVE_RULES + buildMoneyAmountGuide(work);
 }
 
 function withGroupMoneyReplyRules(systemPrompt) {
@@ -361,7 +359,8 @@ function parseGroupMoneyAwareReply(raw, members, selfMember) {
  * 将 OC 主动发包解析为消息列表（台词 + 卡片）
  * 发给 user：一张待领取卡；发给其它 OC：一张卡（记录 targets），其它 OC 不强制接话
  */
-function buildGroupMoneyAwareMessages(selfMember, members, rawReply) {
+function buildGroupMoneyAwareMessages(selfMember, members, rawReply, options) {
+  const opts = options || {};
   const parsed = parseGroupMoneyAwareReply(rawReply, members, selfMember);
   const out = [];
   if (parsed.speech) {
@@ -372,7 +371,19 @@ function buildGroupMoneyAwareMessages(selfMember, members, rawReply) {
       content: parsed.speech
     });
   }
-  if (!parsed.money) {
+  let money = parsed.money;
+  const { shouldAllowProactiveMoney } = require('./chatGames.js');
+  if (money && !shouldAllowProactiveMoney(opts.userMessage, opts.recentMessages)) {
+    money = null;
+  }
+  if (money && Array.isArray(opts.recentMessages)) {
+    const recent = opts.recentMessages.slice(-16);
+    const hasRecentMoney = recent.some(
+      (m) => m && m.kind === KIND_MONEY && m.game && (m.game.type === MONEY_TYPE_RED || m.game.type === MONEY_TYPE_TRANSFER)
+    );
+    if (hasRecentMoney) money = null;
+  }
+  if (!money) {
     if (!out.length) {
       out.push({
         role: 'assistant',
@@ -384,7 +395,7 @@ function buildGroupMoneyAwareMessages(selfMember, members, rawReply) {
     return out;
   }
 
-  const m = parsed.money;
+  const m = money;
   // 发给用户：用户可领取/退回
   if (m.includeUser) {
     const built = createMoneySend(m.type, m.amount, 'oc');

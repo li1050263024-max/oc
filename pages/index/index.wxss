@@ -108,6 +108,11 @@
   border-bottom: none;
 }
 
+.index-settings-item--vip {
+  color: #9a5b12;
+  font-weight: 600;
+}
+
 .index-settings-mask {
   position: fixed;
   left: 0;
@@ -171,6 +176,63 @@
   line-height: 1.5;
   color: #6b7280;
   text-align: center;
+}
+
+.index-vip-card {
+  width: 100%;
+  max-width: 560rpx;
+  max-height: 78vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 40rpx 32rpx 32rpx;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.index-vip-title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #9a5b12;
+  margin-bottom: 20rpx;
+  padding-right: 48rpx;
+}
+
+.index-vip-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.index-vip-line {
+  font-size: 26rpx;
+  line-height: 1.45;
+  color: #374151;
+}
+
+.index-vip-footer {
+  display: block;
+  margin-top: 20rpx;
+  font-size: 24rpx;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.index-vip-btn {
+  margin-top: 28rpx;
+  height: 80rpx;
+  border-radius: 40rpx;
+  background: linear-gradient(135deg, #f0b35a, #e08a2e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.index-vip-btn-t {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
 }
 
 .index-gacha-toolbar {

@@ -26,7 +26,10 @@
 | 字段 | 说明 |
 |------|------|
 | `code` | 兑换码字符串 |
-| `rounds` | 可兑换通用对话轮次 |
+| `kind` | `rounds` / `vip` / `combo` |
+| `rounds` | 对话轮次（纯会员码可为 0） |
+| `vipDays` | 会员天数 |
+| `permanent` | 永久会员 |
 | `maxUses` | 每码可用次数（默认 1） |
 | `usedCount` | 已使用次数 |
 | `enabled` | 是否启用 |
@@ -45,7 +48,7 @@
 
 | action | 说明 |
 |--------|------|
-| `redeemCreate` | 生成码：`rounds` / `count` / `maxUses` / `note` |
+| `redeemCreate` | 生成码：`kind` / `rounds` / `vipDays` / `permanent` / `count` / `maxUses` / `note` |
 | `redeemList` | 明细列表 |
 | `redeemDisable` / `redeemEnable` | 停用 / 启用（body: `id`） |
 | `redeemLogs` | 核销记录列表 |
@@ -58,7 +61,9 @@
    - 独立页 `pages/redeemCode/redeemCode`
    - 首页菜单 / 导航 → 兑换码
    - 对话额度用尽弹窗 →「输入兑换码」
-4. 兑换成功后写入通用池 `extraRounds`（单聊群聊共用、无有效期限制）；续期方式为**分享 / 兑换码**（无广告）
+4. 兑换成功后：轮次码写入 `extraRounds`；会员码写入 `user_quota.isVip` / `vipExpireAt`
+5. 会员月卡 ¥10：聊天每周 50 轮、视频提取每周 5 次、路人评论 10 条、选择 OC 不限；视频提取只存本地
+6. 部署时请同时上传 `redeemCode`、`feedbackApi`、`extractVideoAudio`
 
 ### 打赏金额 → 额度（后台点选）
 

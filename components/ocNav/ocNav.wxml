@@ -77,10 +77,10 @@
         catchtap="onNavTap"
       >OC故事</view>
       <view
-        class="nav-popup-item {{current === 'moments' ? 'nav-popup-item-active' : ''}} {{hasBioOc ? '' : 'nav-popup-item-disabled'}}"
-        data-key="moments"
+        class="nav-popup-item {{current === 'ocapp' || current === 'moments' || current === 'douyin' ? 'nav-popup-item-active' : ''}} {{hasBioOc ? '' : 'nav-popup-item-disabled'}}"
+        data-key="ocapp"
         catchtap="onNavTap"
-      >OC朋友圈</view>
+      >OC APP</view>
       <view
         class="nav-popup-item {{current === 'feedback' ? 'nav-popup-item-active' : ''}}"
         data-key="feedback"
@@ -89,11 +89,11 @@
       <view
         class="nav-popup-item"
         catchtap="onOpenRedeem"
-      >兑换码</view>
+      >额度商店</view>
       <view
         class="nav-popup-item"
-        catchtap="onFollowOfficialAccount"
-      >关注公众号</view>
+        catchtap="onOpenStorageClean"
+      >清除本地内容</view>
     </scroll-view>
   </view>
 

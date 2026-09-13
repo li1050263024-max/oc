@@ -1,49 +1,4 @@
-const https = require('https');
-
-function postJson(hostname, path, headers, body) {
-  const data = JSON.stringify(body);
-  return new Promise((resolve, reject) => {
-    const req = https.request(
-      {
-        hostname,
-        port: 443,
-        path,
-        method: 'POST',
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(data)
-        }
-      },
-      (res) => {
-        let chunks = '';
-        res.on('data', (d) => {
-          chunks += d;
-        });
-        res.on('end', () => {
-          try {
-            const json = JSON.parse(chunks);
-            if (json.error) {
-              reject(new Error(json.error.message || JSON.stringify(json.error)));
-            } else {
-              resolve(json);
-            }
-          } catch (e) {
-            reject(new Error(chunks.slice(0, 200) || e.message));
-          }
-        });
-      }
-    );
-    req.on('error', reject);
-    req.setTimeout(57000, () => {
-      req.destroy();
-      reject(new Error('请求超时'));
-    });
-    req.write(data);
-    req.end();
-  });
-}
-
+const { chatCompletions } = require('./aiText.js');
 function parseJsonBlock(text) {
   if (!text) return null;
   const raw = String(text).trim();
@@ -131,10 +86,6 @@ function normalizeParsed(data) {
 }
 
 exports.main = async (event) => {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    return { ok: false, errMsg: '请为云函数配置环境变量 DEEPSEEK_API_KEY' };
-  }
 
   const text = event && event.text != null ? String(event.text).trim() : '';
   if (!text) {
@@ -168,27 +119,11 @@ exports.main = async (event) => {
       str(context.existingWorldview) +
       '\n请扩写并输出 JSON。';
     try {
-      const result = await postJson(
-        'api.deepseek.com',
-        '/v1/chat/completions',
-        { Authorization: `Bearer ${apiKey}` },
-        {
-          model: 'deepseek-v4-flash',
-          thinking: { type: 'disabled' },
-          messages: [
+      const result = await chatCompletions([
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userContent }
-          ],
-          temperature: 0.65,
-          max_tokens: 1600
-        }
-      );
-      const raw =
-        result &&
-        result.choices &&
-        result.choices[0] &&
-        result.choices[0].message &&
-        result.choices[0].message.content;
+          ], { temperature: 0.65, maxTokens: 1600 });
+      const raw = result && result.text;
       const parsed = parseJsonBlock(raw);
       if (!parsed) {
         return { ok: false, errMsg: '模型返回格式无法解析，请精简文本后重试' };
@@ -224,28 +159,12 @@ exports.main = async (event) => {
       : '请解析以下 OC 设定并输出 JSON：\n' + text;
 
   try {
-    const result = await postJson(
-      'api.deepseek.com',
-      '/v1/chat/completions',
-      { Authorization: `Bearer ${apiKey}` },
-      {
-        model: 'deepseek-v4-flash',
-        thinking: { type: 'disabled' },
-        messages: [
+    const result = await chatCompletions([
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userContent }
-        ],
-        temperature: 0.3,
-        max_tokens: 1800
-      }
-    );
+        ], { temperature: 0.3, maxTokens: 1800 });
 
-    const raw =
-      result &&
-      result.choices &&
-      result.choices[0] &&
-      result.choices[0].message &&
-      result.choices[0].message.content;
+    const raw = result && result.text;
     const parsed = parseJsonBlock(raw);
     if (!parsed) {
       return { ok: false, errMsg: '模型返回格式无法解析，请精简文本后重试' };

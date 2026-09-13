@@ -1,0 +1,11 @@
+{
+  "navigationStyle": "custom",
+  "backgroundColor": "#c8bee4",
+  "backgroundColorTop": "#c8bee400",
+  "backgroundColorBottom": "#c4d0e8",
+  "backgroundColorContent": "#c8bee400",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "oc-page-nav": "/components/ocPageNav/ocPageNav"
+  }
+}

@@ -1,6 +1,7 @@
 {
   "navigationStyle": "custom",
   "usingComponents": {
-    "oc-back-btn": "/components/ocBackBtn/ocBackBtn"
+    "oc-back-btn": "/components/ocBackBtn/ocBackBtn",
+    "ad-claim-sheet": "/components/adClaimSheet/adClaimSheet"
   }
 }

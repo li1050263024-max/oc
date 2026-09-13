@@ -1,0 +1,8 @@
+{
+  "navigationStyle": "custom",
+  "backgroundColor": "#c8bee4",
+  "usingComponents": {
+    "oc-page-nav": "/components/ocPageNav/ocPageNav",
+    "oc-back-btn": "/components/ocBackBtn/ocBackBtn"
+  }
+}

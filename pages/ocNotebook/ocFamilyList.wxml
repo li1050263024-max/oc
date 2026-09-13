@@ -1,0 +1,118 @@
+<view class="page oc-page safe-bottom {{uiThemeClass}}">
+  <view class="bg-solid"></view>
+  <oc-back-btn />
+  <scroll-view
+    class="fam-list-scroll"
+    scroll-y="{{!draggingKey}}"
+    show-scrollbar="{{false}}"
+  >
+    <view class="fam-list-inner">
+      <view class="fam-hero">
+        <view class="fam-hero-top">
+          <view class="fam-hero-titles">
+            <text class="fam-hero-title">OC 家族</text>
+            <text class="fam-hero-sub">把多个 OC 归入家族分类，不影响关系网</text>
+          </view>
+        </view>
+        <view class="fam-create-btn" catchtap="onCreateFamily">
+          <text class="fam-create-plus">+</text>
+          <text class="fam-create-text">新建家族</text>
+        </view>
+      </view>
+
+      <view class="fam-list-empty" wx:if="{{!families.length}}">
+        <text class="fam-list-empty-text">还没有家族，点击上方「新建家族」创建</text>
+      </view>
+
+      <view
+        class="fam-card {{item.familyPinned ? 'fam-card--pinned' : ''}} {{expandedFamilyIds[item.id] ? 'fam-card--expanded' : ''}}"
+        wx:for="{{families}}"
+        wx:key="id"
+      >
+        <view class="fam-card-head">
+          <view class="fam-card-title-row">
+            <text class="fam-card-name">{{item.name}}</text>
+            <text class="oc-badge oc-badge--pin" wx:if="{{item.familyPinned}}">置顶</text>
+          </view>
+          <text class="fam-card-count">{{item.count}} 人 · 长按移出 · 拖动排序</text>
+        </view>
+
+        <view
+          class="fam-member-grid"
+          wx:if="{{item.members.length}}"
+          id="famGrid_{{item.id}}"
+          data-family-id="{{item.id}}"
+        >
+          <view
+            class="fam-member-cell {{draggingKey === (item.id + ':' + m.id) ? 'fam-member-cell--dragging' : ''}}"
+            wx:for="{{item.members}}"
+            wx:for-item="m"
+            wx:for-index="mIndex"
+            wx:key="id"
+            data-family-id="{{item.id}}"
+            data-id="{{m.id}}"
+            data-name="{{m.name}}"
+            data-index="{{mIndex}}"
+            catchtap="onOpenOc"
+            catchlongpress="onMemberLongPress"
+            bindtouchmove="onMemberTouchMove"
+            bindtouchend="onMemberTouchEnd"
+            bindtouchcancel="onMemberTouchEnd"
+          >
+            <view class="fam-member-avatar">
+              <image
+                class="fam-member-avatar-img"
+                src="{{m.ocImagePath || portraitPlaceholder}}"
+                mode="aspectFill"
+              />
+            </view>
+            <text class="fam-member-name">{{m.name}}</text>
+          </view>
+        </view>
+        <view class="fam-members-empty" wx:else>
+          <text>暂无成员，请在设定本 OC 卡片中「加入家族」</text>
+        </view>
+
+        <view class="nb-card-footer-row">
+          <view class="nb-card-quick-actions">
+            <view
+              class="nb-quick-btn oc-chip-btn"
+              data-id="{{item.id}}"
+              catchtap="onToggleFamilyPin"
+            >
+              <text class="oc-chip-btn-text">{{item.familyPinned ? '取消置顶' : '置顶'}}</text>
+            </view>
+            <view
+              class="nb-quick-btn oc-chip-btn"
+              data-id="{{item.id}}"
+              data-name="{{item.name}}"
+              catchtap="onRenameFamily"
+            >
+              <text class="oc-chip-btn-text">重命名</text>
+            </view>
+          </view>
+          <view
+            class="nb-card-chevron-wrap"
+            data-id="{{item.id}}"
+            catchtap="onToggleFamilyExpand"
+          >
+            <view
+              class="nb-card-chevron {{expandedFamilyIds[item.id] ? 'nb-card-chevron--open' : ''}}"
+            ></view>
+          </view>
+        </view>
+
+        <view class="nb-card-actions" wx:if="{{expandedFamilyIds[item.id]}}">
+          <view
+            class="nb-action-btn oc-chip-btn"
+            data-id="{{item.id}}"
+            data-name="{{item.name}}"
+            catchtap="onDeleteFamily"
+          >
+            <text class="oc-chip-btn-text">删除</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

@@ -5,7 +5,9 @@ const {
   upsertOcToFavorites,
   loadFavoriteToWork,
   deleteFavoriteItem,
-  getFavoriteById
+  getFavoriteById,
+  canAddNotebookOc,
+  toastNotebookLimit
 } = require('../../utils/favorite.js');
 const { isLayer3Ready, applyNotebookFlags } = require('../../utils/ocWork.js');
 const { emptyWork, mergeWork, workSnapshot } = require('../../utils/ocNotebookData.js');
@@ -65,6 +67,11 @@ Page({
       }
       this.setData({ favoriteId: id, notebookSaved: true });
     } else if (mode === 'new') {
+      if (!canAddNotebookOc()) {
+        toastNotebookLimit();
+        setTimeout(() => wx.navigateBack(), 400);
+        return;
+      }
       const work = emptyWork();
       wx.setStorageSync(STORAGE_OC_WORK, work);
       this.setData({ favoriteId: '', notebookSaved: false });
@@ -135,6 +142,13 @@ Page({
     ocImage.syncPrimaryImagePath(work);
     const favId = this.data.favoriteId || work.notebookFavoriteId || '';
     if (favId) {
+      try {
+        const tomb = require('../../utils/ocDeletedIds.js');
+        if (tomb.isOcDeleted(favId)) {
+          wx.setStorageSync(STORAGE_OC_WORK, work);
+          return;
+        }
+      } catch (_) {}
       work.notebookFavoriteId = favId;
       upsertOcToFavorites(work);
     }
@@ -421,8 +435,17 @@ Page({
 
     wx.showLoading({ title: '保存中…', mask: true });
     try {
+      const isNew = !this.data.favoriteId && !work.notebookFavoriteId;
+      if (isNew && !canAddNotebookOc()) {
+        wx.hideLoading();
+        toastNotebookLimit();
+        return;
+      }
       let favId = upsertOcToFavorites(work);
       if (!favId) {
+        wx.hideLoading();
+        // 达上限时 upsert 内已提示
+        if (isNew && !canAddNotebookOc()) return;
         wx.showToast({ title: '保存失败', icon: 'none' });
         return;
       }
@@ -578,12 +601,16 @@ Page({
       success: async (res) => {
         if (!res.confirm) return;
         const fav = getFavoriteById(id);
-        if (fav && Array.isArray(fav.ocImages)) {
-          await ocImage.removeOcImageFiles(fav.ocImages);
-        }
-        await ocImage.removeAllFavoriteOcImages(id);
-        await chatBackground.removeChatBackground(id);
         deleteFavoriteItem(id);
+        try {
+          if (fav && Array.isArray(fav.ocImages)) {
+            await ocImage.removeOcImageFiles(fav.ocImages);
+          }
+        } catch (_) {}
+        try {
+          await ocImage.removeAllFavoriteOcImages(id);
+          await chatBackground.removeChatBackground(id);
+        } catch (_) {}
         wx.showToast({ title: '已删除', icon: 'none' });
         setTimeout(() => this.onBackToNotebook(), 400);
       }

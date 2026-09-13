@@ -1,11 +1,13 @@
-const https = require('https');
+const cloud = require('wx-server-sdk');
+const { chatCompletions } = require('./aiText.js');
 
-let _cloud = null;
 let _db = null;
 try {
-  _cloud = require('wx-server-sdk');
-  _cloud.init({ env: 'cloud1-d3gkbz2nf0c84c381' });
-  _db = _cloud.database();
+  cloud.init({
+    env: cloud.DYNAMIC_CURRENT_ENV || 'cloud1-d3gkbz2nf0c84c381',
+    timeout: 60000
+  });
+  _db = cloud.database();
 } catch (_) {}
 
 const DICE_RULES =
@@ -30,34 +32,18 @@ const MONEY_REPLY_RULES =
   '台词中不要出现「系统」「指令」「ACCEPT」。禁止提真实支付。';
 
 const MONEY_PROACTIVE_RULES =
-  '\n\n【虚拟红包/转账·主动】这是角色扮演，可主动给对方发虚拟红包或转账（非真实支付）。\n' +
-  '请先写角色台词，再在末尾追加且只追加一次：\n' +
+  '\n\n【虚拟红包/转账·主动·白名单】默认 TYPE:none。平常闲聊、调情、寒暄、讲日常一律禁止发钱。\n' +
+  '请先写角色台词，末尾追加且只追加一次：\n' +
   '<<<MONEY\nTYPE:none|red_packet|transfer\nAMOUNT:数字\n>>>\n' +
-  '或等价一行：SEND:none / SEND:red_packet:金额 / SEND:transfer:金额\n' +
-  '选择依据（必须结合人设、对话气氛与本条内容）：\n' +
-  '- 想讨好、哄人、道歉补偿、过节祝福、炫耀财力、照顾对方、撒娇塞钱、关系升温 → 用 red_packet 或 transfer\n' +
-  '- 人设抠门、清高、疏远、正在吵架且不愿示好 → TYPE:none\n' +
-  '金额规则（强制）：\n' +
-  '- 常规下限：认真转账/红包默认 ≥ 1 元；即使人设很穷，也不要只转 0.01（太敷衍）\n' +
-  '- 玩笑例外：仅在逗对方、调侃、赌气玩笑时，才可用 1 元以下甚至 0.01\n' +
-  '- 硬性上限：红包 AMOUNT ≤ 200；转账不设上限\n' +
-  '- 按人设财力：有钱就大方，清贫就小额但仍真诚\n' +
-  '- 富豪/知名有钱角色（如钢铁侠、霸总、财阀等）：关系不错时转账尽量 ≥ 1000，随手给钱常见几千～十几万，严禁寒酸到几十几百（除非故意玩笑）\n' +
-  '- 「倾尽所有」例外：人设虽穷但深情，或与用户聊到很动感情/告白/承诺/补偿时，可用 transfer 转一笔贴合身份、却像清空余额的金额\n' +
-  '  · 这种金额必须「有零有整」、忌整数整十整百（禁止 10/50/100/200/520 等好看整数）\n' +
-  '  · 示例风格：86.43、327.18、1586.72、2037.55（像账户里剩多少转多少）\n' +
-  '  · 穷学生倾尽所有可在几十～几百带小数；打工族可到一千多带小数；勿写成富翁级\n' +
-  '富裕/钢铁侠级人设：红包可顶格 200，真正大手笔必须用转账（几千到十几万+）；清贫认真给钱至少 1 元。\n' +
-  '不要每条都发；但当语境明显适合给钱时，应当主动发，不要总是 none。\n' +
-  '方向规则（最高优先级，严禁搞反）：\n' +
-  '- TYPE:red_packet/transfer 表示【你（角色）→用户】给你发钱；台词必须是「我转给你 / 给你红包 / 收下」口吻\n' +
-  '- 严禁把本条说成用户转给你：禁止「谢谢你转给我」「你怎么转这么多」「收到了你的转账」等\n' +
-  '- 只有上文明确是「用户向你发了红包/转账」时，才可以谢用户给钱\n' +
-  '台词规则（重要）：\n' +
-  '- 禁止写系统通知式文案，例如「[红包]」「[转账]」「X元已发送」「已发送」\n' +
-  '- 发红包时台词里禁止出现具体金额（金额只写在标记里，领取前对方看不到）\n' +
-  '- 转账台词可以说「转给你一点」「把我剩下的都给你」，尽量少报具体数字；数字只放在标记里\n' +
-  '- 不要解释标记。';
+  '或：SEND:none / SEND:red_packet:金额 / SEND:transfer:金额\n' +
+  '仅当本轮用户消息属于下列之一时，才可 red_packet/transfer，否则必须 none：\n' +
+  'A) 用户主动提到钱/红包/转账/打钱/借钱/给我钱/生活费等；\n' +
+  'B) 用户正在哭穷、卖惨、诉苦缺钱、交不起房租学费、救急、求补偿；\n' +
+  'C) 用户刚给你发了红包/转账，你可礼尚往来回一份（不强制）。\n' +
+  '禁止：用户没提钱、也没卖惨哭穷时，因关系好/人设有钱/想讨好而主动塞钱。\n' +
+  '金额：认真给钱 ≥ 1 元；红包 ≤ 200；转账按人设。近几轮刚发过则本轮 none。\n' +
+  '方向：【角色→用户】发钱；严禁写成用户转给你。\n' +
+  '台词禁止「[红包]」「[转账]」「X元已发送」；红包台词勿报金额；拿不准就 none。\n';
 
 function localDateKey() {
   const t = Date.now() + 8 * 3600000;
@@ -70,7 +56,7 @@ function localDateKey() {
 
 /** 服务端直接写 usage_daily：先 where 再 update/add（禁止盲 update） */
 async function reportUsageDaily(channel) {
-  if (!_db || !_cloud) return;
+  if (!_db || !cloud) return;
   const _ = _db.command;
   const dateKey = localDateKey();
   const isGroup = channel === 'group';
@@ -240,57 +226,7 @@ function currentWeekKey() {
   return y + '-' + m + '-' + dayNum;
 }
 
-function postJson(hostname, path, headers, body, timeoutMs) {
-  const data = JSON.stringify(body);
-  const wait = Number(timeoutMs) > 0 ? Number(timeoutMs) : 55000;
-  return new Promise((resolve, reject) => {
-    const req = https.request(
-      {
-        hostname,
-        port: 443,
-        path,
-        method: 'POST',
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(data)
-        }
-      },
-      (res) => {
-        let chunks = '';
-        res.on('data', (d) => {
-          chunks += d;
-        });
-        res.on('end', () => {
-          try {
-            const json = JSON.parse(chunks);
-            if (json.error) {
-              reject(new Error(json.error.message || JSON.stringify(json.error)));
-            } else {
-              resolve(json);
-            }
-          } catch (e) {
-            reject(new Error(chunks.slice(0, 200) || e.message));
-          }
-        });
-      }
-    );
-    req.on('error', reject);
-    req.setTimeout(wait, () => {
-      req.destroy();
-      reject(new Error('请求超时'));
-    });
-    req.write(data);
-    req.end();
-  });
-}
-
-exports.main = async (event) => {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    return { ok: false, errMsg: '请配置云函数环境变量 DEEPSEEK_API_KEY' };
-  }
-
+exports.main = async (event, context) => {
   const diceMode = !!(event && event.diceMode);
   const moneyMode = !!(event && event.moneyMode);
   const moneyAware = !!(event && event.moneyAware) && !diceMode && !moneyMode;
@@ -332,45 +268,34 @@ exports.main = async (event) => {
   if (systemPrompt) {
     messages.push({ role: 'system', content: systemPrompt.slice(0, 5800) });
   }
-  // 摇骰子/收红包只要近文，降低超时概率
+  // 摇骰子/收红包只要近文；普通对话也缩短上下文，降低超时概率
   const shortMode = diceMode || moneyMode;
-  const recent = history.slice(shortMode ? -10 : -20);
+  const recent = history.slice(-8);
   recent.forEach((m) => {
     if (!m || !m.content) return;
     const role = m.role === 'assistant' ? 'assistant' : 'user';
     messages.push({
       role,
-      content: String(m.content).slice(0, shortMode ? 600 : 1400)
+      content: String(m.content).slice(0, shortMode ? 500 : 900)
     });
   });
-  messages.push({ role: 'user', content: userMessage });
+  messages.push({
+    role: 'user',
+    content: String(userMessage || '').slice(0, 1200)
+  });
 
   const breakCharacterAttempt = !!(event && event.breakCharacterAttempt);
-  const temperature = shortMode ? 0.7 : breakCharacterAttempt ? 0.72 : 0.88;
-  const maxTokens = shortMode ? 160 : moneyAware ? 680 : 600;
-  // 骰子/红包回复短，给 API 更紧的超时，避免拖到云函数上限
-  const apiTimeoutMs = shortMode ? 45000 : 55000;
+  const temperature = shortMode ? 0.7 : breakCharacterAttempt ? 0.72 : 0.85;
+  // 收紧生成长度，优先在客户端超时前返回
+  const maxTokens = shortMode ? 140 : moneyAware ? 420 : 380;
 
   try {
-    const result = await postJson(
-      'api.deepseek.com',
-      '/v1/chat/completions',
-      { Authorization: `Bearer ${apiKey}` },
-      {
-        model: 'deepseek-v4-flash',
-        thinking: { type: 'disabled' },
-        messages,
-        temperature,
-        max_tokens: maxTokens
-      },
-      apiTimeoutMs
-    );
+    const result = await chatCompletions(messages, {
+      temperature: temperature,
+      maxTokens: maxTokens
+    });
 
-    const reply =
-      result.choices &&
-      result.choices[0] &&
-      result.choices[0].message &&
-      result.choices[0].message.content;
+    const reply = result && result.text;
 
     if (!reply || !String(reply).trim()) {
       return { ok: false, errMsg: '模型未返回有效内容' };
@@ -383,12 +308,11 @@ exports.main = async (event) => {
     const channel =
       event && (event.channel === 'group' || event.isGroup) ? 'group' : 'dm';
 
-    // 日汇总可异步；免费额度必须 await
+    // 日汇总异步；额度同步最多等 3 秒，超时先回消息，后台继续写库
     reportUsageDaily(channel).catch(() => {});
-
     let quotaSync = null;
     try {
-      const wxContext = _cloud ? _cloud.getWXContext() : {};
+      const wxContext = cloud.getWXContext ? cloud.getWXContext() : {};
       const openid = (wxContext && wxContext.OPENID) || '';
       const skip = !!(event && event.skipQuota);
       const hasReport =
@@ -402,8 +326,6 @@ exports.main = async (event) => {
         freeAllowed: event && event.freeAllowed
       };
 
-      // 只要有 openid：写 freeUsed（有绝对值用绝对值，否则 +1）
-      // 群聊「选人」请求：无 channel 且 history 为空，跳过避免误加
       if (openid && !skip) {
         const looksLikePicker =
           !explicitChannel &&
@@ -412,7 +334,34 @@ exports.main = async (event) => {
           (event.history || []).length === 0;
         if (!looksLikePicker) {
           const mode = report.freeUsed == null ? 'inc' : 'set';
-          quotaSync = await reportUserFreeQuota(openid, report, mode);
+          const quotaPromise = reportUserFreeQuota(openid, report, mode);
+          const raced = await Promise.race([
+            quotaPromise
+              .then((r) => ({ done: true, r: r }))
+              .catch((qe) => ({
+                done: true,
+                r: { ok: false, err: String((qe && qe.message) || qe) }
+              })),
+            new Promise((resolve) =>
+              setTimeout(() => resolve({ done: false }), 3000)
+            )
+          ]);
+          if (raced.done) {
+            quotaSync = raced.r;
+          } else {
+            // 超过 3 秒：先把回复发给客户端，写库继续跑（勿等事件循环清空）
+            if (context && typeof context === 'object') {
+              context.callbackWaitsForEmptyEventLoop = false;
+            }
+            quotaPromise
+              .then((r) => {
+                console.log('[ocChat] quota sync deferred ok', r && r.ok);
+              })
+              .catch((qe) => {
+                console.warn('[ocChat] quota sync deferred fail', qe);
+              });
+            quotaSync = { ok: false, deferred: true };
+          }
         }
       }
     } catch (qe) {
@@ -424,9 +373,13 @@ exports.main = async (event) => {
       ok: true,
       reply: String(reply).trim(),
       quotaSync: quotaSync || undefined,
-      apiVer: 'ocChat-quota-sync-v3'
+      apiVer: 'ocChat-quota-3s-v7'
     };
   } catch (e) {
-    return { ok: false, errMsg: e.message || '调用失败' };
+    const msg = (e && e.message) || '调用失败';
+    return {
+      ok: false,
+      errMsg: /超时|timeout/i.test(msg) ? '模型响应较慢，请重试' : msg
+    };
   }
 };

@@ -156,7 +156,43 @@ function parsePositiveInt(raw, fallback, max) {
 }
 
 async function createRedeemCodes(opts) {
-  const rounds = parsePositiveInt(opts.rounds, 30, 100000);
+  const kindRaw = String((opts && opts.kind) || 'rounds').toLowerCase();
+  const kind =
+    kindRaw === 'vip' || kindRaw === 'combo' ? kindRaw : 'rounds';
+  const vipDays = Math.max(0, Math.floor(Number(opts && opts.vipDays) || 0));
+  const permanent = !!(
+    opts &&
+    (opts.permanent === true ||
+      opts.permanent === 1 ||
+      opts.permanent === '1' ||
+      (kind === 'vip' && vipDays === 0))
+  );
+  let rounds = Math.max(0, Math.floor(Number(opts && opts.rounds) || 0));
+  let weeklyRounds = Math.max(
+    0,
+    Math.floor(Number(opts && opts.weeklyRounds) || 0)
+  );
+  let roundsExpireDays = Math.max(
+    0,
+    Math.floor(Number(opts && opts.roundsExpireDays) || 0)
+  );
+  if (kind === 'rounds') {
+    rounds = parsePositiveInt(opts.rounds, 30, 100000);
+    weeklyRounds = 0;
+  } else if (kind === 'combo') {
+    if (rounds <= 0) rounds = parsePositiveInt(opts.rounds, 30, 100000);
+    if (!permanent && vipDays <= 0) {
+      throw new Error('会员组合码请填写 vipDays，或设 permanent');
+    }
+    if (weeklyRounds <= 0) weeklyRounds = 100;
+  } else if (kind === 'vip') {
+    rounds = 0;
+    roundsExpireDays = 0;
+    if (!permanent && vipDays <= 0) {
+      throw new Error('会员码请填写 vipDays（天数），或 permanent=true 永久');
+    }
+    if (weeklyRounds <= 0) weeklyRounds = 100;
+  }
   const count = parsePositiveInt(opts.count, 1, 100);
   const maxUses = parsePositiveInt(opts.maxUses, 1, 10000);
   const note = String(opts.note || '').trim().slice(0, 200);
@@ -169,9 +205,17 @@ async function createRedeemCodes(opts) {
       try {
         const doc = {
           code,
-          rounds,
+          kind: kind,
+          rounds: rounds,
+          weeklyRounds: weeklyRounds,
+          roundsExpireDays: rounds > 0 ? roundsExpireDays : 0,
+          vipDays: permanent ? 0 : vipDays,
+          permanent: permanent,
           maxUses,
           usedCount: 0,
+          usedBy: [],
+          lastUsedOpenid: '',
+          lastUsedAt: 0,
           enabled: true,
           note,
           createTimeMs: now,
@@ -187,7 +231,52 @@ async function createRedeemCodes(opts) {
       }
     }
   }
-  return { ok: true, rounds, count: codes.length, codes };
+  return {
+    ok: true,
+    kind: kind,
+    rounds: rounds,
+    weeklyRounds: weeklyRounds,
+    roundsExpireDays: rounds > 0 ? roundsExpireDays : 0,
+    vipDays: permanent ? 0 : vipDays,
+    permanent: permanent,
+    count: codes.length,
+    codes: codes
+  };
+}
+
+async function loadUsedOpenidsByCodes(codes) {
+  const map = {};
+  const list = Array.from(new Set((codes || []).map((c) => String(c || '').trim()).filter(Boolean)));
+  if (!list.length) return map;
+  // 从核销日志补全「谁用过」（兼容旧码未写 usedBy）
+  try {
+    const raw = await fetchRedeemLogsRaw(500);
+    ((raw && raw.list) || []).forEach((row) => {
+      const code = String((row && row.code) || '').trim();
+      const oid = String((row && row.openid) || '').trim();
+      if (!code || !oid) return;
+      if (!map[code]) map[code] = [];
+      if (map[code].indexOf(oid) < 0) map[code].push(oid);
+    });
+  } catch (_) {}
+  return map;
+}
+
+function normalizeUsedByList(row, fromLogs) {
+  const out = [];
+  const seen = {};
+  const push = (id) => {
+    const s = String(id || '').trim();
+    if (!s || seen[s]) return;
+    seen[s] = true;
+    out.push(s);
+  };
+  if (Array.isArray(row && row.usedBy)) {
+    row.usedBy.forEach(push);
+  }
+  if (row && row.lastUsedOpenid) push(row.lastUsedOpenid);
+  (fromLogs || []).forEach(push);
+  return out;
 }
 
 async function listRedeemCodes(limit) {
@@ -203,7 +292,16 @@ async function listRedeemCodes(limit) {
   } catch (e) {
     list = [];
   }
-  return { ok: true, list };
+  const logMap = await loadUsedOpenidsByCodes(list.map((r) => r && r.code));
+  list = list.map((row) => {
+    const code = String((row && row.code) || '').trim();
+    const usedByOpenids = normalizeUsedByList(row, logMap[code] || []);
+    return Object.assign({}, row, {
+      usedByOpenids: usedByOpenids,
+      usedByText: usedByOpenids.join('、')
+    });
+  });
+  return { ok: true, list, apiVer: 'feedbackApi-redeem-list-v2' };
 }
 
 function isCollectionMissingError(e) {
@@ -269,12 +367,52 @@ async function loadQuotaMapByOpenids(openids) {
   return map;
 }
 
-async function listRedeemLogs(limit, openidKeyword) {
+function resolveRedeemLogsTimeRange(opts, hasKeyword) {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const rawFrom = opts && opts.fromMs != null && opts.fromMs !== '' ? Number(opts.fromMs) : NaN;
+  const rawTo = opts && opts.toMs != null && opts.toMs !== '' ? Number(opts.toMs) : NaN;
+  const hasExplicit =
+    (Number.isFinite(rawFrom) && rawFrom > 0) || (Number.isFinite(rawTo) && rawTo > 0);
+  // 搜索用户/兑换码：默认不限时间；显式选了时间则仍按时间收窄
+  if (hasKeyword && !hasExplicit) {
+    return { fromMs: null, toMs: null, mode: 'search' };
+  }
+  if (hasExplicit) {
+    return {
+      fromMs: Number.isFinite(rawFrom) && rawFrom > 0 ? rawFrom : null,
+      toMs: Number.isFinite(rawTo) && rawTo > 0 ? rawTo : null,
+      mode: 'custom'
+    };
+  }
+  // 默认仅最近 3 天
+  return {
+    fromMs: now - 3 * DAY_MS,
+    toMs: now + 60 * 1000,
+    mode: 'recent3d'
+  };
+}
+
+function filterLogsByTimeRange(list, fromMs, toMs) {
+  if (fromMs == null && toMs == null) return list || [];
+  return (list || []).filter((row) => {
+    const t = Number((row && row.createTimeMs) || 0) || 0;
+    if (!t) return false;
+    if (fromMs != null && t < fromMs) return false;
+    if (toMs != null && t > toMs) return false;
+    return true;
+  });
+}
+
+async function listRedeemLogs(limit, openidKeyword, rangeOpts) {
   const kw = String(openidKeyword || '')
     .trim()
     .slice(0, 128);
+  const range = resolveRedeemLogsTimeRange(rangeOpts || {}, !!kw);
   let fetched = { list: [], warn: '' };
   let list = [];
+  // 时间筛选时多取一些再内存过滤
+  const fetchLimit = Math.max(Number(limit) || 100, range.fromMs != null || range.toMs != null ? 200 : 100);
 
   if (kw) {
     // 精确 openid / 兑换码
@@ -296,7 +434,7 @@ async function listRedeemLogs(limit, openidKeyword) {
       exact.sort((a, b) => (Number(b.createTimeMs) || 0) - (Number(a.createTimeMs) || 0));
       list = exact;
     } else {
-      fetched = await fetchRedeemLogsRaw(Math.max(Number(limit) || 100, 150));
+      fetched = await fetchRedeemLogsRaw(Math.max(fetchLimit, 150));
       list = (fetched.list || []).filter((row) => {
         const oid = String((row && row.openid) || '');
         const code = String((row && row.code) || '');
@@ -307,8 +445,21 @@ async function listRedeemLogs(limit, openidKeyword) {
       }
     }
   } else {
-    fetched = await fetchRedeemLogsRaw(limit);
+    fetched = await fetchRedeemLogsRaw(fetchLimit);
     list = fetched.list || [];
+  }
+
+  list = filterLogsByTimeRange(list, range.fromMs, range.toMs);
+  if (
+    !list.length &&
+    !fetched.warn &&
+    !kw &&
+    (range.mode === 'recent3d' || range.mode === 'custom')
+  ) {
+    fetched.warn =
+      range.mode === 'recent3d'
+        ? '近 3 天暂无兑换记录（可改时间筛选，或搜索用户 ID / 兑换码）'
+        : '该时间范围内暂无兑换记录';
   }
 
   const openids = list.map((r) => r && r.openid).filter(Boolean);
@@ -337,6 +488,15 @@ async function listRedeemLogs(limit, openidKeyword) {
     const extraConsumed = storedConsumed;
     const freeUsed = Math.max(0, Number(q.freeUsed) || 0);
     const freeAllowed = Math.max(0, Number(q.freeAllowed) || 30);
+    const kind = String(row.kind || '').toLowerCase();
+    const kindLabel =
+      kind === 'vip'
+        ? '会员'
+        : kind === 'combo'
+          ? '会员+轮次'
+          : Number(row.vipDays) > 0 || row.permanent
+            ? '会员'
+            : '对话轮次';
     return Object.assign({}, row, {
       extraRounds,
       redeemedTotal,
@@ -345,6 +505,7 @@ async function listRedeemLogs(limit, openidKeyword) {
       quotaLeft: extraRounds,
       freeUsed,
       freeAllowed,
+      kindLabel,
       // 便于后台展示
       weekFreeLabel: freeUsed + '/' + freeAllowed,
       poolLabel: '已耗 ' + extraConsumed + ' / 剩余 ' + extraRounds
@@ -355,8 +516,158 @@ async function listRedeemLogs(limit, openidKeyword) {
     ok: true,
     list: enriched,
     keyword: kw || undefined,
+    fromMs: range.fromMs,
+    toMs: range.toMs,
+    rangeMode: range.mode,
     warn: fetched.warn || '',
-    apiVer: 'feedbackApi-redeem-logs-v5'
+    apiVer: 'feedbackApi-redeem-logs-v6'
+  };
+}
+
+async function fetchVirtualOrdersRaw(limit) {
+  const lim = Math.min(300, Math.max(1, Number(limit) || 100));
+  try {
+    const res = await db
+      .collection('virtual_orders')
+      .orderBy('createTimeMs', 'desc')
+      .limit(lim)
+      .get();
+    return { list: ((res && res.data) || []).slice(), warn: '' };
+  } catch (e1) {
+    try {
+      const res = await db.collection('virtual_orders').limit(lim).get();
+      const list = ((res && res.data) || []).slice();
+      list.sort(
+        (a, b) =>
+          (Number(b.createTimeMs) || Number(b.deliveredAt) || 0) -
+          (Number(a.createTimeMs) || Number(a.deliveredAt) || 0)
+      );
+      return {
+        list: list,
+        warn: 'virtual_orders 未建 createTimeMs 索引，已降级拉取'
+      };
+    } catch (e2) {
+      return {
+        list: [],
+        warn:
+          '读取 virtual_orders 失败：' +
+          String((e2 && (e2.message || e2.errMsg)) || e2 || e1)
+      };
+    }
+  }
+}
+
+/** 虚拟支付充值订单（virtual_orders；搜索时可兜底 redeem_logs VPAY） */
+async function listVirtualPayOrders(limit, openidKeyword, rangeOpts) {
+  const kw = String(openidKeyword || '')
+    .trim()
+    .slice(0, 128);
+  const range = resolveRedeemLogsTimeRange(rangeOpts || {}, !!kw);
+  const fetchLimit = Math.max(
+    Number(limit) || 80,
+    range.fromMs != null || range.toMs != null ? 200 : 80
+  );
+
+  let fetched = await fetchVirtualOrdersRaw(fetchLimit);
+  let list = (fetched.list || []).slice();
+
+  if (kw) {
+    list = list.filter((row) => {
+      const oid = String((row && row.openid) || '');
+      const oto = String((row && (row.outTradeNo || row._id)) || '');
+      const pid = String((row && row.productId) || '');
+      return oid.indexOf(kw) >= 0 || oto.indexOf(kw) >= 0 || pid.indexOf(kw) >= 0;
+    });
+    if (!list.length) {
+      try {
+        const logs = await listRedeemLogs(120, kw, rangeOpts);
+        const payLogs = ((logs && logs.list) || []).filter(
+          (r) =>
+            String(r.source || '') === 'virtual_pay' ||
+            String(r.code || '').indexOf('VPAY:') === 0
+        );
+        if (payLogs.length) {
+          list = payLogs.map((r) => ({
+            _id: String(r.code || '').replace(/^VPAY:/, '') || r._id,
+            outTradeNo: String(r.code || '').replace(/^VPAY:/, ''),
+            openid: r.openid,
+            productId: r.productId || '',
+            status: 'delivered',
+            grantRounds: Number(r.rounds) || 0,
+            createTimeMs: Number(r.createTimeMs) || 0,
+            deliveredAt: Number(r.createTimeMs) || 0,
+            source: 'redeem_logs',
+            goodsPrice: 0
+          }));
+          fetched.warn = '';
+        } else if (!fetched.warn) {
+          fetched.warn = '未找到匹配的充值记录';
+        }
+      } catch (_) {
+        if (!fetched.warn) fetched.warn = '未找到匹配的充值记录';
+      }
+    }
+  }
+
+  list = filterLogsByTimeRange(list, range.fromMs, range.toMs);
+  if (
+    !list.length &&
+    !fetched.warn &&
+    !kw &&
+    (range.mode === 'recent3d' || range.mode === 'custom')
+  ) {
+    fetched.warn =
+      range.mode === 'recent3d'
+        ? '近 3 天暂无充值记录'
+        : '该时间范围内暂无充值记录';
+  }
+
+  const openids = list.map((r) => r && r.openid).filter(Boolean);
+  const quotaMap = await loadQuotaMapByOpenids(openids);
+
+  const enriched = list.map((row) => {
+    const oid = row.openid || '';
+    const q = quotaMap[oid] || {};
+    const status = String(row.status || '').toLowerCase();
+    const statusLabel =
+      status === 'delivered'
+        ? '已到账'
+        : status === 'pending'
+          ? '待发货'
+          : status === 'refunded'
+            ? '已退款'
+            : status || '未知';
+    const priceFen = Math.max(0, Number(row.goodsPrice) || 0);
+    const priceYuan = priceFen > 0 ? (priceFen / 100).toFixed(2) : '';
+    return Object.assign({}, row, {
+      outTradeNo: row.outTradeNo || row._id || '',
+      statusLabel: statusLabel,
+      grantRounds: Math.max(
+        0,
+        Number(row.grantRounds) ||
+          Number(row.rounds) ||
+          Number(row.buyQuantity) ||
+          0
+      ),
+      priceYuan: priceYuan,
+      priceFen: priceFen,
+      quotaLeft: Math.max(0, Number(q.extraRounds) || 0),
+      createTimeMs: Number(row.createTimeMs) || Number(row.deliveredAt) || 0
+    });
+  });
+
+  enriched.sort(
+    (a, b) => (Number(b.createTimeMs) || 0) - (Number(a.createTimeMs) || 0)
+  );
+
+  return {
+    ok: true,
+    list: enriched.slice(0, Math.max(1, Number(limit) || 80)),
+    warn: fetched.warn || '',
+    fromMs: range.fromMs,
+    toMs: range.toMs,
+    rangeMode: range.mode,
+    apiVer: 'feedbackApi-pay-logs-v1'
   };
 }
 
@@ -534,7 +845,10 @@ async function listUserQuota(limit, openidKeyword) {
         : Math.max(0, redeemedTotal - extraRounds)
     );
     const freeUsed = Math.max(0, Number(row.freeUsed) || 0);
-    const freeAllowed = Math.max(30, Number(row.freeAllowed) || 0) || 30;
+    const vipExpireAt = Number(row.vipExpireAt) || 0;
+    const vipPaused = isVipPausedRow(row);
+    const isVip = isVipActiveRow(row);
+    const freeAllowed = FREE_WEEKLY_ROUNDS;
     return Object.assign({}, row, {
       extraRounds,
       redeemedTotal,
@@ -542,7 +856,11 @@ async function listUserQuota(limit, openidKeyword) {
       freeUsed,
       freeAllowed,
       quotaUsed: extraConsumed,
-      quotaLeft: extraRounds
+      quotaLeft: extraRounds,
+      isVip: isVip,
+      vipPaused: vipPaused,
+      vipRecord: isVipRecordRow(row),
+      vipExpireAt: vipExpireAt
     });
   }
 
@@ -694,6 +1012,7 @@ async function listUserQuota(limit, openidKeyword) {
 
 /** 与客户端 utils/aiChatQuota.js 保持一致：每周免费 30 轮 */
 const FREE_WEEKLY_ROUNDS = 30;
+const VIP_WEEKLY_ROUNDS = 100;
 
 /** 本周标识：以当周周一的日期键为准（东八区近似用 UTC+8） */
 function currentWeekKey(ts) {
@@ -817,6 +1136,388 @@ async function clearUserQuota(openidRaw, options) {
         }
       : null,
     apiVer: 'feedbackApi-user-quota-clear-v2'
+  };
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const VIP_CONFIRM_PASSWORD = '223356';
+
+const DEFAULT_MEMBERSHIP_PANEL = {
+  visible: false,
+  title: '会员权益',
+  lines: [],
+  footer: ''
+};
+
+function isVipPausedRow(row) {
+  return !!(
+    row &&
+    (row.vipPaused === true || row.vipPaused === 1 || row.vipPaused === '1')
+  );
+}
+
+function isVipActiveRow(row) {
+  if (!row) return false;
+  if (isVipPausedRow(row)) return false;
+  if (!(row.isVip === true || row.isVip === 1 || row.isVip === '1')) return false;
+  const exp = Number(row.vipExpireAt) || 0;
+  if (exp > 0 && Date.now() > exp) return false;
+  return true;
+}
+
+/** 文档上仍标记为会员（含已暂停、未过期） */
+function isVipRecordRow(row) {
+  if (!row) return false;
+  if (!(row.isVip === true || row.isVip === 1 || row.isVip === '1')) return false;
+  const exp = Number(row.vipExpireAt) || 0;
+  if (exp > 0 && Date.now() > exp) return false;
+  return true;
+}
+
+function normalizeMembershipPanel(raw) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const lines = Array.isArray(src.lines)
+    ? src.lines.map((x) => String(x || '').trim()).filter(Boolean)
+    : DEFAULT_MEMBERSHIP_PANEL.lines.slice();
+  return {
+    visible: src.visible === true || src.visible === 1 || src.visible === '1',
+    title:
+      String(src.title || DEFAULT_MEMBERSHIP_PANEL.title).trim() ||
+      DEFAULT_MEMBERSHIP_PANEL.title,
+    lines: lines.length ? lines : DEFAULT_MEMBERSHIP_PANEL.lines.slice(),
+    footer: String(
+      src.footer != null ? src.footer : DEFAULT_MEMBERSHIP_PANEL.footer
+    ).trim(),
+    updateTimeMs: Number(src.updateTimeMs) || 0
+  };
+}
+
+async function getMembershipPanelConfig() {
+  try {
+    const got = await db.collection('oc_app_config').doc('membership_panel').get();
+    return {
+      ok: true,
+      membershipPanel: normalizeMembershipPanel((got && got.data) || {}),
+      apiVer: 'feedbackApi-membership-panel-v1'
+    };
+  } catch (e) {
+    return {
+      ok: true,
+      membershipPanel: normalizeMembershipPanel(DEFAULT_MEMBERSHIP_PANEL),
+      warn:
+        '配置未找到时用默认（请新建集合 oc_app_config，文档 id=membership_panel）',
+      apiVer: 'feedbackApi-membership-panel-v1'
+    };
+  }
+}
+
+async function setMembershipPanelConfig(body) {
+  const next = normalizeMembershipPanel({
+    visible: body && body.visible,
+    title: body && body.title,
+    lines:
+      typeof (body && body.linesText) === 'string'
+        ? String(body.linesText)
+            .split(/\r?\n/)
+            .map((x) => x.trim())
+            .filter(Boolean)
+        : body && body.lines,
+    footer: body && body.footer
+  });
+  next.updateTimeMs = Date.now();
+  try {
+    await db.collection('oc_app_config').doc('membership_panel').set({
+      data: next
+    });
+  } catch (e) {
+    return {
+      ok: false,
+      err:
+        String((e && (e.message || e.errMsg)) || e) +
+        '（请先新建集合 oc_app_config，权限：所有用户不可读写）'
+    };
+  }
+  return {
+    ok: true,
+    membershipPanel: next,
+    apiVer: 'feedbackApi-membership-panel-v1'
+  };
+}
+
+async function resolveUserQuotaDoc(openidRaw) {
+  const openid = String(openidRaw || '').trim();
+  if (!openid) return { ok: false, err: '缺少 openid' };
+  let doc = null;
+  try {
+    const byId = await db.collection('user_quota').doc(openid).get();
+    if (byId && byId.data && Object.keys(byId.data).length) {
+      doc = Object.assign({ _id: openid }, byId.data);
+    }
+  } catch (_) {}
+  if (!doc) {
+    try {
+      const res = await db
+        .collection('user_quota')
+        .where({ openid: openid })
+        .limit(2)
+        .get();
+      if (res && res.data && res.data.length > 1) {
+        return {
+          ok: false,
+          err: '匹配到多条额度记录，请用完整 openid'
+        };
+      }
+      if (res && res.data && res.data.length) doc = res.data[0];
+    } catch (_) {}
+  }
+  if (!doc) {
+    // 开通时可新建
+    return { ok: true, openid: openid, doc: null };
+  }
+  return { ok: true, openid: openid, doc: doc };
+}
+
+function computeVipExpireAdmin(quota, vipDays, permanent) {
+  const now = Date.now();
+  if (permanent || vipDays <= 0) return 0;
+  const curExp = Number((quota && quota.vipExpireAt) || 0);
+  const curVip = isVipActiveRow(quota);
+  if (curVip && curExp === 0) return 0;
+  const start = curVip && curExp > now ? curExp : now;
+  return start + vipDays * DAY_MS;
+}
+
+/**
+ * 管理端开通/关闭会员（日常开通仍以兑换码为主）
+ */
+async function setUserVip(openidRaw, options) {
+  const confirmPassword = String(
+    (options && (options.confirmPassword || options.password || options.confirmPwd)) ||
+      ''
+  ).trim();
+  if (confirmPassword !== VIP_CONFIRM_PASSWORD) {
+    return { ok: false, err: '确认密码错误' };
+  }
+  const enable =
+    options &&
+    (options.enable === true ||
+      options.enable === 1 ||
+      options.enable === '1' ||
+      options.action === 'open');
+  const found = await resolveUserQuotaDoc(openidRaw);
+  if (!found.ok) return found;
+  const openid = found.openid;
+  const permanent = !!(options && (options.permanent === true || options.permanent === 1));
+  const vipDays = Math.max(0, Math.floor(Number((options && options.vipDays) || 0) || 0));
+
+  if (enable) {
+    if (!permanent && vipDays <= 0) {
+      return { ok: false, err: '开通会员需填写天数，或勾选永久' };
+    }
+    const base = found.doc || {
+      openid: openid,
+      extraRounds: 0,
+      redeemedTotal: 0,
+      extraConsumed: 0,
+      isVip: false,
+      vipExpireAt: 0
+    };
+    const vipExpireAt = computeVipExpireAdmin(base, vipDays, permanent);
+    const patch = {
+      openid: openid,
+      isVip: true,
+      vipPaused: false,
+      vipExpireAt: vipExpireAt,
+      freeAllowed: FREE_WEEKLY_ROUNDS,
+      updateTimeMs: Date.now(),
+      adminVipNote: String((options && options.note) || 'admin open vip').slice(0, 200)
+    };
+    if (!found.doc) {
+      await db.collection('user_quota').doc(openid).set({
+        data: Object.assign(
+          {
+            freeUsed: 0,
+            freeAllowed: FREE_WEEKLY_ROUNDS,
+            weekKey: '',
+            createTimeMs: Date.now()
+          },
+          base,
+          patch
+        )
+      });
+    } else {
+      await db.collection('user_quota').doc(found.doc._id).update({ data: patch });
+    }
+    return {
+      ok: true,
+      openid: openid,
+      isVip: true,
+      vipExpireAt: vipExpireAt,
+      permanent: permanent || vipExpireAt === 0,
+      apiVer: 'feedbackApi-user-vip-v1'
+    };
+  }
+
+  // 关闭会员
+  if (!found.doc || !found.doc._id) {
+    return { ok: false, err: '未找到该用户额度记录' };
+  }
+  await db.collection('user_quota').doc(found.doc._id).update({
+    data: {
+      isVip: false,
+      vipPaused: false,
+      vipExpireAt: 0,
+      freeAllowed: FREE_WEEKLY_ROUNDS,
+      updateTimeMs: Date.now(),
+      adminVipNote: String((options && options.note) || 'admin close vip').slice(0, 200)
+    }
+  });
+  return {
+    ok: true,
+    openid: openid,
+    isVip: false,
+    vipPaused: false,
+    vipExpireAt: 0,
+    apiVer: 'feedbackApi-user-vip-v1'
+  };
+}
+
+/**
+ * 暂停会员权益（保留到期时间，可恢复）
+ */
+async function pauseUserVip(openidRaw, options) {
+  const confirmPassword = String(
+    (options && (options.confirmPassword || options.password || options.confirmPwd)) ||
+      ''
+  ).trim();
+  if (confirmPassword !== VIP_CONFIRM_PASSWORD) {
+    return { ok: false, err: '确认密码错误' };
+  }
+  const found = await resolveUserQuotaDoc(openidRaw);
+  if (!found.ok) return found;
+  if (!found.doc || !found.doc._id) {
+    return { ok: false, err: '未找到该用户额度记录' };
+  }
+  if (!isVipRecordRow(found.doc)) {
+    return { ok: false, err: '该用户当前不是会员，无法暂停' };
+  }
+  await db.collection('user_quota').doc(found.doc._id).update({
+    data: {
+      vipPaused: true,
+      freeAllowed: FREE_WEEKLY_ROUNDS,
+      updateTimeMs: Date.now(),
+      adminVipNote: String((options && options.note) || 'admin pause vip').slice(0, 200)
+    }
+  });
+  return {
+    ok: true,
+    openid: found.openid,
+    isVip: false,
+    vipPaused: true,
+    vipExpireAt: Number(found.doc.vipExpireAt) || 0,
+    apiVer: 'feedbackApi-user-vip-pause-v1'
+  };
+}
+
+/**
+ * 恢复已暂停的会员权益
+ */
+async function resumeUserVip(openidRaw, options) {
+  const confirmPassword = String(
+    (options && (options.confirmPassword || options.password || options.confirmPwd)) ||
+      ''
+  ).trim();
+  if (confirmPassword !== VIP_CONFIRM_PASSWORD) {
+    return { ok: false, err: '确认密码错误' };
+  }
+  const found = await resolveUserQuotaDoc(openidRaw);
+  if (!found.ok) return found;
+  if (!found.doc || !found.doc._id) {
+    return { ok: false, err: '未找到该用户额度记录' };
+  }
+  const row = found.doc;
+  if (!(row.isVip === true || row.isVip === 1 || row.isVip === '1')) {
+    return { ok: false, err: '该用户没有可恢复的会员记录' };
+  }
+  const exp = Number(row.vipExpireAt) || 0;
+  if (exp > 0 && Date.now() > exp) {
+    return { ok: false, err: '会员已过期，请重新开通' };
+  }
+  await db.collection('user_quota').doc(row._id).update({
+    data: {
+      vipPaused: false,
+      freeAllowed: FREE_WEEKLY_ROUNDS,
+      updateTimeMs: Date.now(),
+      adminVipNote: String((options && options.note) || 'admin resume vip').slice(0, 200)
+    }
+  });
+  return {
+    ok: true,
+    openid: found.openid,
+    isVip: true,
+    vipPaused: false,
+    vipExpireAt: exp,
+    apiVer: 'feedbackApi-user-vip-pause-v1'
+  };
+}
+
+function normalizeAppFeatures(raw) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  return {
+    imgSecCheckEnabled:
+      src.imgSecCheckEnabled === true ||
+      src.imgSecCheckEnabled === 1 ||
+      src.imgSecCheckEnabled === '1',
+    updateTimeMs: Number(src.updateTimeMs) || 0
+  };
+}
+
+async function getAppFeaturesConfig() {
+  try {
+    const got = await db.collection('oc_app_config').doc('app_features').get();
+    return {
+      ok: true,
+      features: normalizeAppFeatures((got && got.data) || {}),
+      apiVer: 'feedbackApi-app-features-v1'
+    };
+  } catch (e) {
+    return {
+      ok: true,
+      features: normalizeAppFeatures({}),
+      warn:
+        '配置未找到时默认关闭图片审核（请确认集合 oc_app_config 存在）',
+      apiVer: 'feedbackApi-app-features-v1'
+    };
+  }
+}
+
+async function setAppFeaturesConfig(body) {
+  const prev = await getAppFeaturesConfig();
+  const next = normalizeAppFeatures((prev && prev.features) || {});
+  if (body && Object.prototype.hasOwnProperty.call(body, 'imgSecCheckEnabled')) {
+    next.imgSecCheckEnabled =
+      body.imgSecCheckEnabled === true ||
+      body.imgSecCheckEnabled === 1 ||
+      body.imgSecCheckEnabled === '1' ||
+      body.imgSecCheckEnabled === 'true';
+  }
+  next.updateTimeMs = Date.now();
+  try {
+    await db.collection('oc_app_config').doc('app_features').set({
+      data: next
+    });
+  } catch (e) {
+    return {
+      ok: false,
+      err:
+        String((e && (e.message || e.errMsg)) || e) +
+        '（请先新建集合 oc_app_config，权限：所有用户不可读写）'
+    };
+  }
+  return {
+    ok: true,
+    features: next,
+    apiVer: 'feedbackApi-app-features-v1'
   };
 }
 
@@ -1078,6 +1779,220 @@ async function diagUsage() {
   };
 }
 
+async function getCloudDoc(colName, docId) {
+  try {
+    const res = await db.collection(colName).doc(docId).get();
+    if (res && res.data && Object.keys(res.data).length) {
+      return Object.assign({ _id: docId }, res.data);
+    }
+  } catch (_) {}
+  return null;
+}
+
+function summarizeNotebook(doc) {
+  if (!doc) return null;
+  const favs = Array.isArray(doc.favorites) ? doc.favorites : [];
+  const deleted = Array.isArray(doc.deletedOcIds) ? doc.deletedOcIds : [];
+  const names = favs.slice(0, 8).map((f) => {
+    const n = f && f.result && f.result.name ? String(f.result.name) : '';
+    return n || '(未命名)';
+  });
+  return {
+    openid: doc.openid || doc._id || '',
+    ocCount: favs.length,
+    familyCount: Array.isArray(doc.families) ? doc.families.length : 0,
+    deletedCount: deleted.length,
+    ocNamesPreview: names,
+    updatedAt: Number(doc.updatedAt) || 0,
+    syncedAt: Number(doc.syncedAt) || 0
+  };
+}
+
+function summarizeChatMeta(doc) {
+  if (!doc) return null;
+  const ocSessions = doc.ocSessions && typeof doc.ocSessions === 'object' ? doc.ocSessions : {};
+  const ocIds = Object.keys(ocSessions);
+  let sessionCount = 0;
+  ocIds.forEach((id) => {
+    const list = ocSessions[id];
+    if (Array.isArray(list)) sessionCount += list.length;
+  });
+  return {
+    openid: doc.openid || doc._id || '',
+    ocWithChat: ocIds.length,
+    sessionCount: sessionCount,
+    hiddenOcCount: Array.isArray(doc.hiddenOcIds) ? doc.hiddenOcIds.length : 0,
+    updatedAt: Number(doc.updatedAt) || 0,
+    syncedAt: Number(doc.syncedAt) || 0
+  };
+}
+
+async function listUserDataBackups(limit, openidKeyword) {
+  const n = Math.min(100, Math.max(1, Number(limit) || 50));
+  const kw = String(openidKeyword || '')
+    .trim()
+    .replace(/\s+/g, '');
+  let list = [];
+  let warn = '';
+
+  if (kw) {
+    const doc = await getCloudDoc('user_notebook', kw);
+    if (doc) {
+      list = [doc];
+    } else {
+      try {
+        const res = await db
+          .collection('user_notebook')
+          .where({
+            openid: db.RegExp({
+              regexp: kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+              options: 'i'
+            })
+          })
+          .limit(20)
+          .get();
+        list = (res && res.data) || [];
+      } catch (e) {
+        return {
+          ok: false,
+          err: String((e && (e.message || e.errMsg)) || e),
+          list: [],
+          apiVer: 'feedbackApi-user-data-v1'
+        };
+      }
+      if (!list.length) warn = '未找到匹配用户：' + kw;
+    }
+  } else {
+    try {
+      const res = await db
+        .collection('user_notebook')
+        .orderBy('syncedAt', 'desc')
+        .limit(n)
+        .get();
+      list = (res && res.data) || [];
+    } catch (e1) {
+      if (isCollectionMissingError(e1)) {
+        return {
+          ok: true,
+          list: [],
+          warn:
+            '集合 user_notebook 不存在：请部署 userDataSync 云函数，并在控制台新建该集合（仅云函数可读写）',
+          apiVer: 'feedbackApi-user-data-v1'
+        };
+      }
+      try {
+        const res2 = await db.collection('user_notebook').limit(n).get();
+        list = ((res2 && res2.data) || []).slice();
+        list.sort(
+          (a, b) => (Number(b.syncedAt) || Number(b.updatedAt) || 0) - (Number(a.syncedAt) || Number(a.updatedAt) || 0)
+        );
+        warn = 'user_notebook 排序已降级（可为 syncedAt 建降序索引）';
+      } catch (e2) {
+        return {
+          ok: false,
+          err: String((e2 && (e2.message || e2.errMsg)) || e2),
+          list: [],
+          apiVer: 'feedbackApi-user-data-v1'
+        };
+      }
+    }
+  }
+
+  const rows = [];
+  for (let i = 0; i < list.length; i++) {
+    const nb = list[i];
+    const openid = String((nb && (nb.openid || nb._id)) || '').trim();
+    if (!openid) continue;
+    const chatMeta = await getCloudDoc('user_chat_meta', openid);
+    rows.push({
+      openid: openid,
+      notebook: summarizeNotebook(nb),
+      chatMeta: summarizeChatMeta(chatMeta)
+    });
+  }
+  return {
+    ok: true,
+    list: rows,
+    warn,
+    keyword: kw || undefined,
+    apiVer: 'feedbackApi-user-data-v1'
+  };
+}
+
+function sessionDocIdAdmin(openid, ocId, sessionId) {
+  const a = String(openid || '').slice(0, 40);
+  const b = String(ocId || '').replace(/[^\w\-]/g, '').slice(0, 40);
+  const c = String(sessionId || 'default').replace(/[^\w\-]/g, '').slice(0, 40);
+  return a + '_dm_' + b + '_' + c;
+}
+
+async function getUserDataBackup(openidRaw) {
+  const openid = String(openidRaw || '').trim();
+  if (!openid) return { ok: false, err: '缺少 openid' };
+
+  const notebook = await getCloudDoc('user_notebook', openid);
+  const chatMetaDoc = await getCloudDoc('user_chat_meta', openid);
+  const chatSessions = [];
+  const ocSessions =
+    chatMetaDoc && chatMetaDoc.ocSessions && typeof chatMetaDoc.ocSessions === 'object'
+      ? chatMetaDoc.ocSessions
+      : {};
+  const ocIds = Object.keys(ocSessions);
+  let fetched = 0;
+  for (let i = 0; i < ocIds.length && fetched < 24; i++) {
+    const ocId = ocIds[i];
+    const sessions = Array.isArray(ocSessions[ocId]) ? ocSessions[ocId] : [];
+    for (let j = 0; j < sessions.length && fetched < 24; j++) {
+      const sid = (sessions[j] && sessions[j].id) || 'default';
+      const docId = sessionDocIdAdmin(openid, ocId, sid);
+      const msgDoc = await getCloudDoc('user_chat_msgs', docId);
+      fetched += 1;
+      chatSessions.push({
+        ocId: ocId,
+        sessionId: sid,
+        title: (sessions[j] && sessions[j].title) || '对话',
+        messageCount: msgDoc && Array.isArray(msgDoc.messages) ? msgDoc.messages.length : 0,
+        updatedAt: msgDoc ? Number(msgDoc.updatedAt) || 0 : 0,
+        messages: msgDoc && Array.isArray(msgDoc.messages) ? msgDoc.messages.slice(-40) : [],
+        memory: msgDoc ? String(msgDoc.memory || '').slice(0, 400) : ''
+      });
+    }
+  }
+
+  if (!notebook && !chatMetaDoc && !chatSessions.length) {
+    return { ok: false, err: '该用户暂无云同步数据' };
+  }
+
+  return {
+    ok: true,
+    openid: openid,
+    notebook: notebook
+      ? {
+          favorites: (notebook.favorites || []).map((f) => ({
+            id: f && f.id,
+            name: f && f.result && f.result.name,
+            time: f && f.time,
+            source: f && f.source
+          })),
+          families: notebook.families || [],
+          deletedOcIds: notebook.deletedOcIds || [],
+          updatedAt: Number(notebook.updatedAt) || 0,
+          syncedAt: Number(notebook.syncedAt) || 0
+        }
+      : null,
+    chatMeta: chatMetaDoc
+      ? {
+          ocSessions: chatMetaDoc.ocSessions || {},
+          hiddenOcIds: chatMetaDoc.hiddenOcIds || [],
+          updatedAt: Number(chatMetaDoc.updatedAt) || 0,
+          syncedAt: Number(chatMetaDoc.syncedAt) || 0
+        }
+      : null,
+    chatSessions: chatSessions,
+    apiVer: 'feedbackApi-user-data-v1'
+  };
+}
+
 exports.main = async (event) => {
   const ev = normalizeEvent(event);
   const method = (ev.httpMethod || ev.method || event.httpMethod || 'POST').toUpperCase();
@@ -1183,6 +2098,124 @@ exports.main = async (event) => {
     }
   }
 
+  if (
+    action === 'userVipSet' ||
+    action === 'userVipOpen' ||
+    action === 'userVipClose' ||
+    action === 'setUserVip'
+  ) {
+    try {
+      const enable =
+        action === 'userVipClose'
+          ? false
+          : action === 'userVipOpen'
+            ? true
+            : body.enable !== false && body.enable !== 0 && body.enable !== '0';
+      const data = await setUserVip(body.openid || body.userId || body.id || '', {
+        enable: enable,
+        vipDays: body.vipDays,
+        permanent: body.permanent,
+        note: body.note,
+        confirmPassword:
+          body.confirmPassword || body.password || body.confirmPwd || ''
+      });
+      if (!data.ok) return httpResp(400, data);
+      return httpResp(200, data);
+    } catch (e) {
+      return httpResp(500, { ok: false, err: String(e.message || e) });
+    }
+  }
+
+  if (
+    action === 'userVipPause' ||
+    action === 'pauseUserVip' ||
+    action === 'vipPause'
+  ) {
+    try {
+      const data = await pauseUserVip(body.openid || body.userId || body.id || '', {
+        note: body.note,
+        confirmPassword:
+          body.confirmPassword || body.password || body.confirmPwd || ''
+      });
+      if (!data.ok) return httpResp(400, data);
+      return httpResp(200, data);
+    } catch (e) {
+      return httpResp(500, { ok: false, err: String(e.message || e) });
+    }
+  }
+
+  if (
+    action === 'userVipResume' ||
+    action === 'resumeUserVip' ||
+    action === 'vipResume'
+  ) {
+    try {
+      const data = await resumeUserVip(body.openid || body.userId || body.id || '', {
+        note: body.note,
+        confirmPassword:
+          body.confirmPassword || body.password || body.confirmPwd || ''
+      });
+      if (!data.ok) return httpResp(400, data);
+      return httpResp(200, data);
+    } catch (e) {
+      return httpResp(500, { ok: false, err: String(e.message || e) });
+    }
+  }
+
+  if (
+    action === 'membershipPanelGet' ||
+    action === 'getMembershipPanel' ||
+    action === 'appConfigGet'
+  ) {
+    try {
+      const data = await getMembershipPanelConfig();
+      return httpResp(200, data);
+    } catch (e) {
+      return httpResp(500, { ok: false, err: String(e.message || e) });
+    }
+  }
+
+  if (
+    action === 'membershipPanelSet' ||
+    action === 'setMembershipPanel' ||
+    action === 'appConfigSet'
+  ) {
+    try {
+      const data = await setMembershipPanelConfig(body || {});
+      if (!data.ok) return httpResp(400, data);
+      return httpResp(200, data);
+    } catch (e) {
+      return httpResp(500, { ok: false, err: String(e.message || e) });
+    }
+  }
+
+  if (
+    action === 'appFeaturesGet' ||
+    action === 'getAppFeatures' ||
+    action === 'featuresGet'
+  ) {
+    try {
+      const data = await getAppFeaturesConfig();
+      return httpResp(200, data);
+    } catch (e) {
+      return httpResp(500, { ok: false, err: String(e.message || e) });
+    }
+  }
+
+  if (
+    action === 'appFeaturesSet' ||
+    action === 'setAppFeatures' ||
+    action === 'featuresSet'
+  ) {
+    try {
+      const data = await setAppFeaturesConfig(body || {});
+      if (!data.ok) return httpResp(400, data);
+      return httpResp(200, data);
+    } catch (e) {
+      return httpResp(500, { ok: false, err: String(e.message || e) });
+    }
+  }
+
   // —— 兑换码管理（不影响现有广告/分享额度模式）——
   if (action === 'redeemList' || action === 'redeemCodes') {
     try {
@@ -1196,7 +2229,12 @@ exports.main = async (event) => {
   if (action === 'redeemCreate') {
     try {
       const data = await createRedeemCodes({
+        kind: body.kind,
         rounds: body.rounds,
+        weeklyRounds: body.weeklyRounds,
+        roundsExpireDays: body.roundsExpireDays,
+        vipDays: body.vipDays,
+        permanent: body.permanent,
         count: body.count,
         maxUses: body.maxUses,
         note: body.note
@@ -1229,7 +2267,32 @@ exports.main = async (event) => {
     try {
       const data = await listRedeemLogs(
         body.limit || 50,
-        body.openid || body.userId || body.keyword || body.q || body.code || ''
+        body.openid || body.userId || body.keyword || body.q || body.code || '',
+        {
+          fromMs: body.fromMs != null ? body.fromMs : body.from,
+          toMs: body.toMs != null ? body.toMs : body.to
+        }
+      );
+      return httpResp(200, data);
+    } catch (e) {
+      return httpResp(500, { ok: false, err: String(e.message || e) });
+    }
+  }
+
+  if (
+    action === 'payLogs' ||
+    action === 'virtualOrders' ||
+    action === 'listVirtualOrders' ||
+    action === 'rechargeLogs'
+  ) {
+    try {
+      const data = await listVirtualPayOrders(
+        body.limit || 80,
+        body.openid || body.userId || body.keyword || body.q || body.outTradeNo || '',
+        {
+          fromMs: body.fromMs != null ? body.fromMs : body.from,
+          toMs: body.toMs != null ? body.toMs : body.to
+        }
       );
       return httpResp(200, data);
     } catch (e) {
@@ -1241,6 +2304,37 @@ exports.main = async (event) => {
     try {
       const data = await listShareLogs(
         body.limit || 50,
+        body.openid || body.userId || body.keyword || body.q || ''
+      );
+      return httpResp(200, data);
+    } catch (e) {
+      return httpResp(500, { ok: false, err: String(e.message || e) });
+    }
+  }
+
+  if (
+    action === 'userDataList' ||
+    action === 'userDataBackups' ||
+    action === 'listUserData'
+  ) {
+    try {
+      const data = await listUserDataBackups(
+        body.limit || 50,
+        body.openid || body.userId || body.keyword || body.q || ''
+      );
+      return httpResp(200, data);
+    } catch (e) {
+      return httpResp(500, { ok: false, err: String(e.message || e) });
+    }
+  }
+
+  if (
+    action === 'userDataGet' ||
+    action === 'userDataDetail' ||
+    action === 'getUserData'
+  ) {
+    try {
+      const data = await getUserDataBackup(
         body.openid || body.userId || body.keyword || body.q || ''
       );
       return httpResp(200, data);

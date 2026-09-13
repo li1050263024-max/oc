@@ -61,6 +61,9 @@
           <view class="pixel-btn btn-wire-secondary chapter-action-btn" catchtap="onShareChapter">
             <text class="btn-action-text">分享</text>
           </view>
+          <view class="pixel-btn btn-wire-secondary chapter-action-btn" catchtap="onMoveCollection">
+            <text class="btn-action-text">移动故事集</text>
+          </view>
         </view>
       </block>
     </view>
@@ -90,6 +93,7 @@
   <view class="story-sheet" wx:if="{{continueSheetVisible}}">
     <text class="story-sheet-title">继续创作</text>
     <text class="story-sheet-sub">将整理上文梗概并结合你的方向续写，保存为新章节（标题自动追加【2】等），生成后进入章节页</text>
+    <text class="story-sheet-sub" wx:if="{{continueCostHint}}" style="margin-top:8rpx;opacity:0.75">{{continueCostHint}}</text>
     <textarea
       class="story-sheet-input"
       value="{{continueInput}}"

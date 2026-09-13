@@ -4,11 +4,8 @@
   <view class="notebook-toolbar-float" style="{{toolbarFloatStyle}}">
     <view class="notebook-toolbar-inner">
       <block wx:if="{{!manageMode}}">
-        <view class="notebook-tool-btn oc-chip-btn" catchtap="onImportNotebook">
-          <text class="oc-chip-btn-text">导入</text>
-        </view>
-        <view class="notebook-tool-btn oc-chip-btn" catchtap="onExportNotebook">
-          <text class="oc-chip-btn-text">导出全部</text>
+        <view class="notebook-tool-btn oc-chip-btn" catchtap="onRestoreBackup">
+          <text class="oc-chip-btn-text">恢复备份</text>
         </view>
         <view class="notebook-tool-btn oc-chip-btn" catchtap="onToggleManageMode" wx:if="{{list.length}}">
           <text class="oc-chip-btn-text">管理</text>
@@ -16,7 +13,7 @@
       </block>
       <block wx:else>
         <view class="notebook-tool-btn oc-chip-btn" catchtap="onSelectAllOc">
-          <text class="oc-chip-btn-text">{{selectedCount >= list.length ? '取消全选' : '全选'}}</text>
+          <text class="oc-chip-btn-text">{{selectedCount >= displayList.length ? '取消全选' : '全选'}}</text>
         </view>
         <view class="notebook-tool-btn oc-chip-btn notebook-tool-btn--danger {{selectedCount ? '' : 'notebook-tool-btn--disabled'}}" catchtap="onBatchDeleteOc">
           <text class="oc-chip-btn-text">删除{{selectedCount ? '(' + selectedCount + ')' : ''}}</text>
@@ -31,20 +28,44 @@
     <scroll-view class="notebook-panel" scroll-y show-scrollbar="{{false}}">
       <view class="notebook-panel-inner">
         <view class="nb-backup-tip">
-          <text class="nb-backup-tip-text" wx:if="{{!manageMode}}">为防止意外丢失，可使用上方「导入 / 导出」提前备份设定本数据。</text>
-          <text class="nb-backup-tip-text" wx:else>已选 {{selectedCount}} / {{list.length}}，可多选后批量删除。</text>
+          <text class="nb-backup-tip-text" wx:if="{{!manageMode}}">设定本最多 {{maxNotebookOcs}} 个 OC；文字设定会同步云端，图片仍在本机。点「恢复备份」可查看云端 OC、导入导出，并恢复已删除项（已删除仅保留 7 天）。</text>
+          <text class="nb-backup-tip-text" wx:else>已选 {{selectedCount}} / {{displayList.length}}，可多选后批量删除。</text>
+        </view>
+
+        <view class="nb-filter-row" wx:if="{{!manageMode}}">
+          <view
+            class="nb-filter-btn {{filterMode === 'all' ? 'nb-filter-btn--on' : ''}}"
+            data-mode="all"
+            catchtap="onFilterTap"
+          >
+            <text class="nb-filter-btn-text">全部 OC</text>
+          </view>
+          <view
+            class="nb-filter-btn {{filterMode === 'starred' ? 'nb-filter-btn--on' : ''}}"
+            data-mode="starred"
+            catchtap="onFilterTap"
+          >
+            <text class="nb-filter-btn-text">收藏 OC</text>
+          </view>
+          <view
+            class="nb-filter-btn"
+            data-mode="family"
+            catchtap="onFilterTap"
+          >
+            <text class="nb-filter-btn-text">OC 家族</text>
+          </view>
         </view>
 
         <view class="card-grid">
-          <view class="nb-card nb-card-add" bindtap="onAddOc" wx:if="{{!manageMode}}">
+          <view class="nb-card nb-card-add" bindtap="onAddOc" wx:if="{{!manageMode && filterMode === 'all'}}">
             <view class="add-icon">+</view>
             <text class="add-title">添加你的 OC</text>
             <text class="add-hint">粘贴文本自动识别，或从零手写创建</text>
           </view>
 
           <view
-            class="nb-card nb-card-oc {{expandedOcIds[item.id] ? 'nb-card-oc--expanded' : ''}} {{manageMode && selectedMap[item.id] ? 'nb-card-oc--selected' : ''}}"
-            wx:for="{{list}}"
+            class="nb-card nb-card-oc {{expandedOcIds[item.id] ? 'nb-card-oc--expanded' : ''}} {{manageMode && selectedMap[item.id] ? 'nb-card-oc--selected' : ''}} {{item.notebookPinned ? 'nb-card-oc--pinned' : ''}}"
+            wx:for="{{displayList}}"
             wx:key="id"
           >
             <view
@@ -66,7 +87,11 @@
                     <image class="oc-thumb-img" src="{{portraitPlaceholder}}" mode="aspectFill" />
                   </view>
                   <view class="oc-card-head">
-                    <text class="oc-name">{{item.name}}</text>
+                    <view class="oc-name-row">
+                      <text class="oc-name">{{item.name}}</text>
+                      <text class="oc-badge oc-badge--pin" wx:if="{{item.notebookPinned}}">置顶</text>
+                      <text class="oc-badge oc-badge--star" wx:if="{{item.notebookStarred}}">收藏</text>
+                    </view>
                     <text class="oc-race">{{item.race}}</text>
                   </view>
                 </view>
@@ -95,6 +120,14 @@
                 </view>
               </view>
               <view class="nb-card-footer-row" wx:if="{{!manageMode}}">
+                <view class="nb-card-quick-actions">
+                  <view class="nb-quick-btn oc-chip-btn" catchtap="onToggleStarOc" data-id="{{item.id}}">
+                    <text class="oc-chip-btn-text">{{item.notebookStarred ? '取消收藏' : '收藏'}}</text>
+                  </view>
+                  <view class="nb-quick-btn oc-chip-btn" catchtap="onTogglePinOc" data-id="{{item.id}}">
+                    <text class="oc-chip-btn-text">{{item.notebookPinned ? '取消置顶' : '置顶'}}</text>
+                  </view>
+                </view>
                 <view class="nb-card-chevron-wrap" catchtap="onToggleOcCard" data-id="{{item.id}}">
                   <view
                     class="nb-card-chevron {{expandedOcIds[item.id] ? 'nb-card-chevron--open' : ''}}"
@@ -103,6 +136,9 @@
               </view>
             </view>
             <view class="nb-card-actions" wx:if="{{!manageMode && expandedOcIds[item.id]}}">
+              <view class="nb-action-btn oc-chip-btn" catchtap="onAddOcToFamily" data-id="{{item.id}}">
+                <text class="oc-chip-btn-text">加入家族</text>
+              </view>
               <view class="nb-action-btn oc-chip-btn" catchtap="onOcChat" data-id="{{item.id}}">
                 <text class="oc-chip-btn-text">OC对话</text>
               </view>
@@ -128,8 +164,11 @@
           </view>
         </view>
 
-        <view class="empty-hint" wx:if="{{list.length === 0}}">
+        <view class="empty-hint" wx:if="{{!displayList.length && filterMode === 'all'}}">
           <text>还没有已保存的 OC，点击上方卡片开始创建</text>
+        </view>
+        <view class="empty-hint" wx:elif="{{!displayList.length && filterMode === 'starred'}}">
+          <text>还没有收藏的 OC，可在卡片上点「收藏」</text>
         </view>
       </view>
     </scroll-view>

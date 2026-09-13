@@ -33,7 +33,12 @@ function initCloud() {
                 name !== 'submitFeedback' &&
                 name !== 'listMyFeedback' &&
                 name !== 'feedbackApi' &&
-                name !== 'redeemCode'
+                name !== 'redeemCode' &&
+                name !== 'userDataSync' &&
+                name !== 'virtualPay' &&
+                name !== 'fetchRemoteAudio' &&
+                name !== 'manageOcDouyinBgm' &&
+                name !== 'imgSecCheck'
               ) {
                 require('./usageReport.js').trackApiCall(name);
               }

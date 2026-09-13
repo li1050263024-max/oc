@@ -4,14 +4,21 @@
 const defaultPools = require('../data/pools.js');
 const { normalizeResult, personalityBlend, quirkBlend, pad3 } = require('./ocResult.js');
 const { pickAge } = require('./coherentGacha.js');
+const { namesPoolWithoutUsed, ensureUniqueOcName } = require('./favorite.js');
 
 function pickOne(arr) {
   if (!arr || arr.length === 0) return '';
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+function withUniqueNames(pools) {
+  const p = pools && pools.names ? { ...pools } : { ...defaultPools };
+  p.names = namesPoolWithoutUsed(p.names || defaultPools.names || []);
+  return p;
+}
+
 function draw(pools) {
-  const p = pools && pools.names ? pools : defaultPools;
+  const p = withUniqueNames(pools);
   const personalities = pad3([
     pickOne(p.personalities),
     pickOne(p.personalities),
@@ -24,7 +31,7 @@ function draw(pools) {
   }
   const quirks = pad3([q0, q1, '']);
   return {
-    name: pickOne(p.names),
+    name: ensureUniqueOcName(pickOne(p.names), p.names),
     race: pickOne(p.races),
     gender: pickOne(p.genders || ['男', '女', '无性别']),
     age: pickAge(p, new Set()),
@@ -38,7 +45,7 @@ function draw(pools) {
 
 function drawPartial(currentResult, locked, pools) {
   if (!currentResult || !locked) return normalizeResult(currentResult || draw(pools));
-  const p = pools && pools.names ? pools : defaultPools;
+  const p = withUniqueNames(pools);
   const next = normalizeResult(currentResult);
   const scalarKeys = {
     name: 'names',
@@ -56,6 +63,9 @@ function drawPartial(currentResult, locked, pools) {
       }
     }
   });
+  if (locked.name !== true) {
+    next.name = ensureUniqueOcName(next.name, p.names);
+  }
   if (locked.age !== true) next.age = pickAge(p, new Set());
   for (let i = 0; i < 3; i++) {
     if (locked['personality' + i] !== true) {

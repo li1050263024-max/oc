@@ -1,0 +1,9 @@
+{
+  "name": "fetchRemoteAudio",
+  "version": "1.0.0",
+  "main": "index.js",
+  "description": "下载网络音频并上传云存储，供抖音 BGM 播放（无需配置下载域名）",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

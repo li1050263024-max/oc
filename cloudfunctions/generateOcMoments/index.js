@@ -1,5 +1,4 @@
-const https = require('https');
-
+const { chatCompletions } = require('./aiText.js');
 const SYSTEM_PROMPT =
   '你是【独立的中文二次元 OC 角色】，正在发微信朋友圈。' +
   '你必须严格扮演 user 消息里给出的「角色名」那一人，与其他任何 OC 都是不同个体，不得共用同一条文案、不得串人设。' +
@@ -24,49 +23,6 @@ const REPLY_SYSTEM =
   '你是微信朋友圈里的 OC 角色。用户在评论里回复了你或与你互动，请写一条评论区跟评，5～45 字，口语自然。' +
   '只输出 JSON：{"content":"..."}';
 
-function postJson(hostname, path, headers, body) {
-  const data = JSON.stringify(body);
-  return new Promise((resolve, reject) => {
-    const req = https.request(
-      {
-        hostname,
-        port: 443,
-        path,
-        method: 'POST',
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(data)
-        }
-      },
-      (res) => {
-        let chunks = '';
-        res.on('data', (d) => {
-          chunks += d;
-        });
-        res.on('end', () => {
-          try {
-            const json = JSON.parse(chunks);
-            if (json.error) {
-              reject(new Error(json.error.message || JSON.stringify(json.error)));
-            } else {
-              resolve(json);
-            }
-          } catch (e) {
-            reject(new Error(chunks.slice(0, 200) || e.message));
-          }
-        });
-      }
-    );
-    req.on('error', reject);
-    req.setTimeout(50000, () => {
-      req.destroy();
-      reject(new Error('请求超时'));
-    });
-    req.write(data);
-    req.end();
-  });
-}
 
 function parsePostsFromText(text, postCount) {
   const raw = String(text || '').trim();
@@ -162,10 +118,6 @@ function parseDouyinPostsFromText(text, postCount) {
 }
 
 exports.main = async (event) => {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    return { ok: false, errMsg: '请为云函数配置环境变量 DEEPSEEK_API_KEY' };
-  }
 
   const mode = event && event.mode != null ? String(event.mode).trim() : 'posts';
   const ocSetting = event && event.ocSetting != null ? String(event.ocSetting).trim() : '';
@@ -205,27 +157,11 @@ exports.main = async (event) => {
     }
     userContent += '\n\n请写一条评论，只输出 JSON。';
     try {
-      const result = await postJson(
-        'api.deepseek.com',
-        '/v1/chat/completions',
-        { Authorization: `Bearer ${apiKey}` },
-        {
-          model: 'deepseek-v4-flash',
-          thinking: { type: 'disabled' },
-          messages: [
+      const result = await chatCompletions([
             { role: 'system', content: mode === 'reply' ? REPLY_SYSTEM : COMMENT_SYSTEM },
             { role: 'user', content: userContent.slice(0, 4500) }
-          ],
-          temperature: 0.78,
-          max_tokens: 120,
-          top_p: 0.9
-        }
-      );
-      const text =
-        result.choices &&
-        result.choices[0] &&
-        result.choices[0].message &&
-        result.choices[0].message.content;
+          ], { temperature: 0.78, maxTokens: 120 });
+      const text = result && result.text;
       const posts = parsePostsFromText(text, 1);
       let content = posts.length ? posts[0].content : '';
       if (!content) content = parseCommentPlainText(text);
@@ -279,27 +215,11 @@ exports.main = async (event) => {
     userContent += '\n\n请生成抖音风出镜文案，只输出 JSON。';
 
     try {
-      const result = await postJson(
-        'api.deepseek.com',
-        '/v1/chat/completions',
-        { Authorization: `Bearer ${apiKey}` },
-        {
-          model: 'deepseek-v4-flash',
-          thinking: { type: 'disabled' },
-          messages: [
+      const result = await chatCompletions([
             { role: 'system', content: DOUYIN_SYSTEM },
             { role: 'user', content: userContent.slice(0, 4800) }
-          ],
-          temperature: 0.85,
-          max_tokens: 320,
-          top_p: 0.9
-        }
-      );
-      const text =
-        result.choices &&
-        result.choices[0] &&
-        result.choices[0].message &&
-        result.choices[0].message.content;
+          ], { temperature: 0.85, maxTokens: 320 });
+      const text = result && result.text;
       let posts = parseDouyinPostsFromText(text, postCount);
       if (!posts.length) {
         const plain = parseCommentPlainText(text);
@@ -346,28 +266,12 @@ exports.main = async (event) => {
   }
 
   try {
-    const result = await postJson(
-      'api.deepseek.com',
-      '/v1/chat/completions',
-      { Authorization: `Bearer ${apiKey}` },
-      {
-        model: 'deepseek-v4-flash',
-        thinking: { type: 'disabled' },
-        messages: [
+    const result = await chatCompletions([
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userContent }
-        ],
-        temperature: 0.78,
-        max_tokens: 420,
-        top_p: 0.9
-      }
-    );
+        ], { temperature: 0.78, maxTokens: 420 });
 
-    const text =
-      result.choices &&
-      result.choices[0] &&
-      result.choices[0].message &&
-      result.choices[0].message.content;
+    const text = result && result.text;
 
     let posts = parsePostsFromText(text, postCount);
     if (posts.length > postCount) posts = posts.slice(0, postCount);

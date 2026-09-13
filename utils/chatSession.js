@@ -77,7 +77,11 @@ function listSessions(ocId) {
   migrateLegacyIfNeeded(ocId);
   const raw = wx.getStorageSync(sessionsKey(ocId)) || [];
   if (!Array.isArray(raw)) return [];
-  return raw.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  let list = raw.slice();
+  try {
+    list = require('./ocDeletedIds.js').filterSessions(ocId, list);
+  } catch (_) {}
+  return list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 }
 
 function saveSessions(ocId, sessions) {
@@ -95,6 +99,10 @@ function setMessages(ocId, sessionId, messages) {
   const sid = sessionId || 'default';
   wx.setStorageSync(messagesKey(ocId, sid), messages || []);
   touchSession(ocId, sid, messages);
+  try {
+    const sync = require('./userDataSync.js');
+    if (!sync.isApplyingCloud()) sync.schedulePushChatSession(ocId, sid);
+  } catch (_) {}
 }
 
 function touchSession(ocId, sessionId, messages) {
@@ -204,7 +212,7 @@ function deleteSession(ocId, sessionId) {
   return deleteSessionsBatch(ocId, [sessionId]);
 }
 
-/** @returns {{ ok: boolean, last?: boolean, deleted?: number }} */
+/** @returns {{ ok: boolean, last?: boolean, deleted?: number, recreated?: boolean }} */
 function deleteSessionsBatch(ocId, sessionIds) {
   if (!ocId || !sessionIds || !sessionIds.length) {
     return { ok: false, deleted: 0 };
@@ -217,8 +225,7 @@ function deleteSessionsBatch(ocId, sessionIds) {
   });
   const toDelete = sessions.filter((s) => idSet[s.id]).map((s) => s.id);
   if (!toDelete.length) return { ok: false, deleted: 0 };
-  const remaining = sessions.filter((s) => !idSet[s.id]);
-  if (remaining.length < 1) return { ok: false, last: true, deleted: 0 };
+  let remaining = sessions.filter((s) => !idSet[s.id]);
   toDelete.forEach((id) => {
     try {
       wx.removeStorageSync(messagesKey(ocId, id));
@@ -226,8 +233,34 @@ function deleteSessionsBatch(ocId, sessionIds) {
     clearSessionMemory(ocId, id);
     saveScenario(ocId, id, null);
   });
+  let recreated = false;
+  if (remaining.length < 1) {
+    // 允许删光：自动建一个空对话，避免「部分失败」误报
+    const freshId = 's_' + Date.now();
+    remaining = [
+      {
+        id: freshId,
+        title: '新对话',
+        updatedAt: Date.now(),
+        preview: ''
+      }
+    ];
+    try {
+      wx.setStorageSync(messagesKey(ocId, freshId), []);
+    } catch (_) {}
+    recreated = true;
+  }
   saveSessions(ocId, remaining);
-  return { ok: true, deleted: toDelete.length };
+  try {
+    require('./ocDeletedIds.js').addDeletedSessions(ocId, toDelete);
+  } catch (_) {}
+  try {
+    const sync = require('./userDataSync.js');
+    if (!sync.isApplyingCloud() && typeof sync.flushChatAfterDelete === 'function') {
+      sync.flushChatAfterDelete(ocId, toDelete).catch(() => {});
+    }
+  } catch (_) {}
+  return { ok: true, deleted: toDelete.length, recreated: recreated };
 }
 
 module.exports = {

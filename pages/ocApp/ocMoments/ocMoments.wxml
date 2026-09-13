@@ -1,0 +1,292 @@
+<view class="page oc-page {{uiThemeClass}}">
+  <view class="bg-solid"></view>
+  <scroll-view class="moments-scroll" scroll-y show-scrollbar="{{false}}">
+    <view class="scroll-inner">
+      <view class="moments-cover" catchtap="onChangeCover">
+        <image wx:if="{{coverUrl}}" class="moments-cover-img" src="{{coverUrl}}" mode="aspectFill" />
+        <view wx:else class="moments-cover-bg"></view>
+        <view class="moments-cover-mask"></view>
+
+        <view class="moments-cover-back" catchtap="onGoOcApp" aria-role="button" aria-label="返回">
+          <view class="moments-cover-back-chevron"></view>
+        </view>
+
+        <view
+          class="moments-camera-btn"
+          style="{{cameraBtnStyle}}"
+          catchtap="onTapCamera"
+          aria-role="button"
+          aria-label="发表"
+        >
+          <view class="moments-camera-icon"></view>
+        </view>
+
+        <view class="moments-cover-profile" catchtap="onProfileNop">
+          <image
+            wx:if="{{userAvatarUrl}}"
+            class="moments-cover-avatar"
+            src="{{userAvatarUrl}}"
+            mode="aspectFill"
+          />
+          <view wx:else class="moments-cover-avatar moments-cover-avatar--ph">
+            <text class="moments-cover-avatar-letter">我</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="moments-body">
+        <view class="moments-notify-slot">
+          <view
+            class="moments-reply-notify"
+            wx:if="{{replyNotifyVisible}}"
+            catchtap="onOpenMessageList"
+          >
+            <view class="moments-reply-notify-inner">
+              <image
+                wx:if="{{replyNotifyAvatar}}"
+                class="moments-reply-notify-avatar"
+                src="{{replyNotifyAvatar}}"
+                mode="aspectFill"
+              />
+              <view wx:else class="moments-reply-notify-avatar moments-reply-notify-avatar--ph">
+                <text class="moments-reply-notify-letter">{{replyNotifyLetter}}</text>
+              </view>
+              <text class="moments-reply-notify-text">{{replyNotifyText}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="moments-loading" wx:if="{{showPageLoading || (loading && !feed.length)}}">
+          <view class="moments-loading-dot"></view>
+          <text class="moments-loading-text">正在加载中…</text>
+        </view>
+
+        <view class="moments-empty" wx:elif="{{!generating && !feed.length}}">
+          <text class="moments-empty-text">{{emptyHint}}</text>
+        </view>
+
+        <view class="moment-item" wx:for="{{feed}}" wx:key="id">
+          <view class="moment-head" catchtap="onTapOc" data-oc-id="{{item.isUserPost ? '' : item.ocId}}">
+            <image
+              wx:if="{{item.isUserPost && userAvatarUrl}}"
+              class="moment-avatar"
+              src="{{userAvatarUrl}}"
+              mode="aspectFill"
+            />
+            <image
+              wx:elif="{{!item.isUserPost && (item.avatarDisplay || item.avatarUrl)}}"
+              class="moment-avatar"
+              src="{{item.avatarDisplay || item.avatarUrl}}"
+              mode="aspectFill"
+            />
+            <view wx:else class="moment-avatar moment-avatar--ph {{item.isUserPost ? 'moment-avatar--user' : ''}}">
+              <text class="moment-avatar-letter">{{item.avatarLetter}}</text>
+            </view>
+            <view class="moment-meta">
+              <text class="moment-name">{{item.displayName}}</text>
+              <text class="moment-time">{{item.timeLabel}}</text>
+            </view>
+          </view>
+          <view class="moment-content" wx:if="{{item.content}}">
+            <text class="moment-text" user-select>{{item.content}}</text>
+          </view>
+          <view class="moment-imgs" wx:if="{{item.images && item.images.length}}">
+            <image
+              wx:for="{{item.images}}"
+              wx:for-item="img"
+              wx:key="id"
+              class="moment-img moment-img--n{{item.images.length > 3 ? 3 : item.images.length}}"
+              src="{{img.path}}"
+              mode="aspectFill"
+              data-post-id="{{item.id}}"
+              data-index="{{index}}"
+              catchtap="onPreviewMomentImage"
+            />
+          </view>
+          <view class="moment-actions">
+            <view
+              class="moment-action {{item.liked ? 'moment-action--liked' : ''}}"
+              catchtap="onToggleLike"
+              data-id="{{item.id}}"
+            >
+              <text class="moment-action-icon">{{item.liked ? '♥' : '♡'}}</text>
+              <text class="moment-action-label">{{item.likeCount || '赞'}}</text>
+            </view>
+            <view class="moment-action" catchtap="onOpenComment" data-id="{{item.id}}">
+              <text class="moment-action-icon">💬</text>
+              <text class="moment-action-label">{{item.commentCount || '评论'}}</text>
+            </view>
+          </view>
+          <view class="moment-comments" wx:if="{{item.comments.length}}">
+            <view class="moment-comment" wx:for="{{item.comments}}" wx:for-item="c" wx:key="id">
+              <text class="moment-comment-author {{c.authorType === 'oc' ? 'moment-comment-author--oc' : ''}}">{{c.authorName}}：</text>
+              <text class="moment-comment-text">{{c.content}}</text>
+            </view>
+          </view>
+          <view class="moment-comment-box" wx:if="{{commentPostId === item.id}}">
+            <input
+              class="moment-comment-input"
+              value="{{commentText}}"
+              bindinput="onCommentInput"
+              placeholder="写评论…"
+              maxlength="300"
+              confirm-type="send"
+              bindconfirm="onSubmitComment"
+              data-id="{{item.id}}"
+              focus="{{commentPostId === item.id}}"
+            />
+            <view class="moment-comment-send oc-chip-btn" catchtap="onSubmitComment" data-id="{{item.id}}">
+              <text class="oc-chip-btn-text">发送</text>
+            </view>
+          </view>
+          <view class="moment-divider"></view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 相机：白色底部抽屉 -->
+  <view class="moments-menu-mask" wx:if="{{cameraMenuOpen}}" catchtap="onCloseCameraMenu"></view>
+  <view class="moments-camera-drawer" wx:if="{{cameraMenuOpen}}" catchtap="onComposeNop">
+    <view class="moments-camera-drawer-panel">
+      <view class="moments-camera-drawer-item" catchtap="onChoosePublishText">发文案</view>
+      <view class="moments-camera-drawer-item" catchtap="onChoosePublishImage">发图片</view>
+      <view class="moments-camera-drawer-gap"></view>
+      <view class="moments-camera-drawer-item moments-camera-drawer-item--cancel" catchtap="onCloseCameraMenu">取消</view>
+    </view>
+  </view>
+
+  <!-- 发表编辑页（文案 / 图片） -->
+  <view class="moments-compose-page" wx:if="{{composeOpen}}" catchtouchmove="onComposeNop">
+    <view class="moments-compose-nav" style="padding-top: {{composeNavPadTop}}px;">
+      <view class="moments-compose-nav-inner">
+        <text class="moments-compose-cancel" catchtap="onCloseCompose">取消</text>
+        <text class="moments-compose-title" wx:if="{{composeMode === 'text'}}">发表文字</text>
+        <view class="moments-compose-ok {{composeCanPublish ? 'moments-compose-ok--on' : ''}}" catchtap="onPublishMoment">发表</view>
+      </view>
+    </view>
+    <scroll-view class="moments-compose-body" scroll-y>
+      <textarea
+        class="moments-compose-textarea"
+        value="{{composeText}}"
+        bindinput="onComposeInput"
+        placeholder="这一刻的想法…"
+        maxlength="500"
+        auto-focus="{{composeMode === 'text'}}"
+        show-confirm-bar="{{false}}"
+      />
+      <view class="moments-compose-imgs" wx:if="{{composeMode === 'image'}}">
+        <view
+          class="moments-compose-img"
+          wx:for="{{composeImages}}"
+          wx:key="*this"
+          wx:for-index="imgIdx"
+        >
+          <image class="moments-compose-img-el" src="{{item}}" mode="aspectFill" />
+          <view class="moments-compose-img-del" data-index="{{imgIdx}}" catchtap="onRemoveComposeImage">×</view>
+        </view>
+        <view
+          class="moments-compose-img-add"
+          wx:if="{{composeImages.length < 9}}"
+          catchtap="onAddComposeImages"
+        >
+          <text class="moments-compose-img-add-plus">+</text>
+        </view>
+      </view>
+      <view class="moments-compose-opts">
+        <view class="moments-compose-opt" catchtap="onOpenRemindPicker">
+          <text class="moments-compose-opt-ico">＠</text>
+          <text class="moments-compose-opt-label">提醒谁看</text>
+          <text class="moments-compose-opt-val" wx:if="{{remindLabel}}">{{remindLabel}}</text>
+          <text class="moments-compose-opt-chevron">›</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 提醒谁看 -->
+  <view class="moments-remind-mask" wx:if="{{remindOpen}}" catchtap="onCloseRemindPicker"></view>
+  <view class="moments-remind-sheet" wx:if="{{remindOpen}}" catchtap="onComposeNop">
+    <view class="moments-remind-head">
+      <text class="moments-remind-cancel" catchtap="onCloseRemindPicker">取消</text>
+      <text class="moments-remind-title">提醒谁看</text>
+      <text class="moments-remind-ok" catchtap="onConfirmRemind">完成</text>
+    </view>
+    <scroll-view class="moments-remind-list" scroll-y>
+      <view
+        class="moments-remind-row"
+        wx:for="{{remindCandidates}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        catchtap="onToggleRemindOc"
+      >
+        <view class="moments-remind-check {{remindMap[item.id] ? 'moments-remind-check--on' : ''}}"></view>
+        <text class="moments-remind-name">{{item.name}}</text>
+      </view>
+      <view class="moments-remind-empty" wx:if="{{!remindCandidates.length}}">
+        <text>暂无可提醒的 OC</text>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 消息列表 -->
+  <view class="moments-msg-page" wx:if="{{msgListOpen}}" catchtouchmove="onComposeNop">
+    <view class="moments-msg-nav" style="padding-top: {{composeNavPadTop}}px;">
+      <view class="moments-msg-nav-inner">
+        <view class="moments-msg-back" catchtap="onCloseMessageList">
+          <view class="moments-msg-back-chevron"></view>
+        </view>
+        <text class="moments-msg-title">消息</text>
+        <view class="moments-msg-nav-spacer"></view>
+      </view>
+    </view>
+    <scroll-view class="moments-msg-scroll" scroll-y>
+      <view class="moments-msg-empty" wx:if="{{!msgList.length}}">
+        <text>暂无消息</text>
+      </view>
+      <view
+        class="moments-msg-row"
+        wx:for="{{msgList}}"
+        wx:key="id"
+        data-post-id="{{item.postId}}"
+        catchtap="onTapMessageItem"
+      >
+        <image
+          wx:if="{{item.avatarDisplay}}"
+          class="moments-msg-avatar"
+          src="{{item.avatarDisplay}}"
+          mode="aspectFill"
+        />
+        <view wx:else class="moments-msg-avatar moments-msg-avatar--ph">
+          <text class="moments-msg-letter">{{item.letter}}</text>
+        </view>
+        <view class="moments-msg-main">
+          <view class="moments-msg-top">
+            <text class="moments-msg-name">{{item.ocName}}</text>
+            <text class="moments-msg-time">{{item.timeLabel}}</text>
+          </view>
+          <text class="moments-msg-text">回复了你：{{item.text}}</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="moments-ad-mask" wx:if="{{adSheetOpen}}" catchtap="onCloseAdSheet" catchtouchmove="onCloseAdSheet"></view>
+  <view class="moments-ad-sheet" wx:if="{{adSheetOpen}}" catchtap="onCloseAdSheet">
+    <view class="moments-ad-panel" catchtap="onAdPanelNop">
+      <view class="moments-ad-handle"></view>
+      <text class="moments-ad-title">解锁更多朋友圈</text>
+      <text class="moments-ad-desc">{{adSheetText}}</text>
+      <text class="moments-ad-vip-hint">会员免广告、不限次</text>
+      <view
+        class="moments-ad-btn {{adUnlockBusy ? 'moments-ad-btn--disabled' : ''}}"
+        catchtap="onWatchAdUnlock"
+      >
+        <text class="moments-ad-btn-t">{{adUnlockBusy ? '广告加载中…' : '看激励广告解锁'}}</text>
+      </view>
+      <view class="moments-ad-cancel" catchtap="onCloseAdSheet">
+        <text class="moments-ad-cancel-t">暂不</text>
+      </view>
+    </view>
+  </view>
+</view>

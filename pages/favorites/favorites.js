@@ -16,7 +16,8 @@ Page({
   },
 
   loadList() {
-    let list = wx.getStorageSync(STORAGE_FAVORITES) || [];
+    const { getFavorites } = require('../../utils/favorite.js');
+    let list = getFavorites();
     if (!Array.isArray(list)) list = [];
     list = list.map((item) => {
       const r = normalizeResult(item.result || {});
@@ -34,10 +35,18 @@ Page({
   onDelete(e) {
     const id = e.currentTarget.dataset.id;
     if (!id) return;
-    let list = (wx.getStorageSync(STORAGE_FAVORITES) || []).filter(item => item.id !== id);
-    if (!Array.isArray(list)) list = [];
-    wx.setStorageSync(STORAGE_FAVORITES, list);
-    this.setData({ list });
+    const { deleteFavoriteItem } = require('../../utils/favorite.js');
+    const ok = deleteFavoriteItem(id);
+    if (!ok) {
+      wx.showToast({
+        title: '删除失败：本地存储不足',
+        icon: 'none',
+        duration: 2800
+      });
+      this.loadList();
+      return;
+    }
+    this.loadList();
     wx.showToast({ title: '已移除', icon: 'none' });
   },
 

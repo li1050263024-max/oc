@@ -1,0 +1,130 @@
+<view class="dp-page">
+  <view class="dp-nav" style="padding-top: {{menuTop}}px; height: {{menuHeight}}px;">
+    <view class="dp-nav-btn" catchtap="onBack">
+      <text class="dp-nav-back">‹</text>
+    </view>
+    <view class="dp-nav-right">
+      <view class="dp-ask-nav">求更新</view>
+      <text class="dp-nav-ico">⌕</text>
+      <text class="dp-nav-ico">···</text>
+    </view>
+  </view>
+
+  <scroll-view class="dp-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="dp-cover-wrap">
+      <image wx:if="{{coverUrl}}" class="dp-cover" src="{{coverUrl}}" mode="aspectFill" />
+      <view wx:else class="dp-cover dp-cover--ph"></view>
+      <view class="dp-cover-mask"></view>
+      <view class="dp-identity">
+        <view class="dp-avatar-ring">
+          <image wx:if="{{avatarUrl}}" class="dp-avatar" src="{{avatarUrl}}" mode="aspectFill" />
+          <view wx:else class="dp-avatar dp-avatar--ph">
+            <text>{{avatarLetter}}</text>
+          </view>
+        </view>
+        <view class="dp-id-meta">
+          <text class="dp-name">{{ocName}}</text>
+          <view class="dp-id-row">
+            <text class="dp-id">抖音号：{{douyinId}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="dp-card">
+      <view class="dp-stats">
+        <view class="dp-stat">
+          <text class="dp-stat-n">{{likeTotalText}}</text>
+          <text class="dp-stat-l">获赞</text>
+        </view>
+        <view class="dp-stat">
+          <text class="dp-stat-n">{{followingText}}</text>
+          <text class="dp-stat-l">关注</text>
+        </view>
+        <view class="dp-stat">
+          <text class="dp-stat-n">{{fansText}}</text>
+          <text class="dp-stat-l">粉丝</text>
+        </view>
+      </view>
+
+      <view class="dp-follows-you" wx:if="{{followsYou}}">
+        <text class="dp-follows-you-txt">{{pronoun}}关注了你</text>
+      </view>
+
+      <view class="dp-bio" wx:if="{{bioText}}">{{bioText}}</view>
+
+      <view class="dp-tags">
+        <text class="dp-tag" wx:if="{{ipRegion}}">IP：{{ipRegion}}</text>
+        <text class="dp-tag" wx:if="{{genderAgeText}}">{{genderAgeText}}</text>
+      </view>
+
+      <!-- 未关注：红色 +关注 -->
+      <view class="dp-actions" wx:if="{{!followed}}">
+        <view class="dp-btn dp-btn--follow" catchtap="onTapFollow">
+          <text>+ 关注</text>
+        </view>
+      </view>
+
+      <!-- 已关注（单向）：灰底「已关注」+「发私信」 -->
+      <view class="dp-actions" wx:elif="{{followed && !mutual}}">
+        <view class="dp-btn dp-btn--followed" catchtap="onTapRelation">
+          <image class="dp-btn-ico-img" src="/pages/ocApp/ocDouyinProfile/icons/followed.png" mode="aspectFit" />
+          <text class="dp-btn-txt">已关注</text>
+          <text class="dp-btn-caret">∨</text>
+        </view>
+        <view class="dp-btn dp-btn--dm" catchtap="onTapMessage">
+          <image class="dp-btn-ico-img dp-btn-ico-img--dm" src="/pages/ocApp/ocDouyinProfile/icons/dm.png" mode="aspectFit" />
+          <text class="dp-btn-txt">发私信</text>
+        </view>
+      </view>
+
+      <!-- 互关：绿色「朋友」+「发私信」 -->
+      <view class="dp-actions" wx:else>
+        <view class="dp-btn dp-btn--friend" catchtap="onTapRelation">
+          <image class="dp-btn-ico-img" src="/pages/ocApp/ocDouyinProfile/icons/friends.png" mode="aspectFit" />
+          <text class="dp-btn-txt">朋友</text>
+          <text class="dp-btn-caret">∨</text>
+        </view>
+        <view class="dp-btn dp-btn--dm" catchtap="onTapMessage">
+          <image class="dp-btn-ico-img dp-btn-ico-img--dm" src="/pages/ocApp/ocDouyinProfile/icons/dm.png" mode="aspectFit" />
+          <text class="dp-btn-txt">发私信</text>
+        </view>
+      </view>
+
+      <view class="dp-tab">
+        <text class="dp-tab-label">作品 {{worksCount}}</text>
+        <text class="dp-tab-caret">▾</text>
+      </view>
+
+      <view class="dp-grid" wx:if="{{works.length}}">
+        <view
+          class="dp-cell {{item.locked ? 'dp-cell--locked' : ''}}"
+          wx:for="{{works}}"
+          wx:key="id"
+          data-id="{{item.id}}"
+          data-locked="{{item.locked}}"
+          catchtap="onTapWork"
+        >
+          <image class="dp-thumb" src="{{item.cover}}" mode="aspectFill" />
+          <view class="dp-multi" wx:if="{{item.multi}}">
+            <view class="dp-multi-a"></view>
+            <view class="dp-multi-b"></view>
+          </view>
+          <view class="dp-lock" wx:if="{{item.locked}}">
+            <text class="dp-lock-t">会员可看</text>
+          </view>
+          <view class="dp-likes" wx:if="{{!item.locked}}">
+            <text class="dp-heart">♡</text>
+            <text class="dp-likes-n">{{item.likeText}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="dp-empty" wx:elif="{{!loading}}">
+        <text>暂无作品</text>
+      </view>
+
+      <view class="dp-end" wx:if="{{works.length}}">暂时没有更多了</view>
+      <view class="dp-spacer"></view>
+    </view>
+  </scroll-view>
+</view>

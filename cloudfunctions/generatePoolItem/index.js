@@ -1,48 +1,4 @@
-const https = require('https');
-
-function postJson(hostname, path, headers, body) {
-  const data = JSON.stringify(body);
-  return new Promise((resolve, reject) => {
-    const req = https.request(
-      {
-        hostname,
-        port: 443,
-        path,
-        method: 'POST',
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(data)
-        }
-      },
-      (res) => {
-        let chunks = '';
-        res.on('data', (d) => {
-          chunks += d;
-        });
-        res.on('end', () => {
-          try {
-            const json = JSON.parse(chunks);
-            if (json.error) {
-              reject(new Error(json.error.message || JSON.stringify(json.error)));
-            } else {
-              resolve(json);
-            }
-          } catch (e) {
-            reject(new Error(chunks.slice(0, 200) || e.message));
-          }
-        });
-      }
-    );
-    req.on('error', reject);
-    req.setTimeout(45000, () => {
-      req.destroy();
-      reject(new Error('请求超时'));
-    });
-    req.write(data);
-    req.end();
-  });
-}
+const { chatCompletions } = require('./aiText.js');
 
 function parseItem(text) {
   if (!text) return '';
@@ -62,11 +18,6 @@ function parseItem(text) {
 }
 
 exports.main = async (event) => {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    return { ok: false, errMsg: '请配置云函数环境变量 DEEPSEEK_API_KEY' };
-  }
-
   const poolKey = event && event.poolKey != null ? String(event.poolKey) : '';
   const label = event && event.label != null ? String(event.label) : poolKey;
   const slotHint = event && event.slotHint != null ? String(event.slotHint) : label;
@@ -91,28 +42,14 @@ exports.main = async (event) => {
     '请生成 1 条新选项。';
 
   try {
-    const result = await postJson(
-      'api.deepseek.com',
-      '/v1/chat/completions',
-      { Authorization: `Bearer ${apiKey}` },
-      {
-        model: 'deepseek-v4-flash',
-        thinking: { type: 'disabled' },
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.75,
-        max_tokens: 80
-      }
+    const result = await chatCompletions(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      { temperature: 0.8, maxTokens: 200 }
     );
-
-    const text =
-      result.choices &&
-      result.choices[0] &&
-      result.choices[0].message &&
-      result.choices[0].message.content;
-
+    const text = result && result.text;
     let item = parseItem(text);
     if (!item) {
       return { ok: false, errMsg: '模型未返回有效选项' };
@@ -121,8 +58,7 @@ exports.main = async (event) => {
     if (existSet.has(item)) {
       return { ok: false, errMsg: '生成项与已有重复' };
     }
-
-    return { ok: true, item, poolKey };
+    return { ok: true, item: item, poolKey: poolKey };
   } catch (e) {
     return { ok: false, errMsg: e.message || '调用失败' };
   }

@@ -18,8 +18,9 @@ const ROUTES = {
   groupChat: '/pages/ocGroupChat/ocGroupChat',
   bio: '/pages/ocBioHub/ocBioHub',
   story: '/pages/ocStory/ocStory',
-  moments: '/pages/ocMoments/ocMoments',
-  douyin: '/pages/ocDouyin/ocDouyin',
+  moments: '/pages/ocApp/ocMoments/ocMoments',
+  douyin: '/pages/ocApp/ocDouyin/ocDouyin',
+  ocapp: '/pages/ocApp/ocApp',
   feedback: '/pages/feedback/feedback'
 };
 
@@ -28,8 +29,7 @@ const MAIN_TABS = {
   pools: ROUTES.pools,
   story: ROUTES.bio,
   chat: ROUTES.chat,
-  moments: ROUTES.moments,
-  douyin: ROUTES.douyin
+  ocapp: ROUTES.ocapp
 };
 
 function getCurrentRoute() {
@@ -49,6 +49,7 @@ function routeKeyFromPath(route) {
     ['ocGroupChat/ocGroupChat', 'groupChat'],
     ['ocMoments/ocMoments', 'moments'],
     ['ocDouyin/ocDouyin', 'douyin'],
+    ['ocApp/ocApp', 'ocapp'],
     ['ocNotebookEdit', 'notebookEdit'],
     ['ocNotebook/ocNotebook', 'notebook'],
     ['favorites/favorites', 'favorites'],
@@ -188,9 +189,21 @@ function switchMainTab(key) {
     });
     return false;
   }
+  if (key === 'ocapp' && !checkAnyOcHasBio()) {
+    wx.showToast({
+      title: '请先在设定本中保存 OC',
+      icon: 'none',
+      duration: 2800
+    });
+    return false;
+  }
 
   const tabRouteKey = key === 'story' ? 'bio' : key === 'chat' ? 'chat' : key;
   const cur = routeKeyFromPath(getCurrentRoute());
+  // OC APP 入口：在朋友圈/抖音子页时点 Tab 应回到大厅
+  if (key === 'ocapp' && (cur === 'moments' || cur === 'douyin')) {
+    return openTabUrl(url, key);
+  }
   if (
     cur === tabRouteKey ||
     (key === 'story' && cur === 'story') ||
@@ -212,8 +225,26 @@ function goTo(key) {
   if (key === 'bio') {
     return switchMainTab('story');
   }
-  if (key === 'notebook' || key === 'pools' || key === 'moments' || key === 'douyin') {
+  if (key === 'notebook' || key === 'pools' || key === 'ocapp') {
     return switchMainTab(key);
+  }
+  if (key === 'moments' || key === 'douyin') {
+    if (!checkAnyOcHasBio()) {
+      wx.showToast({
+        title: '请先在设定本中保存 OC',
+        icon: 'none',
+        duration: 2800
+      });
+      return false;
+    }
+    const target = key === 'douyin' ? ROUTES.douyin : ROUTES.moments;
+    wx.redirectTo({
+      url: target,
+      fail() {
+        wx.reLaunch({ url: target });
+      }
+    });
+    return 'navigated';
   }
   if (key === 'story') {
     if (!hasLocalOcSetting()) {

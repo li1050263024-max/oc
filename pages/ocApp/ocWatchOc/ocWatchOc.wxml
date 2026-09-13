@@ -1,0 +1,72 @@
+<view class="page watch-page {{uiThemeClass}}">
+  <view class="bg-solid"></view>
+  <view
+    class="watch-nav"
+    style="padding-top: {{menuTop}}px; height: {{menuHeight}}px;"
+  >
+    <view class="watch-back" style="height: {{menuHeight}}px; width: {{menuHeight}}px;" catchtap="onBack">
+      <view class="watch-back-chevron"></view>
+    </view>
+    <text class="watch-nav-title" style="line-height: {{menuHeight}}px;">选择 OC · {{appTitle}}</text>
+  </view>
+
+  <view class="watch-body" style="padding-top: {{menuTop + menuHeight + 12}}px;">
+    <view class="watch-banner">
+      <text class="watch-banner-sub">已选 {{selectedCount}} 人</text>
+      <text class="watch-banner-tip" wx:if="{{requirePortrait}}">抖音需先上传立绘（有图）才可选</text>
+      <text class="watch-banner-tip watch-banner-tip--muted" wx:if="{{appKey === 'douyin'}}">每条内容按单一图册展示；不同图册会分成不同条内容</text>
+    </view>
+
+    <view class="watch-empty" wx:if="{{!list.length}}">
+      <text>暂无可用 OC，请先在设定本保存</text>
+    </view>
+
+    <scroll-view class="watch-list" scroll-y enhanced show-scrollbar="{{false}}" wx:else>
+      <view
+        class="watch-item {{item.selected ? 'watch-item--on' : ''}} {{item.disabled ? 'watch-item--disabled' : ''}}"
+        wx:for="{{list}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        data-disabled="{{item.disabled}}"
+        data-reason="{{item.disabledReason}}"
+        catchtap="onToggle"
+      >
+        <view class="watch-check {{item.selected ? 'watch-check--on' : ''}} {{item.disabled ? 'watch-check--off' : ''}}"></view>
+        <image wx:if="{{item.avatarUrl}}" class="watch-avatar" src="{{item.avatarUrl}}" mode="aspectFill" />
+        <view wx:else class="watch-avatar watch-avatar--ph">{{item.letter}}</view>
+        <view class="watch-meta">
+          <text class="watch-name">{{item.name}}</text>
+          <text class="watch-sub" wx:if="{{!item.disabled}}">{{item.okHint}}</text>
+          <text class="watch-sub watch-sub--warn" wx:else>{{item.disabledReason}}</text>
+        </view>
+      </view>
+      <view class="watch-list-pad"></view>
+    </scroll-view>
+  </view>
+
+  <view class="watch-footer">
+    <view class="watch-btn watch-btn--ghost" catchtap="onSelectAllVisible">全选可用</view>
+    <view class="watch-btn watch-btn--primary" catchtap="onSave">保存</view>
+  </view>
+
+  <!-- 超限：10 额度永久 +1 人 -->
+  <view class="watch-limit-root" wx:if="{{limitSheetOpen}}">
+    <view class="watch-limit-mask" catchtap="onCloseLimitSheet"></view>
+    <view class="watch-limit-panel" catchtap="onLimitNop">
+      <view class="watch-limit-handle"></view>
+      <text class="watch-limit-title">已到选择上限</text>
+      <text class="watch-limit-sub">基础 10 人 · 超出后 10 额度永久 +1 人</text>
+
+      <view class="watch-limit-btn watch-limit-btn--primary" catchtap="onPurchaseSlot">
+        <text class="watch-limit-btn-t">10 额度永久 +1 人</text>
+      </view>
+
+      <view class="watch-limit-btn watch-limit-btn--ok" catchtap="onGoShop">
+        <text class="watch-limit-btn-t">去额度商店购买</text>
+      </view>
+      <view class="watch-limit-btn watch-limit-btn--ghost" catchtap="onCloseLimitSheet">
+        <text class="watch-limit-btn-t">取消</text>
+      </view>
+    </view>
+  </view>
+</view>

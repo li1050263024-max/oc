@@ -1,0 +1,242 @@
+.compose-page {
+  min-height: 100vh;
+  background: #0a0a0c;
+  color: #f5f5f7;
+  box-sizing: border-box;
+}
+
+.compose-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(10, 10, 12, 0.92);
+  backdrop-filter: blur(12px);
+}
+
+.compose-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24rpx;
+}
+
+.compose-nav-btn {
+  min-width: 96rpx;
+  padding: 10rpx 8rpx;
+  font-size: 28rpx;
+  color: rgba(245, 245, 247, 0.78);
+}
+
+.compose-nav-btn--send {
+  text-align: right;
+  color: #fe2c55;
+  font-weight: 600;
+}
+
+.compose-nav-btn--send.is-disabled {
+  opacity: 0.35;
+}
+
+.compose-nav-title {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.compose-body {
+  height: calc(100vh - 120rpx);
+  padding: 24rpx 28rpx;
+  box-sizing: border-box;
+}
+
+.compose-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-bottom: 28rpx;
+}
+
+.compose-img-item,
+.compose-img-add {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  position: relative;
+  background: #1a1a1f;
+}
+
+.compose-img {
+  width: 100%;
+  height: 100%;
+}
+
+.compose-img-del {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 20rpx;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 28rpx;
+  line-height: 40rpx;
+  text-align: center;
+}
+
+.compose-img-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx dashed rgba(255, 255, 255, 0.22);
+}
+
+.compose-img-add-plus {
+  font-size: 56rpx;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.compose-img-add-t {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.compose-caption {
+  width: 100%;
+  min-height: 180rpx;
+  font-size: 30rpx;
+  line-height: 1.55;
+  color: #f5f5f7;
+  background: transparent;
+}
+
+.compose-ph {
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.compose-count {
+  display: block;
+  text-align: right;
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.35);
+  margin: 8rpx 0 28rpx;
+}
+
+.compose-bgm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 24rpx;
+  border-radius: 20rpx;
+  background: #16161a;
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+}
+
+.compose-bgm-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  min-width: 0;
+}
+
+.compose-bgm-label {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.compose-bgm-name {
+  font-size: 28rpx;
+  color: #f5f5f7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 560rpx;
+}
+
+.compose-bgm-arrow {
+  font-size: 36rpx;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.compose-bgm-clear {
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: rgba(254, 44, 85, 0.85);
+}
+
+.compose-oc {
+  margin-top: 32rpx;
+}
+
+.compose-oc-label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.compose-bottom-space {
+  height: calc(80rpx + env(safe-area-inset-bottom));
+}
+
+.compose-sheet-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 40;
+}
+
+.compose-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  max-height: 70vh;
+  background: #16161a;
+  border-radius: 28rpx 28rpx 0 0;
+  padding: 16rpx 28rpx calc(28rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.compose-sheet-handle {
+  width: 64rpx;
+  height: 8rpx;
+  border-radius: 4rpx;
+  background: rgba(255, 255, 255, 0.18);
+  margin: 0 auto 20rpx;
+}
+
+.compose-sheet-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 20rpx;
+}
+
+.compose-sheet-list {
+  max-height: 52vh;
+}
+
+.compose-track {
+  padding: 28rpx 8rpx;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.06);
+}
+
+.compose-track--on .compose-track-name {
+  color: #fe2c55;
+}
+
+.compose-track-name {
+  font-size: 28rpx;
+  color: #f5f5f7;
+}
+
+.compose-sheet-loading,
+.compose-sheet-empty {
+  padding: 48rpx 8rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.45);
+}

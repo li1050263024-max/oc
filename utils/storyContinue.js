@@ -63,10 +63,31 @@ function startContinueGeneration(page, options) {
     return;
   }
 
+  const credits = require('./ocCredits.js');
+  const cost = credits.COSTS.STORY_CONTINUE;
+  const pay = credits.consumeStoryContinue();
+  if (!pay.ok) {
+    wx.showModal({
+      title: '额度不足',
+      content: pay.errMsg || '续写需要 ' + cost + ' 点额度',
+      confirmText: '去额度商店',
+      success: (r) => {
+        if (r.confirm) {
+          wx.navigateTo({ url: '/pages/redeemCode/redeemCode' });
+        }
+        if (typeof onFail === 'function') onFail(pay.errMsg || '额度不足');
+      }
+    });
+    return;
+  }
+
+  const tip = pay.free
+    ? '正在续写故事（本次免费，还剩 ' + Math.max(0, Number(pay.freeLeft) || 0) + ' 次）…'
+    : '正在续写故事（-' + cost + '点）…';
   page.setData({
     continuing: true,
     continueSheetVisible: false,
-    storyWritingTip: '正在续写故事…'
+    storyWritingTip: tip
   });
 
   wx.cloud
@@ -84,6 +105,7 @@ function startContinueGeneration(page, options) {
     .then((res) => {
       const r = res.result || {};
       if (!r.ok || !r.story) {
+        credits.refundStoryContinue(pay);
         wx.showToast({ title: r.errMsg || '续写失败', icon: 'none', duration: 3000 });
         endWritingAnim(page, () => {
           if (typeof onFail === 'function') onFail(r.errMsg || '续写失败');
@@ -98,16 +120,22 @@ function startContinueGeneration(page, options) {
       const userPrompt = prevPrompt
         ? prevPrompt + '\n[续写] ' + dir
         : '[续写] ' + dir;
+      const parentId = options.parentStoryId || '';
+      const parent = parentId
+        ? stories.find((s) => s && s.id === parentId)
+        : null;
       const ok = upsertStoryToFavorite(favId, {
         id: newId,
         title: chapterTitle,
         userPrompt,
         content: String(r.story).trim(),
         time: Date.now(),
-        parentStoryId: options.parentStoryId || ''
+        parentStoryId: parentId,
+        collectionId: (parent && parent.collectionId) || ''
       });
 
       if (!ok) {
+        credits.refundStoryContinue(pay);
         wx.showToast({ title: '保存失败', icon: 'none' });
         endWritingAnim(page, () => {
           if (typeof onFail === 'function') onFail('保存失败');
@@ -120,6 +148,7 @@ function startContinueGeneration(page, options) {
       });
     })
     .catch((err) => {
+      credits.refundStoryContinue(pay);
       const msg = (err && (err.errMsg || err.message)) || '';
       wx.showToast({
         title: /timeout|超时/i.test(msg) ? '请求超时，请重试' : msg || '调用失败',
@@ -157,10 +186,28 @@ function startStoryRevision(page, options) {
     return;
   }
 
+  const credits = require('./ocCredits.js');
+  const cost = credits.COSTS.STORY_REVISE;
+  const pay = credits.consume(cost, 'STORY_REVISE');
+  if (!pay.ok) {
+    wx.showModal({
+      title: '额度不足',
+      content: pay.errMsg || '润色需要 ' + cost + ' 点额度',
+      confirmText: '去额度商店',
+      success: (r) => {
+        if (r.confirm) {
+          wx.navigateTo({ url: '/pages/redeemCode/redeemCode' });
+        }
+        if (typeof onFail === 'function') onFail(pay.errMsg || '额度不足');
+      }
+    });
+    return;
+  }
+
   page.setData({
     polishing: true,
     polishSheetVisible: false,
-    storyWritingTip: '正在润色…'
+    storyWritingTip: '正在润色（-' + cost + '点）…'
   });
 
   wx.cloud
@@ -178,6 +225,7 @@ function startStoryRevision(page, options) {
     .then((res) => {
       const r = res.result || {};
       if (!r.ok || !r.story) {
+        credits.refund(cost);
         wx.showToast({ title: r.errMsg || '润色失败', icon: 'none', duration: 3000 });
         endWritingAnim(page, () => {
           if (typeof onFail === 'function') onFail(r.errMsg || '润色失败');
@@ -189,6 +237,7 @@ function startStoryRevision(page, options) {
       });
     })
     .catch((err) => {
+      credits.refund(cost);
       const msg = (err && (err.errMsg || err.message)) || '';
       wx.showToast({
         title: /timeout|超时/i.test(msg) ? '请求超时，请重试' : msg || '调用失败',

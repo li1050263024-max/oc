@@ -246,7 +246,7 @@ function _importOcEntry(ocData, options) {
   if (opts.notebookFavoriteId) {
     work.notebookFavoriteId = opts.notebookFavoriteId;
   }
-  const id = upsertOcToFavorites(work);
+  const id = upsertOcToFavorites(work, { silent: !!opts.silent });
   return id;
 }
 
@@ -274,6 +274,17 @@ function importPack(pack, options) {
   pack = normalized;
 
   if (pack.type === 'oc_full' && pack.oc) {
+    const { canAddNotebookOc, getFavoriteById, MAX_NOTEBOOK_OCS, notebookLimitTip } = require('./favorite.js');
+    const name = String((pack.oc.result && pack.oc.result.name) || '').trim();
+    const existing =
+      (opts.notebookFavoriteId && getFavoriteById(opts.notebookFavoriteId)) ||
+      (name &&
+        getFavorites().find(
+          (i) => i && i.result && String(i.result.name || '').trim() === name
+        ));
+    if (!existing && !canAddNotebookOc()) {
+      return { ok: false, errMsg: notebookLimitTip() || '设定本最多 ' + MAX_NOTEBOOK_OCS + ' 个 OC' };
+    }
     const id = _importOcEntry(pack.oc, opts);
     if (!id) return { ok: false, errMsg: '导入 OC 失败' };
     if (pack.chats) _importChats(id, pack.chats);
@@ -281,16 +292,33 @@ function importPack(pack, options) {
   }
 
   if (pack.type === 'notebook' && Array.isArray(pack.items)) {
+    const { canAddNotebookOc, MAX_NOTEBOOK_OCS } = require('./favorite.js');
     let count = 0;
+    let skippedLimit = 0;
     let lastId = '';
+    const importOpts = Object.assign({}, opts, { silent: true });
     pack.items.forEach((oc) => {
-      const id = _importOcEntry(oc, opts);
+      const before = getFavorites().length;
+      const id = _importOcEntry(oc, importOpts);
       if (id) {
         count++;
         lastId = id;
+        return;
       }
+      // 新增被拦（更新同名仍会成功）；已满且未写入则计为上限跳过
+      if (before >= MAX_NOTEBOOK_OCS || !canAddNotebookOc()) skippedLimit += 1;
     });
-    return { ok: count > 0, favoriteId: lastId, message: '已导入 ' + count + ' 个 OC' };
+    if (count === 0 && skippedLimit > 0) {
+      return {
+        ok: false,
+        errMsg: '设定本已满（最多 ' + MAX_NOTEBOOK_OCS + ' 个），无法导入新 OC'
+      };
+    }
+    let message = '已导入 ' + count + ' 个 OC';
+    if (skippedLimit > 0) {
+      message += '，' + skippedLimit + ' 个因上限未导入';
+    }
+    return { ok: count > 0, favoriteId: lastId, message: message };
   }
 
   if (pack.type === 'story' && Array.isArray(pack.stories)) {

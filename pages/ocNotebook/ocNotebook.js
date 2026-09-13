@@ -1,7 +1,18 @@
 const colors = require('../../utils/colors.js');
 const ocImage = require('../../utils/ocImage.js');
 const chatBackground = require('../../utils/chatBackground.js');
-const { getFavorites, loadFavoriteToWork, deleteFavoriteItem, deleteFavoriteItems, getFavoriteById, consolidateFavoriteDuplicatesByName } = require('../../utils/favorite.js');
+const {
+  getFavorites,
+  loadFavoriteToWork,
+  deleteFavoriteItem,
+  deleteFavoriteItems,
+  getFavoriteById,
+  consolidateFavoriteDuplicatesByName,
+  canAddNotebookOc,
+  toastNotebookLimit,
+  MAX_NOTEBOOK_OCS
+} = require('../../utils/favorite.js');
+const notebookFamily = require('../../utils/ocNotebookFamily.js');
 const { isLayer3Ready } = require('../../utils/ocWork.js');
 const { applyPageGradientBg } = require('../../utils/tabPage.js');
 const { normalizeResult, personalityBlend } = require('../../utils/ocResult.js');
@@ -21,10 +32,13 @@ const staticAssets = require('../../utils/staticAssets.js');
 Page({
   data: {
     list: [],
+    displayList: [],
+    filterMode: 'all',
     expandedOcIds: {},
     manageMode: false,
     selectedMap: {},
     selectedCount: 0,
+    maxNotebookOcs: MAX_NOTEBOOK_OCS,
     toolbarFloatStyle: '',
     portraitPlaceholder: staticAssets.getOcPortraitPlaceholder(),
     ...inAppShare.shareSheetDefaults()
@@ -48,6 +62,37 @@ Page({
     this.loadList();
   },
 
+  _mapOcCard(item) {
+    const r = normalizeResult(item.result || {});
+    return {
+      id: item.id,
+      name: (r.name && String(r.name).trim()) || '未命名',
+      race: r.race || '—',
+      hairColor: r.hairColor || '—',
+      eyeColor: r.eyeColor || '—',
+      gender: r.gender || '—',
+      age: r.age || '—',
+      personality: personalityBlend(r) || '—',
+      quirk: (r.quirks || []).filter(Boolean).join('、') || '—',
+      hairHex: colors.getHairColor(r.hairColor),
+      eyeHex: colors.getEyeColor(r.eyeColor),
+      ocImagePath: ocImage.getDisplayImagePathQuick(item),
+      layer3Ready: isLayer3Ready(item),
+      notebookStarred: !!item.notebookStarred,
+      notebookPinned: !!item.notebookPinned,
+      notebookPinnedAt: Number(item.notebookPinnedAt) || 0,
+      time: Number(item.time) || 0
+    };
+  },
+
+  _filterDisplayList(list, mode) {
+    const all = list || [];
+    if (mode === 'starred') {
+      return all.filter((item) => item && item.notebookStarred);
+    }
+    return all;
+  },
+
   async loadList() {
     if (this._loadingList) {
       this._reloadQueued = true;
@@ -58,26 +103,8 @@ Page({
       try {
         consolidateFavoriteDuplicatesByName();
       } catch (e) {}
-      const raw = getFavorites();
-      // 先同步渲染，避免等文件系统扫描导致白屏/卡顿
-      const list = raw.map((item) => {
-        const r = normalizeResult(item.result || {});
-        return {
-          id: item.id,
-          name: (r.name && String(r.name).trim()) || '未命名',
-          race: r.race || '—',
-          hairColor: r.hairColor || '—',
-          eyeColor: r.eyeColor || '—',
-          gender: r.gender || '—',
-          age: r.age || '—',
-          personality: personalityBlend(r) || '—',
-          quirk: (r.quirks || []).filter(Boolean).join('、') || '—',
-          hairHex: colors.getHairColor(r.hairColor),
-          eyeHex: colors.getEyeColor(r.eyeColor),
-          ocImagePath: ocImage.getDisplayImagePathQuick(item),
-          layer3Ready: isLayer3Ready(item)
-        };
-      });
+      const raw = notebookFamily.sortNotebookList(getFavorites());
+      const list = raw.map((item) => this._mapOcCard(item));
       const expanded = this.data.expandedOcIds || {};
       const expandedOcIds = {};
       list.forEach((item) => {
@@ -94,8 +121,11 @@ Page({
           }
         });
       }
+      const filterMode = this.data.filterMode === 'starred' ? 'starred' : 'all';
       this.setData({
         list,
+        displayList: this._filterDisplayList(list, filterMode),
+        filterMode,
         expandedOcIds,
         selectedMap,
         selectedCount,
@@ -112,8 +142,27 @@ Page({
     }
   },
 
+  onFilterTap(e) {
+    if (this.data.manageMode) return;
+    const mode = (e.currentTarget.dataset && e.currentTarget.dataset.mode) || 'all';
+    if (mode === 'family') {
+      wx.navigateTo({ url: '/pages/ocNotebook/ocFamilyList' });
+      return;
+    }
+    if (mode !== 'all' && mode !== 'starred') return;
+    this.setData({
+      filterMode: mode,
+      displayList: this._filterDisplayList(this.data.list, mode),
+      expandedOcIds: {}
+    });
+  },
+
   onAddOc() {
     if (this.data.manageMode) return;
+    if (!canAddNotebookOc()) {
+      toastNotebookLimit();
+      return;
+    }
     wx.navigateTo({ url: '/pages/ocNotebookEdit/ocNotebookEdit?mode=new' });
   },
 
@@ -139,7 +188,7 @@ Page({
       this.setData({ manageMode: false, selectedMap: {}, selectedCount: 0 });
       return;
     }
-    if (!(this.data.list || []).length) {
+    if (!(this.data.displayList || []).length) {
       wx.showToast({ title: '暂无 OC 可管理', icon: 'none' });
       return;
     }
@@ -161,7 +210,7 @@ Page({
 
   onSelectAllOc() {
     if (!this.data.manageMode) return;
-    const list = this.data.list || [];
+    const list = this.data.displayList || [];
     if (!list.length) return;
     if (this.data.selectedCount >= list.length) {
       this.setData({ selectedMap: {}, selectedCount: 0 });
@@ -190,19 +239,25 @@ Page({
         if (!res.confirm) return;
         wx.showLoading({ title: '删除中…', mask: true });
         try {
-          for (let i = 0; i < ids.length; i++) {
-            const id = ids[i];
-            const fav = getFavoriteById(id);
-            if (fav && Array.isArray(fav.ocImages)) {
-              await ocImage.removeOcImageFiles(fav.ocImages);
-            }
-            await ocImage.removeAllFavoriteOcImages(id);
-            await chatBackground.removeChatBackground(id);
-          }
           deleteFavoriteItems(ids);
-          this.setData({ manageMode: false, selectedMap: {}, selectedCount: 0 });
+          notebookFamily.removeOcIdsFromAllFamilies(ids);
+          const idSet = {};
+          ids.forEach((id) => {
+            idSet[String(id)] = true;
+          });
+          this.setData({
+            manageMode: false,
+            selectedMap: {},
+            selectedCount: 0,
+            list: (this.data.list || []).filter((x) => x && !idSet[String(x.id)]),
+            displayList: (this.data.displayList || []).filter((x) => x && !idSet[String(x.id)])
+          });
           wx.showToast({ title: '已删除 ' + ids.length + ' 项', icon: 'none' });
           this.loadList();
+          ids.forEach((id) => {
+            ocImage.removeAllFavoriteOcImages(id).catch(() => {});
+            chatBackground.removeChatBackground(id).catch(() => {});
+          });
         } catch (err) {
           console.error('[ocNotebook] batch delete', err);
           wx.showToast({ title: '删除失败', icon: 'none' });
@@ -220,6 +275,70 @@ Page({
     const key = 'expandedOcIds.' + id;
     this.setData({
       [key]: !this.data.expandedOcIds[id]
+    });
+  },
+
+  onToggleStarOc(e) {
+    if (this.data.manageMode) return;
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    const r = notebookFamily.toggleNotebookStarred(id);
+    if (!r.ok) {
+      wx.showToast({ title: '操作失败', icon: 'none' });
+      return;
+    }
+    wx.showToast({ title: r.notebookStarred ? '已收藏' : '已取消收藏', icon: 'none' });
+    this.loadList();
+  },
+
+  onTogglePinOc(e) {
+    if (this.data.manageMode) return;
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    const r = notebookFamily.toggleNotebookPinned(id);
+    if (!r.ok) {
+      wx.showToast({ title: '操作失败', icon: 'none' });
+      return;
+    }
+    wx.showToast({ title: r.notebookPinned ? '已置顶' : '已取消置顶', icon: 'none' });
+    this.loadList();
+  },
+
+  onAddOcToFamily(e) {
+    if (this.data.manageMode) return;
+    const ocId = e.currentTarget.dataset.id;
+    if (!ocId) return;
+    const families = notebookFamily.getFamilies();
+    if (!families.length) {
+      wx.showModal({
+        title: '暂无家族',
+        content: '先新建一个 OC 家族，再把角色加入其中。',
+        confirmText: '去创建',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/ocNotebook/ocFamilyList' });
+          }
+        }
+      });
+      return;
+    }
+    const itemList = families.map((f) => f.name + '（' + f.memberIds.length + '）');
+    wx.showActionSheet({
+      itemList,
+      success: (res) => {
+        const fam = families[res.tapIndex];
+        if (!fam) return;
+        const r = notebookFamily.addMemberToFamily(fam.id, ocId);
+        if (!r.ok) {
+          wx.showToast({ title: r.errMsg || '加入失败', icon: 'none' });
+          return;
+        }
+        wx.showToast({
+          title: r.already ? '已在该家族中' : '已加入家族',
+          icon: 'none'
+        });
+        this.loadList();
+      }
     });
   },
 
@@ -299,13 +418,23 @@ Page({
       confirmColor: '#c62828',
       success: async (res) => {
         if (!res.confirm) return;
+        const sid = String(id);
+        this.setData({
+          list: (this.data.list || []).filter((x) => x && String(x.id) !== sid),
+          displayList: (this.data.displayList || []).filter((x) => x && String(x.id) !== sid)
+        });
         const fav = getFavoriteById(id);
-        if (fav && Array.isArray(fav.ocImages)) {
-          await ocImage.removeOcImageFiles(fav.ocImages);
-        }
-        await ocImage.removeAllFavoriteOcImages(id);
-        await chatBackground.removeChatBackground(id);
         deleteFavoriteItem(id);
+        notebookFamily.removeOcFromAllFamilies(id);
+        try {
+          if (fav && Array.isArray(fav.ocImages)) {
+            await ocImage.removeOcImageFiles(fav.ocImages);
+          }
+        } catch (_) {}
+        try {
+          await ocImage.removeAllFavoriteOcImages(id);
+          await chatBackground.removeChatBackground(id);
+        } catch (_) {}
         wx.showToast({ title: '已删除', icon: 'none' });
         this.loadList();
       }
@@ -317,6 +446,15 @@ Page({
       baseName: 'oc_notebook',
       getText: () => buildNotebookShareText(),
       getPack: () => buildNotebookPack()
+    });
+  },
+
+  onRestoreBackup() {
+    wx.navigateTo({
+      url: '/pages/ocNotebook/ocCloudBackup',
+      fail: () => {
+        wx.showToast({ title: '打开备份页失败', icon: 'none' });
+      }
     });
   },
 

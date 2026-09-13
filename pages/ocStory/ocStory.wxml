@@ -102,48 +102,97 @@
           </view>
         </view>
 
-        <view class="section-card">
-          <view class="field-label">故事方向</view>
-          <textarea
-            class="story-input"
-            placeholder="例如：雨夜码头重逢；写一段与宿敌的短对话；基调偏治愈……"
-            maxlength="1200"
-            value="{{userInput}}"
-            bindinput="onUserInput"
-            show-confirm-bar="{{false}}"
-            auto-height
-            cursor-spacing="24"
-          />
+        <view class="section-card" wx:if="{{ocList.length && currentOc}}">
+          <view class="story-col-head">
+            <text class="field-label story-col-title">故事集</text>
+            <text class="story-col-new" catchtap="onCreateCollection">新建</text>
+          </view>
           <view
-            class="pixel-btn pixel-btn-primary gen-btn {{loading ? 'gen-btn--disabled' : ''}}"
-            catchtap="onGenerate"
+            class="story-collection"
+            wx:for="{{storyCollections}}"
+            wx:key="id"
+            wx:for-item="col"
           >
-            <text class="gen-btn-text">{{loading ? '生成中…' : '生成 OC 故事'}}</text>
+            <view class="story-collection-head">
+              <view
+                class="story-collection-main"
+                data-id="{{col.id}}"
+                catchtap="onToggleCollection"
+              >
+                <view class="saved-story-chevron {{expandedCollectionIds[col.id] ? 'saved-story-chevron--open' : ''}}"></view>
+                <text class="story-collection-name">{{col.name}}</text>
+                <text class="story-collection-count">{{col.count}}</text>
+              </view>
+              <text
+                class="story-collection-rename"
+                data-id="{{col.id}}"
+                data-name="{{col.name}}"
+                catchtap="onRenameCollection"
+              >重命名</text>
+            </view>
+            <view class="story-collection-body" wx:if="{{expandedCollectionIds[col.id]}}">
+              <view class="story-collection-empty" wx:if="{{!col.stories.length}}">暂无故事</view>
+              <view
+                class="saved-story-card {{expandedStoryIds[item.id] ? 'saved-story-card--expanded' : ''}}"
+                wx:for="{{col.stories}}"
+                wx:key="id"
+                data-id="{{item.id}}"
+              >
+                <view
+                  class="saved-story-head"
+                  data-id="{{item.id}}"
+                  catchtap="onToggleSavedStory"
+                >
+                  <text class="saved-story-title">{{item.title || '未命名故事'}}</text>
+                  <view class="saved-story-chevron {{expandedStoryIds[item.id] ? 'saved-story-chevron--open' : ''}}"></view>
+                </view>
+                <view
+                  class="saved-story-body"
+                  wx:if="{{expandedStoryIds[item.id]}}"
+                  data-id="{{item.id}}"
+                  catchtap="onOpenChapter"
+                >
+                  <text class="saved-story-first">{{item.preview}}</text>
+                  <text class="saved-story-open-hint">点击查看全文</text>
+                </view>
+                <view class="saved-story-actions">
+                  <view class="saved-story-actions-main">
+                    <text
+                      class="saved-story-continue"
+                      data-id="{{item.id}}"
+                      catchtap="onContinueSavedStory"
+                    >续写</text>
+                    <text
+                      class="saved-story-edit"
+                      data-id="{{item.id}}"
+                      catchtap="onEditStory"
+                    >修改</text>
+                    <text
+                      class="saved-story-roleplay"
+                      data-id="{{item.id}}"
+                      catchtap="onRoleplayStory"
+                    >情景演绎</text>
+                  </view>
+                  <text
+                    class="saved-story-delete"
+                    data-id="{{item.id}}"
+                    catchtap="onDeleteSavedStory"
+                  >删除</text>
+                </view>
+              </view>
+            </view>
           </view>
         </view>
 
-        <view class="section-card" wx:if="{{ocList.length && currentOc}}">
-          <view class="field-label">上传已有故事</view>
-          <text class="story-paste-hint">将完整故事粘贴到下方，保存至当前 OC</text>
-          <input
-            class="story-title-input"
-            placeholder="故事题目（必填）"
-            maxlength="80"
-            value="{{pasteStoryTitle}}"
-            bindinput="onPasteStoryTitleInput"
-          />
-          <textarea
-            class="story-paste-input"
-            placeholder="粘贴故事正文…"
-            maxlength="-1"
-            value="{{pasteStoryContent}}"
-            bindinput="onPasteStoryContentInput"
-            show-confirm-bar="{{false}}"
-            auto-height
-            cursor-spacing="24"
-          />
-          <view class="pixel-btn pixel-btn-primary gen-btn" catchtap="onSavePastedStory">
-            <text class="gen-btn-text">保存上传的故事</text>
+        <view class="story-btn-outside" wx:if="{{ocList.length && currentOc}}">
+          <view class="pixel-btn pixel-btn-primary gen-btn" catchtap="onTapPasteStory">
+            <text class="gen-btn-text">上传故事</text>
+          </view>
+        </view>
+
+        <view class="story-btn-outside" wx:if="{{ocList.length && currentOc}}">
+          <view class="pixel-btn pixel-btn-primary gen-btn" catchtap="onTapStoryDir">
+            <text class="gen-btn-text">生成 OC 故事</text>
           </view>
         </view>
 
@@ -178,58 +227,6 @@
             </view>
             <view class="pixel-btn pixel-btn-primary btn-action story-act-btn" catchtap="onContinueStory">
               <text class="btn-action-text">继续</text>
-            </view>
-          </view>
-        </view>
-
-        <view class="section-card" wx:if="{{savedStories.length}}">
-          <view class="field-label">已保存的故事</view>
-          <view
-            class="saved-story-card {{expandedStoryIds[item.id] ? 'saved-story-card--expanded' : ''}}"
-            wx:for="{{savedStories}}"
-            wx:key="id"
-            data-id="{{item.id}}"
-          >
-            <view
-              class="saved-story-head"
-              data-id="{{item.id}}"
-              catchtap="onToggleSavedStory"
-            >
-              <text class="saved-story-title">{{item.title || '未命名故事'}}</text>
-              <view class="saved-story-chevron {{expandedStoryIds[item.id] ? 'saved-story-chevron--open' : ''}}"></view>
-            </view>
-            <view
-              class="saved-story-body"
-              wx:if="{{expandedStoryIds[item.id]}}"
-              data-id="{{item.id}}"
-              catchtap="onOpenChapter"
-            >
-              <text class="saved-story-first">{{item.preview}}</text>
-              <text class="saved-story-open-hint">点击查看全文</text>
-            </view>
-            <view class="saved-story-actions">
-              <view class="saved-story-actions-main">
-                <text
-                  class="saved-story-continue"
-                  data-id="{{item.id}}"
-                  catchtap="onContinueSavedStory"
-                >续写</text>
-                <text
-                  class="saved-story-edit"
-                  data-id="{{item.id}}"
-                  catchtap="onEditStory"
-                >修改</text>
-                <text
-                  class="saved-story-roleplay"
-                  data-id="{{item.id}}"
-                  catchtap="onRoleplayStory"
-                >情景演绎</text>
-              </view>
-              <text
-                class="saved-story-delete"
-                data-id="{{item.id}}"
-                catchtap="onDeleteSavedStory"
-              >删除</text>
             </view>
           </view>
         </view>
@@ -269,6 +266,7 @@
   <view class="story-sheet" wx:if="{{continueSheetVisible}}">
     <text class="story-sheet-title">继续创作</text>
     <text class="story-sheet-sub">将整理上文梗概并结合你的方向续写，保存为新章节（标题自动追加【2】等），生成后进入章节页</text>
+    <text class="story-sheet-sub" wx:if="{{continueCostHint}}" style="margin-top:8rpx;opacity:0.75">{{continueCostHint}}</text>
     <textarea
       class="story-sheet-input"
       value="{{continueInput}}"
@@ -294,4 +292,22 @@
     content="{{shareSheetContent}}"
     bind:close="onCloseShareSheet"
   />
+
+  <view
+    class="story-vip-mask"
+    wx:if="{{oaQrVisible}}"
+    catchtap="onCloseOaQr"
+    catchtouchmove="noop"
+  >
+    <view class="story-oa-card" catchtap="noop">
+      <view class="story-oa-close" catchtap="onCloseOaQr">×</view>
+      <image
+        class="story-oa-qr"
+        src="/images/mp-oa-qrcode.png"
+        mode="widthFix"
+        show-menu-by-longpress="{{true}}"
+      />
+      <text class="story-oa-hint">长按识别二维码关注公众号</text>
+    </view>
+  </view>
 </view>

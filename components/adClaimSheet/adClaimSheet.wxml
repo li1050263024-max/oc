@@ -1,0 +1,32 @@
+<view class="ad-claim-root" wx:if="{{visible}}">
+  <view class="ad-claim-mask" catchtap="onClose"></view>
+  <view class="ad-claim-panel" catchtap="onPanelTap">
+    <view class="ad-claim-handle"></view>
+    <text class="ad-claim-title">广告已播放完毕</text>
+    <text class="ad-claim-sub" wx:if="{{detectedClick || makeupDone}}">
+      已检测到广告点击，可领取 +{{rounds}} 点额度
+    </text>
+    <text class="ad-claim-sub" wx:else>
+      未检测到点击广告详情。请再看一条激励视频并点击进入详情，完成后即可领取
+    </text>
+
+    <view
+      wx:if="{{!detectedClick && !makeupDone}}"
+      class="ad-claim-btn ad-claim-btn--primary {{makeupBusy ? 'ad-claim-btn--disabled' : ''}}"
+      bindtap="onMakeup"
+    >
+      <text class="ad-claim-btn-t">{{makeupBusy ? '补点广告加载中…' : '补点：再看激励视频并点击'}}</text>
+    </view>
+
+    <view
+      class="ad-claim-btn ad-claim-btn--ok {{canClaim ? '' : 'ad-claim-btn--disabled'}}"
+      bindtap="onClaim"
+    >
+      <text class="ad-claim-btn-t">领取 +{{rounds}} 点</text>
+    </view>
+
+    <view class="ad-claim-btn ad-claim-btn--ghost" bindtap="onClose">
+      <text class="ad-claim-btn-t">暂不领取</text>
+    </view>
+  </view>
+</view>

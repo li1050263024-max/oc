@@ -63,7 +63,11 @@ function callMomentsCommentCloud(oc, mode, postContent, userComment, options) {
         postContent: String(postContent || '').slice(0, 500),
         userComment: String(userComment || '').slice(0, 200),
         posterName: opts.posterName ? String(opts.posterName).slice(0, 40) : '',
-        groupMate: !!opts.groupMate
+        groupMate: !!opts.groupMate,
+        replyMode: opts.replyMode ? String(opts.replyMode).slice(0, 20) : '',
+        replyStyleHint: opts.replyStyleHint
+          ? String(opts.replyStyleHint).slice(0, 240)
+          : ''
       },
       timeout: 35000,
       success: (res) => {
@@ -108,9 +112,15 @@ async function commentAsOc(oc, post, options) {
   return true;
 }
 
-async function replyAsOc(oc, post, userComment) {
+async function replyAsOc(oc, post, userComment, options) {
   if (!oc || !post || !post.id) return false;
-  const text = await generateOcCommentText(oc, post, userComment, 'reply');
+  const text = await generateOcCommentText(
+    oc,
+    post,
+    userComment,
+    'reply',
+    options || {}
+  );
   momentsStore.addOcPostComment(post.id, text, oc);
   return true;
 }
@@ -172,27 +182,68 @@ async function commentFromGroupMatesForPosts(posts) {
   return total;
 }
 
+/**
+ * 被「提醒谁看」的 OC 必须评论；返回可用于消息通知的结果列表
+ * @returns {Promise<Array<{ocId:string,ocName:string,avatarUrl:string,text:string,postId:string}>>}
+ */
 async function inviteOcsToComment(post, ocIds) {
   const ids = (ocIds || []).filter(Boolean).slice(0, 5);
+  const out = [];
   for (let i = 0; i < ids.length; i++) {
     const oc = findOcById(ids[i]);
     if (!oc) continue;
-    await commentAsOc(oc, post);
+    const text = await generateOcCommentText(oc, post, '', 'comment', {
+      posterName: '我',
+      invited: true
+    });
+    if (!text) continue;
+    momentsStore.addOcPostComment(post.id, text, oc);
+    out.push({
+      ocId: oc.id,
+      ocName: oc.name || 'OC',
+      avatarUrl: oc.avatarUrl || '',
+      text: text,
+      postId: post.id,
+      skipped: false
+    });
   }
+  return out;
 }
 
+/**
+ * 用户发帖后的自动评论：有「提醒谁看」则只/优先让被提醒 OC 回复；否则随机聊过的 OC
+ * @returns {Promise<Array>}
+ */
 async function autoCommentOnUserPost(post) {
-  if (!post || !post.id || post.authorType !== 'user') return 0;
+  if (!post || !post.id || post.authorType !== 'user') return [];
+  const invited = Array.isArray(post.invitedOcIds)
+    ? post.invitedOcIds.filter(Boolean).slice(0, 5)
+    : [];
+  if (invited.length) {
+    return inviteOcsToComment(post, invited);
+  }
   const chatted = filterOcsUserHasChattedWith(getOcsForSocial());
-  if (!chatted.length) return 0;
+  if (!chatted.length) return [];
   const shuffled = shuffle(chatted);
   const maxN = Math.min(3, shuffled.length);
   const n = 1 + Math.floor(Math.random() * maxN);
   const picked = shuffled.slice(0, n);
+  const out = [];
   for (let i = 0; i < picked.length; i++) {
-    await commentAsOc(picked[i], post);
+    const oc = picked[i];
+    const text = await generateOcCommentText(oc, post, '', 'comment', {});
+    if (!text) continue;
+    momentsStore.addOcPostComment(post.id, text, oc);
+    out.push({
+      ocId: oc.id,
+      ocName: oc.name || 'OC',
+      avatarUrl: oc.avatarUrl || '',
+      text: text,
+      postId: post.id,
+      skipped: false
+    });
   }
-  return picked.length;
+  return out;
 }
 
 function pickReplyOcForUserPost(post) {
@@ -214,9 +265,17 @@ function pickReplyOcForUserPost(post) {
   return null;
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms) || 0)));
+}
+
+/**
+ * 用户评论后由 OC 异步回复（不阻塞 UI）。
+ * @returns {Promise<null|{ ocId: string, ocName: string, text: string, skipped?: boolean }>}
+ */
 async function handleUserCommentReply(postId, userCommentText) {
   const post = momentsStore.findPostById(postId);
-  if (!post || !String(userCommentText || '').trim()) return;
+  if (!post || !String(userCommentText || '').trim()) return null;
 
   let oc = null;
   if (post.authorType === 'user') {
@@ -224,9 +283,34 @@ async function handleUserCommentReply(postId, userCommentText) {
   } else if (post.ocId) {
     oc = findOcById(post.ocId);
   }
-  if (!oc) return;
+  if (!oc) return null;
 
-  await replyAsOc(oc, post, userCommentText);
+  let plan = { skip: false, delayMs: 400, mode: 'instant' };
+  let replyStyleHint = '';
+  try {
+    const replySettings = require('./ocMomentsReplySettings.js');
+    const mode = replySettings.getReplyMode('moments');
+    plan = replySettings.planReplyTiming(mode);
+    replyStyleHint = replySettings.getReplyPromptHint(plan.mode);
+  } catch (_) {}
+  if (plan.skip) {
+    return { ocId: oc.id, ocName: oc.name || 'OC', text: '', skipped: true };
+  }
+  if (plan.delayMs > 0) await sleep(plan.delayMs);
+  const text = await generateOcCommentText(oc, post, userCommentText, 'reply', {
+    replyMode: plan.mode,
+    replyStyleHint: replyStyleHint
+  });
+  if (!text) return null;
+  momentsStore.addOcPostComment(post.id, text, oc);
+  return {
+    ocId: oc.id,
+    ocName: oc.name || 'OC',
+    avatarUrl: oc.avatarUrl || '',
+    text: text,
+    postId: post.id,
+    skipped: false
+  };
 }
 
 module.exports = {

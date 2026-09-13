@@ -4,17 +4,37 @@
   <scroll-view class="scroll" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="main">
       <view class="album-hero">
-        <text class="album-hero-title">{{albumName}}</text>
-        <text class="album-hero-sub">{{imageCount}} / {{maxImages}} 张</text>
-        <text class="album-hero-preset" wx:if="{{isPreset}}">预设图册</text>
-      </view>
-
-      <view class="action-row">
-        <view class="action-btn" bindtap="onRenameAlbum">重命名</view>
-        <view class="action-btn action-btn--primary" bindtap="onChooseImages">
-          {{uploading ? '上传中…' : '上传图片'}}
+        <view class="album-hero-top">
+          <view class="album-hero-titles">
+            <text class="album-hero-title">{{albumName}}</text>
+            <text class="album-hero-sub">{{imageCount}} / {{maxImages}} 张</text>
+          </view>
+          <view class="album-hero-side">
+            <view class="side-btn" bindtap="onRenameAlbum">重命名</view>
+            <view class="side-btn" bindtap="onFocusDescription">图册描述</view>
+            <view class="side-btn side-btn--danger" wx:if="{{!isPreset}}" bindtap="onDeleteAlbum">删除</view>
+          </view>
         </view>
-        <view class="action-btn action-btn--danger" wx:if="{{!isPreset}}" bindtap="onDeleteAlbum">删除图册</view>
+
+        <textarea
+          class="album-desc-input"
+          value="{{albumDescription}}"
+          maxlength="120"
+          placeholder="请填写场景、服装或氛围"
+          auto-height
+          focus="{{descFocus}}"
+          show-confirm-bar="{{false}}"
+          bindinput="onDescriptionInput"
+          bindblur="onDescriptionBlur"
+        />
+
+        <view
+          class="upload-btn {{uploading ? 'upload-btn--disabled' : ''}}"
+          bindtap="onChooseImages"
+        >
+          <text class="upload-btn-plus">+</text>
+          <text class="upload-btn-text">{{uploading ? '上传中…' : '添加图片'}}</text>
+        </view>
       </view>
 
       <view class="grid" wx:if="{{images.length}}">
@@ -31,7 +51,7 @@
       </view>
       <view class="empty" wx:else>
         <text class="empty-plus">+</text>
-        <text class="empty-text">还没有图片，点击上方上传</text>
+        <text class="empty-text">暂无图片，请点击上方添加</text>
       </view>
 
       <view class="bottom-spacer"></view>
@@ -40,13 +60,17 @@
 
   <view class="album-preview" wx:if="{{previewVisible && images.length}}" catchtouchmove="preventMove">
     <view class="album-preview-backdrop" catchtap="onClosePreview"></view>
-    <view class="album-preview-panel">
+    <view class="album-preview-panel" style="{{previewHeadStyle}}">
+      <view
+        class="album-preview-close"
+        style="{{previewCloseStyle}}"
+        catchtap="onClosePreview"
+      >
+        <text class="album-preview-close-icon">×</text>
+      </view>
       <view class="album-preview-head">
         <text class="album-preview-title">{{albumName}}</text>
         <text class="album-preview-count" wx:if="{{images.length > 1}}">{{previewIndex + 1}} / {{images.length}}</text>
-        <view class="album-preview-close" catchtap="onClosePreview">
-          <text class="album-preview-close-icon">×</text>
-        </view>
       </view>
       <swiper
         class="album-preview-swiper"

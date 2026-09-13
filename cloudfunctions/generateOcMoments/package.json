@@ -3,5 +3,7 @@
   "version": "1.0.0",
   "description": "DeepSeek 生成 OC 朋友圈动态",
   "main": "index.js",
-  "dependencies": {}
+  "dependencies": {
+    "wx-server-sdk": "3.0.5-beta.1"
+  }
 }

@@ -46,7 +46,7 @@ function emptyDoc(dateKey) {
     unlockRoundsAd: 0,
     unlockRoundsShare: 0,
     unlockRoundsFailOpen: 0,
-    reportCount: 0,
+
     createdAt: db.serverDate(),
     updatedAt: db.serverDate()
   };

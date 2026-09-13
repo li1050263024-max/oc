@@ -887,9 +887,12 @@
 .chat-scroll {
   flex: 1;
   min-height: 0;
+  max-height: 100%;
+  height: 0;
 }
 .chat-inner {
   padding: 16rpx 20rpx;
+  box-sizing: border-box;
 }
 .msg-hint {
   text-align: center;
@@ -1044,9 +1047,14 @@
 .msg-bubble-wrap {
   position: relative;
   max-width: calc(85% - 84rpx);
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+}
+.msg-text {
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .msg-bubble-wrap--user {

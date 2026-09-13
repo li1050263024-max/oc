@@ -109,6 +109,11 @@ Page({
     notebookFavoriteId: '',
     settingsOpen: false,
     oaQrVisible: false,
+    membershipPanelVisible: false,
+    membershipPanelTitle: '会员权益',
+    membershipPanelLines: [],
+    membershipPanelFooter: '',
+    membershipSheetVisible: false,
     settingsWrapStyle: 'top:48px;left:14px;right:auto;',
     indexNavHeight: 0,
     uiThemeClass: '',
@@ -133,6 +138,7 @@ Page({
     applyPageGradientBg();
     loadAiWaitScriptFont();
     this._updatePageLayout();
+    this._syncMembershipPanel();
     const phase = options && options.phase ? parseInt(options.phase, 10) : 0;
     if (phase === 2 || phase === 3) {
       this._enterGachaPhase(phase, { autoDraw: true, freshDraw: false });
@@ -144,11 +150,23 @@ Page({
     }
   },
 
+  _syncMembershipPanel() {
+    // 会员权益介绍面板已下线
+    this.setData({
+      membershipPanelVisible: false,
+      membershipPanelTitle: '',
+      membershipPanelLines: [],
+      membershipPanelFooter: '',
+      membershipSheetVisible: false
+    });
+  },
+
   onShow() {
     applyPageGradientBg();
     syncPageTheme(this);
     this.setData({ cardBackSrc: staticAssets.getCardBackSrc() });
     this._updatePageLayout();
+    this._syncMembershipPanel();
     const app = getApp();
     if (app.globalData && app.globalData.indexHomeReset) {
       app.globalData.indexHomeReset = false;
@@ -485,6 +503,20 @@ Page({
     wx.navigateTo({ url: '/pages/redeemCode/redeemCode' });
   },
 
+  onGoAdFreeCard() {
+    this.setData({ settingsOpen: false });
+    wx.navigateTo({ url: '/pages/redeemCode/redeemCode?focus=adfree' });
+  },
+
+  onCloseMembershipPanel() {
+    this.setData({ membershipSheetVisible: false });
+  },
+
+  onMembershipGoRedeem() {
+    this.setData({ membershipSheetVisible: false });
+    wx.navigateTo({ url: '/pages/redeemCode/redeemCode' });
+  },
+
   onFollowOfficialAccount() {
     this.setData({ settingsOpen: false, oaQrVisible: true });
   },
@@ -516,6 +548,17 @@ Page({
   },
 
   syncWorkToStorage() {
+    try {
+      const tomb = require('../../utils/ocDeletedIds.js');
+      const fid = String(this.data.notebookFavoriteId || '').trim();
+      if (fid && tomb.isOcDeleted(fid)) {
+        this.setData({ result: null, notebookFavoriteId: '', notebookSaved: false });
+        try {
+          wx.removeStorageSync(STORAGE_OC_WORK);
+        } catch (_) {}
+        return;
+      }
+    } catch (_) {}
     const work = wx.getStorageSync(STORAGE_OC_WORK) || {};
     if (this.data.result) {
       work.result = normalizeResult(this.data.result);

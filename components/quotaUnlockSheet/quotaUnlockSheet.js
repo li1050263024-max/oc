@@ -2,7 +2,7 @@ Component({
   properties: {
     visible: { type: Boolean, value: false },
     shareLeft: { type: Number, value: 0 },
-    oaVisible: { type: Boolean, value: false }
+    isVip: { type: Boolean, value: false }
   },
 
   methods: {
@@ -10,6 +10,9 @@ Component({
       this.triggerEvent('close');
     },
     onPanelTap() {},
+    onWatchAd() {
+      this.triggerEvent('watchad');
+    },
     onShare() {
       if (Number(this.data.shareLeft) <= 0) {
         wx.showToast({ title: '今日分享次数已用完', icon: 'none' });

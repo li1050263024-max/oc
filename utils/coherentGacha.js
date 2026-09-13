@@ -9,6 +9,14 @@ const {
   defaultBackground,
   normalizeBackground
 } = require('./ocResult.js');
+const { namesPoolWithoutUsed, ensureUniqueOcName } = require('./favorite.js');
+
+function poolsWithFreeNames(pools) {
+  const p = pools || {};
+  return Object.assign({}, p, {
+    names: namesPoolWithoutUsed(p.names || [])
+  });
+}
 
 const TAG_RULES = [
   { tag: 'fantasy', words: ['精灵', '龙', '仙', '魔', '兽', '妖', '吸血鬼', '天使', '恶魔', '妖精', '人鱼', '狼人', '矮人', '神裔', '玄幻', '仙侠', '魔法', '西幻', '不死', '树人', '猫族', '鸟族', '麒麟', '凤凰', '德鲁伊', '术士', '骑士', '魔王', '勇者', '永生'] },
@@ -471,6 +479,7 @@ function pickAttitudeForEvent(event, personality, pool, baseTags) {
 }
 
 function drawLayer1(pools) {
+  pools = poolsWithFreeNames(pools);
   let tags = pickSeedTags();
   const gender = pickGender(pools, tags);
   inferTags(gender).forEach((t) => tags.add(t));
@@ -486,7 +495,7 @@ function drawLayer1(pools) {
   const likes = weightedPick(pools.likes || [], tags) || '';
   if (likes) inferTags(likes).forEach((t) => tags.add(t));
   return {
-    name: weightedPick(pools.names || [], tags),
+    name: ensureUniqueOcName(weightedPick(pools.names || [], tags), pools.names || []),
     race,
     gender,
     age,
@@ -503,6 +512,7 @@ function isLocked(locked, key) {
 }
 
 function drawLayer1Partial(pools, locked, current) {
+  pools = poolsWithFreeNames(pools);
   const base = normalizeResult(current || {});
   let tags = mergeTags(
     inferTags(base.race),
@@ -544,7 +554,10 @@ function drawLayer1Partial(pools, locked, current) {
 
   const pText = personalityBlend(base);
   if (!isLocked(locked, 'name')) {
-    base.name = weightedPick(pools.names || [], tags);
+    base.name = ensureUniqueOcName(
+      weightedPick(pools.names || [], tags),
+      pools.names || []
+    );
   }
   if (!isLocked(locked, 'hairColor')) {
     base.hairColor = pickHairColor(base.race, pText, pools, tags);

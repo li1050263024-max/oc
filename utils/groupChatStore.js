@@ -229,7 +229,7 @@ function deleteGroupSession(roomId, sessionId) {
   return deleteGroupSessionsBatch(roomId, [sessionId]);
 }
 
-/** @returns {{ ok: boolean, last?: boolean, deleted?: number }} */
+/** @returns {{ ok: boolean, last?: boolean, deleted?: number, recreated?: boolean }} */
 function deleteGroupSessionsBatch(roomId, sessionIds) {
   if (!roomId || !sessionIds || !sessionIds.length) {
     return { ok: false, deleted: 0 };
@@ -242,14 +242,29 @@ function deleteGroupSessionsBatch(roomId, sessionIds) {
   });
   const toDelete = sessions.filter((s) => idSet[s.id]).map((s) => s.id);
   if (!toDelete.length) return { ok: false, deleted: 0 };
-  const remaining = sessions.filter((s) => !idSet[s.id]);
-  if (remaining.length < 1) return { ok: false, last: true, deleted: 0 };
+  let remaining = sessions.filter((s) => !idSet[s.id]);
   toDelete.forEach((id) => {
     try {
       wx.removeStorageSync(messagesKey(roomId, id));
     } catch (e) {}
     saveGroupScenario(roomId, id, null);
   });
+  let recreated = false;
+  if (remaining.length < 1) {
+    const freshId = 'gs_' + Date.now();
+    remaining = [
+      {
+        id: freshId,
+        title: '新对话',
+        updatedAt: Date.now(),
+        preview: ''
+      }
+    ];
+    try {
+      wx.setStorageSync(messagesKey(roomId, freshId), []);
+    } catch (_) {}
+    recreated = true;
+  }
   saveSessions(roomId, remaining);
   const meta = getRoomMeta(roomId);
   if (meta && idSet[meta.activeSessionId]) {
@@ -257,8 +272,13 @@ function deleteGroupSessionsBatch(roomId, sessionIds) {
       roomId: roomId,
       activeSessionId: remaining[0] ? remaining[0].id : ''
     });
+  } else if (recreated && remaining[0]) {
+    upsertRoomMeta({
+      roomId: roomId,
+      activeSessionId: remaining[0].id
+    });
   }
-  return { ok: true, deleted: toDelete.length };
+  return { ok: true, deleted: toDelete.length, recreated: recreated };
 }
 
 function resolveMembersFromMeta(meta, ocList) {

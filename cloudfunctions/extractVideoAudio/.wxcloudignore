@@ -1,0 +1,6 @@
+# 勿上传本机 Windows 的 node_modules（含 ffmpeg.exe），否则云端 Linux 无法执行
+# 请使用「上传并部署：云端安装依赖」
+node_modules/
+.tmp/
+*.log
+localSmoke.js

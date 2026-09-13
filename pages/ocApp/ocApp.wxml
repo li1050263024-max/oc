@@ -1,0 +1,73 @@
+<view class="page oc-page oc-app-page {{uiThemeClass}}">
+  <view class="bg-solid"></view>
+  <view
+    class="app-nav-back"
+    style="top: {{menuTop}}px; height: {{menuHeight}}px; width: {{menuHeight}}px;"
+    catchtap="onGoHome"
+  >
+    <view class="app-nav-chevron"></view>
+  </view>
+  <view class="app-inner">
+    <view class="app-hero">
+      <text class="app-brand">OC APP</text>
+      <text class="app-desc">选择一个社交空间，去看看你的 OC</text>
+    </view>
+
+    <view class="app-grid">
+      <view class="app-cell" wx:for="{{cards}}" wx:key="key">
+        <view
+          class="app-card-settings"
+          wx:if="{{item.enabled && item.hasSettings}}"
+          data-key="{{item.key}}"
+          catchtap="onOpenSettings"
+        >
+          <text class="app-card-settings-text">设置</text>
+        </view>
+        <view
+          class="app-card app-card--{{item.tone}} {{item.enabled ? '' : 'app-card--disabled'}}"
+          data-key="{{item.key}}"
+          catchtap="onCardTap"
+        >
+          <view class="app-card-glow"></view>
+          <text class="app-card-title">{{item.title}}</text>
+          <text class="app-card-sub">{{item.sub}}</text>
+          <text class="app-card-badge" wx:if="{{!item.enabled}}">未开放</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="settings-mask" wx:if="{{settingsVisible}}" catchtap="onCloseSettings"></view>
+  <view class="settings-sheet" wx:if="{{settingsVisible}}">
+    <view class="settings-sheet-handle"></view>
+    <text class="settings-sheet-title">{{settingsTitle}}</text>
+    <text class="settings-sheet-desc">{{settingsDesc}}</text>
+
+    <view class="settings-block">
+      <text class="settings-block-label">参与的 OC</text>
+      <view class="settings-action-btn" catchtap="onSettingsPickWatch">
+        <text class="settings-action-title">选择 OC</text>
+        <text class="settings-action-sub">{{settingsWatchSub}}</text>
+      </view>
+    </view>
+
+    <view class="settings-block">
+      <text class="settings-block-label">回复模式</text>
+      <view
+        class="settings-mode {{item.selected ? 'settings-mode--on' : ''}}"
+        wx:for="{{settingsReplyModes}}"
+        wx:key="key"
+        data-mode="{{item.key}}"
+        catchtap="onSettingsPickReply"
+      >
+        <view class="settings-mode-main">
+          <text class="settings-mode-title">{{item.label}}</text>
+          <text class="settings-mode-hint">{{item.hint}}</text>
+        </view>
+        <text class="settings-mode-check" wx:if="{{item.selected}}">✓</text>
+      </view>
+    </view>
+
+    <view class="settings-done" catchtap="onCloseSettings">完成</view>
+  </view>
+</view>

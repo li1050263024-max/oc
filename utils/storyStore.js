@@ -10,11 +10,227 @@ const { isLayer3Ready } = require('./ocWork.js');
 
 const STORAGE_OC_WORK = 'oc_work_in_progress';
 
-function syncWorkOcStories(favoriteId, list) {
+const DEFAULT_COLLECTION_ID = 'sc_default';
+const DEFAULT_COLLECTION_NAME = '默认故事集';
+/** 故事集数量不再区分会员；保留常量仅兼容旧引用 */
+const FREE_COLLECTION_LIMIT = 9999;
+const VIP_COLLECTION_LIMIT = 9999;
+const COLLECTION_LIMIT = 9999;
+
+function syncWorkOcStories(favoriteId, list, collections) {
   const work = wx.getStorageSync(STORAGE_OC_WORK) || {};
   if (!work.result || work.notebookFavoriteId !== favoriteId) return;
   work.ocStories = (list || []).map((s) => ({ ...s }));
+  if (collections) {
+    work.ocStoryCollections = (collections || []).map((c) => ({ ...c }));
+  }
   wx.setStorageSync(STORAGE_OC_WORK, work);
+}
+
+function newCollectionId() {
+  return 'sc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+}
+
+function getCollectionLimit() {
+  return COLLECTION_LIMIT;
+}
+
+function makeDefaultCollection() {
+  return {
+    id: DEFAULT_COLLECTION_ID,
+    name: DEFAULT_COLLECTION_NAME,
+    isDefault: true,
+    time: Date.now()
+  };
+}
+
+function normalizeCollection(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = String(raw.id || '').trim();
+  const name = String(raw.name || '').trim() || '未命名故事集';
+  if (!id) return null;
+  return {
+    id: id,
+    name: name,
+    isDefault: !!raw.isDefault || id === DEFAULT_COLLECTION_ID,
+    time: Number(raw.time) || Date.now()
+  };
+}
+
+/**
+ * 确保有默认故事集，并把旧故事迁入默认集（发版兼容）
+ * @returns {{ collections: array, stories: array, changed: boolean }}
+ */
+function ensureCollectionsMigrated(favoriteId) {
+  const item = getFavoriteById(favoriteId);
+  if (!item) {
+    return { collections: [makeDefaultCollection()], stories: [], changed: false };
+  }
+  let collections = (Array.isArray(item.ocStoryCollections) ? item.ocStoryCollections : [])
+    .map(normalizeCollection)
+    .filter(Boolean);
+  let stories = getStoriesFromItem(item);
+  let changed = false;
+
+  if (!collections.length) {
+    collections = [makeDefaultCollection()];
+    changed = true;
+  } else if (!collections.some((c) => c.id === DEFAULT_COLLECTION_ID || c.isDefault)) {
+    collections.unshift(makeDefaultCollection());
+    changed = true;
+  } else {
+    // 保证默认集名称至少有一个 isDefault
+    collections = collections.map((c) => {
+      if (c.id === DEFAULT_COLLECTION_ID && !c.isDefault) {
+        changed = true;
+        return Object.assign({}, c, { isDefault: true });
+      }
+      return c;
+    });
+  }
+
+  const validIds = {};
+  collections.forEach((c) => {
+    validIds[c.id] = true;
+  });
+  const defaultId =
+    (collections.find((c) => c.isDefault) || collections[0] || makeDefaultCollection()).id;
+
+  stories = stories.map((s) => {
+    if (!s) return s;
+    const cid = String(s.collectionId || '').trim();
+    if (!cid || !validIds[cid]) {
+      changed = true;
+      return Object.assign({}, s, { collectionId: defaultId });
+    }
+    return s;
+  });
+
+  if (changed) {
+    const work = workFromFavoriteItem(item) || { result: item.result };
+    work.ocStories = stories;
+    work.ocStoryCollections = collections;
+    updateFavoriteItem(favoriteId, work);
+    syncWorkOcStories(favoriteId, stories, collections);
+  }
+
+  return { collections: collections, stories: stories, changed: changed };
+}
+
+function listCollections(favoriteId) {
+  return ensureCollectionsMigrated(favoriteId).collections.slice();
+}
+
+function getStoriesInCollection(favoriteId, collectionId) {
+  const migrated = ensureCollectionsMigrated(favoriteId);
+  const cid = String(collectionId || DEFAULT_COLLECTION_ID);
+  return migrated.stories.filter((s) => String(s.collectionId || '') === cid);
+}
+
+function createCollection(favoriteId, name) {
+  const title = String(name || '').trim();
+  if (!title) return { ok: false, errMsg: '请输入故事集名称' };
+  if (title.length > 40) return { ok: false, errMsg: '名称过长' };
+  const migrated = ensureCollectionsMigrated(favoriteId);
+  const limit = getCollectionLimit();
+  if (migrated.collections.length >= limit) {
+    return {
+      ok: false,
+      needVip: false,
+      errMsg: '故事集数量过多，请先整理后再建',
+      limit: limit
+    };
+  }
+  const col = {
+    id: newCollectionId(),
+    name: title,
+    isDefault: false,
+    time: Date.now()
+  };
+  const collections = migrated.collections.concat([col]);
+  const item = getFavoriteById(favoriteId);
+  if (!item) return { ok: false, errMsg: '未找到 OC' };
+  const work = workFromFavoriteItem(item) || { result: item.result };
+  work.ocStories = migrated.stories;
+  work.ocStoryCollections = collections;
+  const ok = updateFavoriteItem(favoriteId, work);
+  if (ok) syncWorkOcStories(favoriteId, migrated.stories, collections);
+  return ok ? { ok: true, collection: col, collections: collections } : { ok: false, errMsg: '创建失败' };
+}
+
+function renameCollection(favoriteId, collectionId, name) {
+  const title = String(name || '').trim();
+  if (!title) return { ok: false, errMsg: '请输入故事集名称' };
+  const migrated = ensureCollectionsMigrated(favoriteId);
+  const id = String(collectionId || '');
+  const idx = migrated.collections.findIndex((c) => c.id === id);
+  if (idx < 0) return { ok: false, errMsg: '故事集不存在' };
+  const collections = migrated.collections.slice();
+  collections[idx] = Object.assign({}, collections[idx], { name: title });
+  const item = getFavoriteById(favoriteId);
+  if (!item) return { ok: false, errMsg: '未找到 OC' };
+  const work = workFromFavoriteItem(item) || { result: item.result };
+  work.ocStories = migrated.stories;
+  work.ocStoryCollections = collections;
+  const ok = updateFavoriteItem(favoriteId, work);
+  if (ok) syncWorkOcStories(favoriteId, migrated.stories, collections);
+  return ok ? { ok: true, collections: collections } : { ok: false, errMsg: '重命名失败' };
+}
+
+function moveStoryToCollection(favoriteId, storyId, collectionId) {
+  const migrated = ensureCollectionsMigrated(favoriteId);
+  const sid = String(storyId || '');
+  const cid = String(collectionId || '');
+  if (!migrated.collections.some((c) => c.id === cid)) {
+    return { ok: false, errMsg: '目标故事集不存在' };
+  }
+  const stories = migrated.stories.map((s) => {
+    if (!s || s.id !== sid) return s;
+    return Object.assign({}, s, { collectionId: cid });
+  });
+  if (!stories.some((s) => s && s.id === sid)) {
+    return { ok: false, errMsg: '故事不存在' };
+  }
+  const item = getFavoriteById(favoriteId);
+  if (!item) return { ok: false, errMsg: '未找到 OC' };
+  const work = workFromFavoriteItem(item) || { result: item.result };
+  work.ocStories = stories;
+  work.ocStoryCollections = migrated.collections;
+  const ok = updateFavoriteItem(favoriteId, work);
+  if (ok) syncWorkOcStories(favoriteId, stories, migrated.collections);
+  return ok ? { ok: true } : { ok: false, errMsg: '移动失败' };
+}
+
+/** 弹出选择故事集；成功回调 collection */
+function pickCollection(favoriteId, options) {
+  const opts = options || {};
+  const cols = listCollections(favoriteId);
+  if (!cols.length) {
+    return Promise.reject(new Error('暂无故事集'));
+  }
+  const title = opts.title || '选择故事集';
+  return new Promise((resolve, reject) => {
+    wx.showActionSheet({
+      itemList: cols.map((c) => c.name),
+      alertText: title,
+      success: (res) => {
+        const picked = cols[res.tapIndex];
+        if (!picked) {
+          reject(new Error('未选择'));
+          return;
+        }
+        resolve(picked);
+      },
+      fail: (err) => {
+        // 用户取消
+        if (err && /cancel/i.test(String(err.errMsg || ''))) {
+          reject(new Error('cancel'));
+          return;
+        }
+        reject(err || new Error('选择失败'));
+      }
+    });
+  });
 }
 
 function favoriteHasBio(item) {
@@ -154,10 +370,22 @@ function mapHistoryForDisplay(story) {
 }
 
 function upsertStoryToFavorite(favoriteId, entry) {
+  const migrated = ensureCollectionsMigrated(favoriteId);
   const item = getFavoriteById(favoriteId);
   if (!item) return false;
-  const list = getStoriesFromItem(item);
+  const list = migrated.stories.slice();
   const existing = list.find((s) => s.id === entry.id);
+  const defaultId =
+    (migrated.collections.find((c) => c.isDefault) || migrated.collections[0] || {})
+      .id || DEFAULT_COLLECTION_ID;
+  let collectionId = String(
+    (entry && entry.collectionId) ||
+      (existing && existing.collectionId) ||
+      defaultId
+  ).trim();
+  if (!migrated.collections.some((c) => c.id === collectionId)) {
+    collectionId = defaultId;
+  }
   const story = {
     id: entry.id || newStoryId(),
     title: normalizeChapterTitle(String(entry.title || '').trim()),
@@ -165,6 +393,7 @@ function upsertStoryToFavorite(favoriteId, entry) {
     content: String(entry.content || '').trim(),
     time: entry.time || Date.now(),
     parentStoryId: entry.parentStoryId ? String(entry.parentStoryId) : '',
+    collectionId: collectionId,
     history:
       entry.history != null
         ? entry.history.slice()
@@ -180,8 +409,9 @@ function upsertStoryToFavorite(favoriteId, entry) {
   }
   const work = workFromFavoriteItem(item) || { result: item.result };
   work.ocStories = list;
+  work.ocStoryCollections = migrated.collections;
   const ok = updateFavoriteItem(favoriteId, work);
-  if (ok) syncWorkOcStories(favoriteId, list);
+  if (ok) syncWorkOcStories(favoriteId, list, migrated.collections);
   return ok;
 }
 
@@ -216,13 +446,15 @@ function saveStoryToFavorite(favoriteId, entry) {
 }
 
 function deleteStoryFromFavorite(favoriteId, storyId) {
+  const migrated = ensureCollectionsMigrated(favoriteId);
   const item = getFavoriteById(favoriteId);
   if (!item) return false;
-  const list = getStoriesFromItem(item).filter((s) => s.id !== storyId);
+  const list = migrated.stories.filter((s) => s.id !== storyId);
   const work = workFromFavoriteItem(item) || { result: item.result };
   work.ocStories = list;
+  work.ocStoryCollections = migrated.collections;
   const ok = updateFavoriteItem(favoriteId, work);
-  if (ok) syncWorkOcStories(favoriteId, list);
+  if (ok) syncWorkOcStories(favoriteId, list, migrated.collections);
   return ok;
 }
 
@@ -339,5 +571,17 @@ module.exports = {
   saveStoryToFavorite,
   deleteStoryFromFavorite,
   buildOcPickerList,
-  buildStoryPromptParts
+  buildStoryPromptParts,
+  DEFAULT_COLLECTION_ID,
+  DEFAULT_COLLECTION_NAME,
+  FREE_COLLECTION_LIMIT,
+  VIP_COLLECTION_LIMIT,
+  getCollectionLimit,
+  ensureCollectionsMigrated,
+  listCollections,
+  getStoriesInCollection,
+  createCollection,
+  renameCollection,
+  moveStoryToCollection,
+  pickCollection
 };

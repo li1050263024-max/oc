@@ -1,49 +1,4 @@
-const https = require('https');
-
-function postJson(hostname, path, headers, body) {
-  const data = JSON.stringify(body);
-  return new Promise((resolve, reject) => {
-    const req = https.request(
-      {
-        hostname,
-        port: 443,
-        path,
-        method: 'POST',
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(data)
-        }
-      },
-      (res) => {
-        let chunks = '';
-        res.on('data', (d) => {
-          chunks += d;
-        });
-        res.on('end', () => {
-          try {
-            const json = JSON.parse(chunks);
-            if (json.error) {
-              reject(new Error(json.error.message || JSON.stringify(json.error)));
-            } else {
-              resolve(json);
-            }
-          } catch (e) {
-            reject(new Error(chunks.slice(0, 200) || e.message));
-          }
-        });
-      }
-    );
-    req.on('error', reject);
-    req.setTimeout(57000, () => {
-      req.destroy();
-      reject(new Error('请求超时'));
-    });
-    req.write(data);
-    req.end();
-  });
-}
-
+const { chatCompletions } = require('./aiText.js');
 function trimList(arr, max) {
   if (!Array.isArray(arr)) return [];
   return arr.slice(0, max).map((x) => String(x).trim()).filter(Boolean);
@@ -240,10 +195,6 @@ function validateLayer3(data, pools, locked, current) {
 }
 
 exports.main = async (event) => {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    return { ok: false, errMsg: '请配置云函数环境变量 DEEPSEEK_API_KEY' };
-  }
 
   const layer = event && event.layer != null ? Number(event.layer) : 1;
   const pools = (event && event.pools) || {};
@@ -296,27 +247,12 @@ exports.main = async (event) => {
   }
 
   try {
-    const result = await postJson(
-      'api.deepseek.com',
-      '/v1/chat/completions',
-      { Authorization: `Bearer ${apiKey}` },
-      {
-        model: 'deepseek-v4-flash',
-        thinking: { type: 'disabled' },
-        messages: [
+    const result = await chatCompletions([
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userContent }
-        ],
-        temperature: 0.55,
-        max_tokens: layer === 2 ? 300 : layer === 3 ? 360 : 380
-      }
-    );
+        ], { temperature: 0.55, maxTokens: layer === 2 ? 300 : layer === 3 ? 360 : 380 });
 
-    const text =
-      result.choices &&
-      result.choices[0] &&
-      result.choices[0].message &&
-      result.choices[0].message.content;
+    const text = result && result.text;
 
     const parsed = parseJsonBlock(text);
     if (!parsed) {

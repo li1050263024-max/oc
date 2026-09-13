@@ -20,18 +20,31 @@ App({
         } catch (_) {}
       }
     };
-    ['ocNotebook', 'ocBioHub', 'ocChat', 'ocMoments', 'ocStory', 'ocGroupChat'].forEach(
-      (name, i) => {
-        setTimeout(() => preload(name), 80 + i * 120);
-      }
-    );
+    // 勿预加载 ocApp / ocDouyinBgmPack：含音频资源，易触发 preloadRule 2MB 上限
+    ['ocNotebook', 'ocBioHub', 'ocChat', 'ocStory'].forEach((name, i) => {
+      setTimeout(() => preload(name), 80 + i * 120);
+    });
     runOcSocialOnAppOpen(Date.now()).catch(() => {});
+    setTimeout(() => {
+      try {
+        require('./utils/ocAppFeatures.js').syncFeatures().catch(() => {});
+      } catch (_) {}
+      try {
+        require('./utils/ocMembership.js').syncMembership().catch(() => {});
+      } catch (_) {}
+      try {
+        require('./utils/userDataSync.js').pullOnLaunch().catch(() => {});
+      } catch (_) {}
+    }, 400);
     setTimeout(() => {
       runOcSocialOnAppOpen(Date.now(), { force: true }).catch(() => {});
     }, 16000);
   },
 
   onShow() {
+    try {
+      require('./utils/rewardedVideoAd.js').markAdSessionForeground();
+    } catch (_) {}
     if (this.globalData.skipNextRelaunch) {
       this.globalData.skipNextRelaunch = false;
       this._wentBackground = false;
@@ -47,7 +60,14 @@ App({
       if (
         route.indexOf('ocAlbumDetail') >= 0 ||
         route.indexOf('ocProfileDetail') >= 0 ||
-        route.indexOf('ocNotebookEdit') >= 0
+        route.indexOf('ocNotebookEdit') >= 0 ||
+        route.indexOf('ocDouyin') >= 0 ||
+        route.indexOf('ocApp/ocApp') >= 0 ||
+        route.indexOf('ocMoments') >= 0 ||
+        route.indexOf('ocChat') >= 0 ||
+        route.indexOf('ocGroupChat') >= 0 ||
+        route.indexOf('redeemCode') >= 0 ||
+        route.indexOf('ocStory') >= 0
       ) {
         runOcSocialOnAppOpen(Date.now(), { fromShow: true }).catch(() => {});
         return;
@@ -62,7 +82,13 @@ App({
   onHide() {
     this._wentBackground = true;
     try {
+      require('./utils/rewardedVideoAd.js').markAdSessionBackground();
+    } catch (_) {}
+    try {
       require('./utils/usageReport.js').flush();
+    } catch (_) {}
+    try {
+      require('./utils/userDataSync.js').flushPending();
     } catch (_) {}
   },
 

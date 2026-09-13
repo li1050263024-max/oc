@@ -37,12 +37,102 @@ function _messageLineForPlot(m, ocName) {
   return role + '：' + t.slice(0, 200);
 }
 
+/** 用户希望/命令 OC 发朋友圈或抖音的表述 */
+const POST_DIRECTIVE_RE =
+  /((发|写|更新|配).{0,10}(朋友圈|抖音|动态|文案)|(朋友圈|抖音|动态).{0,10}(发|写|更新)|(希望你|想让你|求你|拜托你|命令你|给你|给我|你去|给我去).{0,24}(发|写|更新)|(今天|今晚|现在).{0,8}发.{0,16}(朋友圈|抖音)|(发个|发条|发一下).{0,20}(朋友圈|抖音|动态))/;
+
+function _detectPostChannel(text) {
+  const s = String(text || '');
+  const hasMoments = /朋友圈|动态/.test(s);
+  const hasDouyin = /抖音|文案|短视频|作品/.test(s);
+  if (hasMoments && !hasDouyin) return 'moments';
+  if (hasDouyin && !hasMoments) return 'douyin';
+  return 'either';
+}
+
+function _isCommandTone(text) {
+  return /(命令|必须|现在就|马上|给我发|你去发|不许不|听我的)/.test(String(text || ''));
+}
+
+/**
+ * 从近期私聊提取「用户要求发帖」意向
+ * @returns {{ channel: string, tone: string, text: string }[]}
+ */
+function extractUserPostDirectives(oc, options) {
+  const opts = options || {};
+  const limit = opts.limit || 6;
+  if (!oc || !oc.id) return [];
+  const ocId = oc.id;
+  const sessionId =
+    findPrimaryChatSessionId(ocId) || ensureDefaultSession(ocId);
+  const messages = getMessages(ocId, sessionId).slice(-40);
+  const out = [];
+  const seen = {};
+  for (let i = messages.length - 1; i >= 0 && out.length < limit; i--) {
+    const m = messages[i];
+    if (!m || m.role !== 'user') continue;
+    const text = String(m.content || '').trim();
+    if (!text || text.length < 4) continue;
+    if (!POST_DIRECTIVE_RE.test(text)) continue;
+    const key = text.slice(0, 48);
+    if (seen[key]) continue;
+    seen[key] = true;
+    out.unshift({
+      channel: _detectPostChannel(text),
+      tone: _isCommandTone(text) ? 'command' : 'request',
+      text: text.slice(0, 120)
+    });
+  }
+  return out;
+}
+
+/**
+ * 发帖影响说明：按人设决定是否配合用户希望/命令
+ * @param {'moments'|'douyin'|string} [channel]
+ */
+function buildPostInfluenceHint(oc, channel) {
+  const dirs = extractUserPostDirectives(oc, { limit: 5 });
+  if (!dirs.length) return '';
+  const ch = String(channel || 'either');
+  const relevant = dirs.filter((d) => {
+    if (ch === 'either' || !ch) return true;
+    return d.channel === 'either' || d.channel === ch;
+  });
+  if (!relevant.length) return '';
+
+  const lines = relevant.map((d, i) => {
+    const where =
+      d.channel === 'moments'
+        ? '朋友圈'
+        : d.channel === 'douyin'
+          ? '抖音'
+          : '朋友圈/抖音';
+    const tone = d.tone === 'command' ? '命令口吻' : '希望/请求';
+    return i + 1 + '. [' + where + '/' + tone + '] ' + d.text;
+  });
+
+  return (
+    '【用户发帖意向·须按人设裁决】\n' +
+    '用户在私聊中提出过以下希望或命令（可能要求你发朋友圈/抖音）：\n' +
+    lines.join('\n') +
+    '\n裁决规则（必须遵守）：\n' +
+    '1. 严格按本角色性格决定「做 / 半做 / 不做」：顺从黏人可配合；高冷叛逆傲娇可拒绝、阴阳、敷衍或故意岔开；腹黑可反将一军。\n' +
+    '2. 若配合：用角色口吻原创改写，自然融入当前渠道文案，禁止复述用户指令原文，禁止写成「按你说的发了」。\n' +
+    '3. 若拒绝/敷衍：可发完全无关内容，或只带一点相关情绪/反讽，仍要像真人发帖。\n' +
+    '4. 渠道过滤：生成朋友圈时只考虑朋友圈相关意向；生成抖音时只考虑抖音相关意向；未指明渠道的意向两边都可参考。\n' +
+    '5. 未确认亲密关系前，不要因讨好而 OOC 发黏腻告白。'
+  );
+}
+
 /**
  * 拼装剧情上下文：情景演绎、故事线、对话记忆、近期私聊
  * 用于朋友圈 / 主动消息 / 群聊续记
+ * @param {object} oc
+ * @param {{ channel?: string }} [options]
  */
-function buildSocialPlotContext(oc) {
+function buildSocialPlotContext(oc, options) {
   if (!oc || !oc.work) return '';
+  const opts = options || {};
   const work = oc.work;
   const ocId = oc.id;
   const name = _ocDisplayName(work, oc);
@@ -58,8 +148,11 @@ function buildSocialPlotContext(oc) {
   const parts = [];
 
   parts.push(
-    '【跨场景记忆说明】以下为你与用户的私聊要点。在朋友圈、群聊、主动消息中须记得并自然呼应，不要装作不认识或忘记说过的事与关系。'
+    '【跨场景记忆说明】以下为你与用户的私聊要点。在朋友圈、群聊、主动消息、抖音文案中须记得并自然呼应，不要装作不认识或忘记说过的事与关系。若用户希望/命令你发帖，必须结合人设决定是否配合，不可无脑照做。'
   );
+
+  const influence = buildPostInfluenceHint(oc, opts.channel || 'either');
+  if (influence) parts.push(influence);
 
   if (scenario && scenario.excerpt) {
     parts.push(
@@ -198,9 +291,11 @@ function buildMomentsCloudPayload(oc, count, options) {
     ocName: oc.name || _ocDisplayName(work, oc),
     ocSetting: buildOcPromptFromWork(work).slice(0, 3200),
     ocBio: _bioForCloud(work, oc),
-    chatSummary: buildSocialPlotContext(oc).slice(0, 2800),
+    chatSummary: buildSocialPlotContext(oc, { channel: 'moments' }).slice(0, 3000),
     postCount: count,
-    forbiddenContents: forbidden.slice(0, 35)
+    forbiddenContents: forbidden.slice(0, 35),
+    albumHint: String(opts.albumHint || '').slice(0, 200),
+    styleAngle: String(opts.styleAngle || '').slice(0, 180)
   };
 }
 
@@ -209,5 +304,7 @@ module.exports = {
   buildGroupPlotHint,
   buildFakeChatCloudPayload,
   buildProactiveCloudPayload,
-  buildMomentsCloudPayload
+  buildMomentsCloudPayload,
+  extractUserPostDirectives,
+  buildPostInfluenceHint
 };

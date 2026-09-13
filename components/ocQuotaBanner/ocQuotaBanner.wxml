@@ -1,0 +1,27 @@
+<view class="qb {{dark ? 'qb--dark' : ''}}" wx:if="{{visible}}">
+  <view class="qb-bar" catchtap="onToggle">
+    <view class="qb-main">
+      <text class="qb-title">额度</text>
+      <text class="qb-sum">{{summaryText}}</text>
+    </view>
+    <view class="qb-actions-inline">
+      <text class="qb-collapse">{{collapsed ? '展开' : '收起'}}</text>
+      <view class="qb-close" catchtap="onClose">✕</view>
+    </view>
+  </view>
+
+  <view class="qb-panel" wx:if="{{!collapsed}}">
+    <text class="qb-detail">{{detailText}}</text>
+    <view class="qb-btns">
+      <view class="qb-btn qb-btn--primary" catchtap="onWatchAd" wx:if="{{!isVip}}">
+        <text>看广告并点击领取</text>
+      </view>
+      <view class="qb-btn qb-btn--primary" catchtap="onWatchAd" wx:if="{{isVip}}">
+        <text>领取额度（免广告）</text>
+      </view>
+      <view class="qb-btn" catchtap="onRedeem">
+        <text>额度商店</text>
+      </view>
+    </view>
+  </view>
+</view>

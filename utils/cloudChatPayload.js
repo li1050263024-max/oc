@@ -3,9 +3,9 @@
  * 注意：JSON.stringify().length 是字符数，中文 UTF-8 约 3 字节/字，必须按字节估算。
  */
 
-const MAX_HISTORY_ITEMS = 12;
-const MAX_HISTORY_CONTENT = 480;
-const MAX_SYSTEM_PROMPT = 3600;
+const MAX_HISTORY_ITEMS = 8;
+const MAX_HISTORY_CONTENT = 400;
+const MAX_SYSTEM_PROMPT = 3200;
 const MAX_USER_MESSAGE = 800;
 /** 留余量，微信建议临界约 100KB */
 const MAX_PAYLOAD_BYTES = 88000;

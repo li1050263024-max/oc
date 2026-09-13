@@ -8,6 +8,7 @@
     "oc-tab-bar": "/components/ocTabBar/ocTabBar",
     "oc-page-nav": "/components/ocPageNav/ocPageNav",
     "oc-segment-bar": "/components/ocSegmentBar/ocSegmentBar",
-    "quota-unlock-sheet": "/components/quotaUnlockSheet/quotaUnlockSheet"
+    "quota-unlock-sheet": "/components/quotaUnlockSheet/quotaUnlockSheet",
+    "ad-claim-sheet": "/components/adClaimSheet/adClaimSheet"
   }
 }

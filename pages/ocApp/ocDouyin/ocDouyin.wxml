@@ -1,0 +1,452 @@
+<view class="dy-page">
+  <view
+    class="dy-nav-back"
+    style="top: {{menuTop}}px; height: {{menuHeight}}px; width: {{menuHeight}}px;"
+    catchtap="onGoOcApp"
+  >
+    <view class="dy-nav-chevron"></view>
+  </view>
+  <view class="dy-compose-fab" catchtap="onUserPostTap">
+    <view class="dy-compose-fab-glow dy-compose-fab-glow--cyan"></view>
+    <view class="dy-compose-fab-glow dy-compose-fab-glow--pink"></view>
+    <view class="dy-compose-fab-core">
+      <text class="dy-compose-fab-plus">+</text>
+    </view>
+  </view>
+  <view class="dy-loading" wx:if="{{loading || (generating && !feed.length)}}">
+    <text class="dy-loading-text">{{generating ? '正在生成出镜文案…' : '加载中…'}}</text>
+  </view>
+
+  <view class="dy-empty" wx:elif="{{!feed.length}}">
+    <text class="dy-empty-text">{{emptyHint}}</text>
+    <view class="dy-empty-btn" catchtap="onRefreshTap">再试一次</view>
+  </view>
+
+  <!-- 竖滑：不同抖音条 -->
+  <swiper
+    wx:else
+    class="dy-swiper"
+    vertical
+    circular="{{false}}"
+    current="{{current}}"
+    bindchange="onSwiperChange"
+    style="height: {{windowHeight}}px;"
+  >
+    <swiper-item wx:for="{{feed}}" wx:key="id" class="dy-item">
+      <view class="dy-card">
+        <!-- 单图展示 + 左右触摸切图，避免嵌套滚动卡死 -->
+        <view
+          class="dy-img-stage"
+          style="height: {{windowHeight}}px;"
+          data-clip-index="{{index}}"
+          bindtouchstart="onImgTouchStart"
+          bindtouchend="onImgTouchEnd"
+        >
+          <block wx:if="{{item.currentImage && !item.currentImage.broken && item.currentImage.src}}">
+            <!-- 用 for+key 换图时重建节点，避免旧图 binderror 误伤下一张 -->
+            <block wx:for="{{[item.currentImage]}}" wx:key="id" wx:for-item="showImg">
+              <image
+                class="dy-image {{showImg.landscape ? 'dy-image--land' : ''}}"
+                src="{{showImg.src}}"
+                mode="{{showImg.landscape ? 'widthFix' : 'aspectFill'}}"
+                lazy-load="{{false}}"
+                data-clip-index="{{index}}"
+                data-img-index="{{item.imageIndex || 0}}"
+                data-img-id="{{showImg.id}}"
+                data-src="{{showImg.path}}"
+                binderror="onImageError"
+                catchtap="onPreviewImage"
+              />
+            </block>
+          </block>
+          <view wx:else class="dy-image dy-image--broken">
+            <text class="dy-broken-text">图片暂不可用</text>
+            <text class="dy-broken-sub">可到设定本相册重新上传</text>
+          </view>
+          <view
+            class="dy-img-hit dy-img-hit--left"
+            wx:if="{{item.images.length > 1}}"
+            data-clip-index="{{index}}"
+            data-dir="-1"
+            catchtap="onStepImage"
+          ></view>
+          <view
+            class="dy-img-hit dy-img-hit--right"
+            wx:if="{{item.images.length > 1}}"
+            data-clip-index="{{index}}"
+            data-dir="1"
+            catchtap="onStepImage"
+          ></view>
+        </view>
+
+        <view
+          class="dy-img-progress"
+          wx:if="{{item.images.length > 1}}"
+        >
+          <view
+            class="dy-img-seg {{(item.imageIndex || 0) === imgIdx ? 'dy-img-seg--on' : ((item.imageIndex || 0) > imgIdx ? 'dy-img-seg--done' : '')}}"
+            wx:for="{{item.images}}"
+            wx:for-item="dotImg"
+            wx:for-index="imgIdx"
+            wx:key="id"
+          ></view>
+        </view>
+
+        <view class="dy-mask"></view>
+
+        <view class="dy-side">
+          <view class="dy-avatar-wrap" catchtap="onTapOc" data-oc-id="{{item.ocId}}">
+            <image
+              wx:if="{{item.avatarDisplay}}"
+              class="dy-avatar"
+              src="{{item.avatarDisplay}}"
+              mode="aspectFill"
+            />
+            <view wx:else class="dy-avatar dy-avatar--ph">
+              <text>{{item.avatarLetter}}</text>
+            </view>
+          </view>
+
+          <view
+            class="dy-action {{item.liked ? 'dy-action--like-on' : ''}}"
+            catchtap="onToggleLike"
+            data-id="{{item.id}}"
+          >
+            <image
+              class="dy-ico-img"
+              src="{{item.liked ? '/pages/ocApp/ocDouyin/icons/like-on.png' : '/pages/ocApp/ocDouyin/icons/like.png'}}"
+              mode="aspectFit"
+            />
+            <text class="dy-action-label">{{item.likeCountText}}</text>
+          </view>
+
+          <view class="dy-action" catchtap="onOpenComment" data-id="{{item.id}}">
+            <image
+              class="dy-ico-img"
+              src="/pages/ocApp/ocDouyin/icons/comment.png"
+              mode="aspectFit"
+            />
+            <text class="dy-action-label">{{item.commentCountText}}</text>
+          </view>
+
+          <view
+            class="dy-action {{item.favorited ? 'dy-action--fav-on' : ''}}"
+            catchtap="onToggleFavorite"
+            data-id="{{item.id}}"
+          >
+            <image
+              class="dy-ico-img"
+              src="{{item.favorited ? '/pages/ocApp/ocDouyin/icons/star-on.png' : '/pages/ocApp/ocDouyin/icons/star.png'}}"
+              mode="aspectFit"
+            />
+            <text class="dy-action-label">{{item.favCountText}}</text>
+          </view>
+
+          <view class="dy-action" catchtap="onShareTap" data-id="{{item.id}}">
+            <image
+              class="dy-ico-img"
+              src="/pages/ocApp/ocDouyin/icons/share.png"
+              mode="aspectFit"
+            />
+            <text class="dy-action-label">分享</text>
+          </view>
+
+          <view
+            class="dy-disc-wrap"
+            catchtap="onTapBgmDisc"
+            catchlongpress="onLongPressBgmDisc"
+          >
+            <view class="dy-disc {{bgmPlaying ? 'dy-disc--spin' : ''}} {{bgmReady ? '' : 'dy-disc--empty'}}">
+              <view class="dy-disc-ring"></view>
+              <view class="dy-disc-hole"></view>
+            </view>
+            <text class="dy-action-label dy-disc-label">{{bgmName || '点此·BGM'}}</text>
+          </view>
+        </view>
+
+        <view class="dy-bottom">
+          <view class="dy-name-row">
+            <text wx:if="{{item.isUserPost}}" class="dy-name dy-name--me">@{{item.displayName || '我'}}</text>
+            <text
+              wx:else
+              class="dy-name"
+              catchtap="onTapOc"
+              data-oc-id="{{item.ocId}}"
+            >@{{item.displayName || item.ocName}}</text>
+            <view class="dy-tuwen">
+              <view class="dy-tuwen-ico">
+                <view class="dy-tuwen-ico-a"></view>
+                <view class="dy-tuwen-ico-b"></view>
+              </view>
+              <text class="dy-tuwen-txt">图文</text>
+            </view>
+            <text class="dy-date-sep">·</text>
+            <text class="dy-date">{{item.dateLabel}}</text>
+          </view>
+          <view class="dy-caption-wrap" catchtap="onToggleCaption" data-id="{{item.id}}">
+            <text
+              class="dy-caption {{expandedCaptions[item.id] ? 'dy-caption--open' : 'dy-caption--clamp'}}"
+              user-select
+            >{{item.content}}</text>
+            <text class="dy-caption-more" wx:if="{{item.contentLong && !expandedCaptions[item.id]}}">展开</text>
+            <text class="dy-caption-more" wx:elif="{{item.contentLong && expandedCaptions[item.id]}}">收起</text>
+          </view>
+          <text class="dy-tags" wx:if="{{item.tagText}}">{{item.tagText}}</text>
+        </view>
+      </view>
+    </swiper-item>
+  </swiper>
+
+  <!-- BGM 主菜单 -->
+  <view class="dy-sheet-mask" wx:if="{{bgmMenuOpen && !bgmLibOpen}}" catchtap="onCloseBgmMenu"></view>
+  <view class="dy-bgm-sheet" wx:if="{{bgmMenuOpen && !bgmLibOpen}}">
+    <view class="dy-bgm-panel" catchtap="onBgmPanelNop">
+      <view class="dy-sheet-handle"></view>
+      <view class="dy-bgm-head">
+        <text class="dy-bgm-title">BGM</text>
+        <text class="dy-bgm-sub">{{bgmName || '尚未选择背景音乐'}}</text>
+      </view>
+
+      <view class="dy-bgm-cards dy-bgm-cards--2">
+        <view class="dy-bgm-card dy-bgm-card--play" catchtap="onBgmMenuPlay">
+          <text class="dy-bgm-card-label">播放</text>
+        </view>
+        <view class="dy-bgm-card dy-bgm-card--pause" catchtap="onBgmMenuPause">
+          <text class="dy-bgm-card-label">暂停</text>
+        </view>
+      </view>
+
+      <view class="dy-bgm-card" catchtap="onOpenBgmLibrary">
+        <text class="dy-bgm-card-label">BGM 曲库</text>
+        <text class="dy-bgm-card-desc">从曲库选歌播放</text>
+      </view>
+      <view class="dy-bgm-card" catchtap="onBgmMenuUploadLocal">
+        <text class="dy-bgm-card-label">本地上传音频</text>
+        <text class="dy-bgm-card-desc">从聊天/文件选择 mp3 等 · ≤15MB</text>
+      </view>
+      <view class="dy-bgm-card" catchtap="onBgmMenuVideo">
+        <text class="dy-bgm-card-label">上传视频提取音频</text>
+        <text class="dy-bgm-card-desc">≤30MB/60秒 · {{bgmExtractHint}}</text>
+      </view>
+      <view class="dy-bgm-card" catchtap="onOpenStorageClean">
+        <text class="dy-bgm-card-label">清理本地存储</text>
+        <text class="dy-bgm-card-desc">空间不足时可删除 BGM / 缓存</text>
+      </view>
+
+      <view class="dy-bgm-card dy-bgm-card--danger" catchtap="onBgmMenuClear">
+        <text class="dy-bgm-card-label">删除</text>
+        <text class="dy-bgm-card-desc">清除当前 BGM</text>
+      </view>
+
+      <view class="dy-bgm-item dy-bgm-item--cancel" catchtap="onCloseBgmMenu">关闭</view>
+    </view>
+  </view>
+
+  <!-- BGM 曲库抽屉（二级） -->
+  <view class="dy-sheet-mask" wx:if="{{bgmLibOpen}}" catchtap="onCloseBgmLibrary"></view>
+  <view class="dy-bgm-sheet dy-bgm-sheet--lib" wx:if="{{bgmLibOpen}}">
+    <view class="dy-bgm-panel dy-bgm-panel--lib" catchtap="onBgmPanelNop">
+      <view class="dy-sheet-handle"></view>
+      <view class="dy-bgm-head dy-bgm-head--row">
+        <view class="dy-bgm-back" catchtap="onCloseBgmLibrary">返回</view>
+        <view class="dy-bgm-head-center">
+          <text class="dy-bgm-title">BGM 曲库</text>
+          <text class="dy-bgm-sub">点卡片即可选用并播放</text>
+        </view>
+        <view class="dy-bgm-back dy-bgm-back--ph"></view>
+      </view>
+
+      <view class="dy-bgm-lib-status" wx:if="{{bgmTracksLoading}}">加载曲库中…</view>
+      <view class="dy-bgm-lib-status" wx:elif="{{bgmTracksHint}}">{{bgmTracksHint}}</view>
+
+      <scroll-view
+        class="dy-bgm-lib-list"
+        scroll-y
+        enhanced
+        show-scrollbar="{{false}}"
+        wx:if="{{bgmTracks.length}}"
+      >
+        <view
+          class="dy-bgm-track-card {{item.active ? 'dy-bgm-track-card--on' : ''}}"
+          wx:for="{{bgmTracks}}"
+          wx:key="id"
+          data-index="{{index}}"
+          catchtap="onSelectBgmTrack"
+        >
+          <view class="dy-bgm-track-ico {{item.active && bgmPlaying ? 'dy-bgm-track-ico--spin' : ''}}"></view>
+          <view class="dy-bgm-track-main">
+            <text class="dy-bgm-track-name">{{item.name}}</text>
+            <text class="dy-bgm-track-meta">{{item.active ? (bgmPlaying ? '正在播放' : '已选用 · 再点可续播') : '点击播放'}}</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view class="dy-bgm-item dy-bgm-item--cancel" catchtap="onCloseBgmLibrary">关闭曲库</view>
+    </view>
+  </view>
+
+  <view class="dy-sheet-mask" wx:if="{{commentOpen}}" catchtap="onCloseComment"></view>
+  <view class="dy-sheet {{commentOpen ? 'dy-sheet--open' : ''}}" wx:if="{{commentOpen}}">
+    <view class="dy-sheet-handle"></view>
+    <view class="dy-sheet-head">
+      <text class="dy-sheet-title">评论 {{commentTotalText || commentTotal || 0}}</text>
+      <view class="dy-sheet-close" catchtap="onCloseComment">✕</view>
+    </view>
+    <view class="dy-sheet-compose dy-sheet-compose--top">
+      <input
+        class="dy-sheet-input"
+        value="{{commentText}}"
+        bindinput="onCommentInput"
+        placeholder="有什么想法，展开说说"
+        placeholder-class="dy-sheet-ph"
+        maxlength="200"
+        confirm-type="send"
+        bindconfirm="onSubmitComment"
+      />
+      <view class="dy-sheet-send" catchtap="onSubmitComment">发送</view>
+    </view>
+    <scroll-view class="dy-sheet-list" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="dy-comment-empty" wx:if="{{commentLoading}}">
+        <text>加载中…</text>
+      </view>
+      <view class="dy-comment-empty" wx:elif="{{!commentList.length}}">
+        <text>还没有评论，来抢沙发吧</text>
+      </view>
+      <block wx:for="{{commentList}}" wx:key="id">
+        <view class="dy-cmt">
+          <view class="dy-cmt-avatar">{{item.avatarLetter}}</view>
+          <view class="dy-cmt-main">
+            <text class="dy-cmt-name">{{item.author}}</text>
+            <text class="dy-cmt-badge" wx:if="{{item.groupMate}}">群友</text>
+            <text class="dy-cmt-body">{{item.content}}</text>
+            <view class="dy-cmt-meta">
+              <text class="dy-cmt-meta-text">{{item.timeText}}{{item.regionText ? ' · ' + item.regionText : ''}}</text>
+              <text class="dy-cmt-reply-btn" data-author="{{item.author}}" catchtap="onTapCommentReplyHint">回复</text>
+            </view>
+          </view>
+          <view
+            class="dy-cmt-like {{item.liked ? 'dy-cmt-like--on' : ''}}"
+            data-id="{{item.id}}"
+            catchtap="onToggleCommentLike"
+          >
+            <image
+              wx:if="{{item.liked}}"
+              class="dy-cmt-heart-img dy-cmt-heart-img--on"
+              src="/pages/ocApp/ocDouyin/icons/like-on.png"
+              mode="aspectFit"
+            />
+            <view wx:else class="dy-cmt-heart-stack">
+              <image
+                class="dy-cmt-heart-edge"
+                src="/pages/ocApp/ocDouyin/icons/like.png"
+                mode="aspectFit"
+              />
+              <image
+                class="dy-cmt-heart-face"
+                src="/pages/ocApp/ocDouyin/icons/like.png"
+                mode="aspectFit"
+              />
+            </view>
+            <text class="dy-cmt-like-n">{{item.likeCountText}}</text>
+          </view>
+        </view>
+        <view class="dy-cmt-replies" wx:if="{{item.replyCount}}">
+          <block wx:if="{{item.repliesExpanded}}">
+            <view class="dy-cmt-sub" wx:for="{{item.replies}}" wx:for-item="sub" wx:key="id">
+              <view class="dy-cmt-avatar dy-cmt-avatar--sm">{{sub.avatarLetter}}</view>
+              <view class="dy-cmt-main">
+                <text class="dy-cmt-name">{{sub.author}}</text>
+                <text class="dy-cmt-badge dy-cmt-badge--author">作者</text>
+                <text class="dy-cmt-body">回复 @{{item.author}}：{{sub.content}}</text>
+                <view class="dy-cmt-meta">
+                  <text class="dy-cmt-meta-text">{{sub.timeText}}</text>
+                </view>
+              </view>
+              <view
+                class="dy-cmt-like {{sub.liked ? 'dy-cmt-like--on' : ''}}"
+                data-id="{{sub.id}}"
+                catchtap="onToggleCommentLike"
+              >
+                <image
+                  wx:if="{{sub.liked}}"
+                  class="dy-cmt-heart-img dy-cmt-heart-img--on"
+                  src="/pages/ocApp/ocDouyin/icons/like-on.png"
+                  mode="aspectFit"
+                />
+                <view wx:else class="dy-cmt-heart-stack">
+                  <image
+                    class="dy-cmt-heart-edge"
+                    src="/pages/ocApp/ocDouyin/icons/like.png"
+                    mode="aspectFit"
+                  />
+                  <image
+                    class="dy-cmt-heart-face"
+                    src="/pages/ocApp/ocDouyin/icons/like.png"
+                    mode="aspectFit"
+                  />
+                </view>
+                <text class="dy-cmt-like-n">{{sub.likeCountText}}</text>
+              </view>
+            </view>
+          </block>
+          <view
+            class="dy-cmt-expand"
+            wx:if="{{!item.repliesExpanded && item.replyCount}}"
+            data-id="{{item.id}}"
+            catchtap="onExpandCommentReplies"
+          >
+            展开 {{item.replyCount}} 条回复
+          </view>
+        </view>
+      </block>
+    </scroll-view>
+  </view>
+
+  <!-- 分享：复制文案 / 分享小程序给朋友 -->
+  <view class="dy-share-mask" wx:if="{{shareSheetOpen}}" catchtap="onCloseShareSheet"></view>
+  <view class="dy-share-sheet" wx:if="{{shareSheetOpen}}">
+    <view class="dy-share-panel" catchtap="onBgmPanelNop">
+      <view class="dy-share-item" catchtap="onShareCopyCaption">复制文案</view>
+      <button class="dy-share-item dy-share-item--btn" open-type="share" hover-class="dy-share-item--hover">
+        分享给朋友
+      </button>
+      <view class="dy-share-item dy-share-item--cancel" catchtap="onCloseShareSheet">取消</view>
+    </view>
+  </view>
+
+  <view class="dy-ad-mask" wx:if="{{adSheetOpen}}" catchtap="onCloseAdSheet" catchtouchmove="onCloseAdSheet"></view>
+  <view class="dy-ad-sheet" wx:if="{{adSheetOpen}}" catchtap="onCloseAdSheet">
+    <view class="dy-ad-panel" catchtap="onAdPanelNop">
+      <view class="dy-ad-handle"></view>
+      <text class="dy-ad-title">解锁更多抖音 AI</text>
+      <text class="dy-ad-desc">{{adSheetText}}</text>
+      <text class="dy-ad-vip-hint">会员免广告</text>
+      <view
+        class="dy-ad-btn {{adUnlockBusy ? 'dy-ad-btn--disabled' : ''}}"
+        catchtap="onWatchAdUnlock"
+      >
+        <text class="dy-ad-btn-t">{{adUnlockBusy ? '广告加载中…' : '看激励广告解锁'}}</text>
+      </view>
+      <view class="dy-ad-cancel" catchtap="onCloseAdSheet">
+        <text class="dy-ad-cancel-t">暂不</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 视频抽音：免费 3 次后 10 额度/次 -->
+  <view class="dy-extract-root" wx:if="{{extractSheetOpen}}">
+    <view class="dy-extract-mask" catchtap="onCloseExtractSheet"></view>
+    <view class="dy-extract-panel" catchtap="onExtractNop">
+      <view class="dy-extract-handle"></view>
+      <text class="dy-extract-title">免费提取次数已用完</text>
+      <text class="dy-extract-sub">继续提取需 10 点额度 · 可在额度商店购买</text>
+
+      <view class="dy-extract-btn dy-extract-btn--ok" catchtap="onExtractGoRedeem">
+        <text class="dy-extract-btn-t">去额度商店</text>
+      </view>
+      <view class="dy-extract-btn dy-extract-btn--ghost" catchtap="onCloseExtractSheet">
+        <text class="dy-extract-btn-t">取消</text>
+      </view>
+    </view>
+  </view>
+</view>

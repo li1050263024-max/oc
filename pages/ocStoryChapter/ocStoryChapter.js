@@ -2,7 +2,11 @@ const { getFavoriteById } = require('../../utils/favorite.js');
 const {
   getStoryFromFavorite,
   saveStoryWithHistory,
-  mapHistoryForDisplay
+  mapHistoryForDisplay,
+  pickCollection,
+  moveStoryToCollection,
+  ensureCollectionsMigrated,
+  listCollections
 } = require('../../utils/storyStore.js');
 const storyContinue = require('../../utils/storyContinue.js');
 const packPage = require('../../utils/ocPackPage.js');
@@ -38,6 +42,7 @@ Page({
     historyPreviewTime: '',
     continueSheetVisible: false,
     continueInput: '',
+    continueCostHint: '',
     continuing: false,
     polishSheetVisible: false,
     polishInput: '',
@@ -401,7 +406,11 @@ Page({
 
   onContinueChapter() {
     if (!(this.data.content || '').trim()) return;
-    this.setData({ continueSheetVisible: true, continueInput: '' });
+    let continueCostHint = '';
+    try {
+      continueCostHint = require('../../utils/ocCredits.js').getStoryContinueCostHint();
+    } catch (_) {}
+    this.setData({ continueSheetVisible: true, continueInput: '', continueCostHint });
   },
 
   onContinueInput(e) {
@@ -449,6 +458,30 @@ Page({
       shareTitle: (title || 'OC 故事') + ' · ' + (this.data.ocName || ''),
       path: inAppShare.buildOcSharePath(ocId)
     });
+  },
+
+  onMoveCollection() {
+    const ocId = this.data.ocId;
+    const storyId = this.data.storyId;
+    if (!ocId || !storyId) return;
+    ensureCollectionsMigrated(ocId);
+    const cols = listCollections(ocId);
+    if (cols.length < 2) {
+      wx.showToast({ title: '请先新建其他故事集', icon: 'none' });
+      return;
+    }
+    pickCollection(ocId, { title: '移到哪个故事集' })
+      .then((col) => {
+        const r = moveStoryToCollection(ocId, storyId, col.id);
+        if (!r.ok) {
+          wx.showToast({ title: r.errMsg || '移动失败', icon: 'none' });
+          return;
+        }
+        wx.showToast({ title: '已移至「' + col.name + '」', icon: 'none' });
+      })
+      .catch((err) => {
+        if (err && String(err.message || err) === 'cancel') return;
+      });
   },
 
   onShareAppMessage() {

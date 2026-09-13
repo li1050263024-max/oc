@@ -666,7 +666,7 @@
             <!-- 立绘 · 图册 -->
             <view wx:elif="{{activeTab === 'art'}}" class="profile-panel-body profile-panel-body--art">
               <view class="album-toolbar">
-                <text class="album-toolbar-hint">图册 · 每个最多 50 张 · 3:4</text>
+                <text class="album-toolbar-hint">全部图册均为最多 15 张 · 建议竖图 3:4 · 写清描述便于朋友圈/抖音配图</text>
                 <view class="album-toolbar-add" catchtap="onCreateAlbum">+ 新建图册</view>
               </view>
 
@@ -697,7 +697,7 @@
                     </view>
                     <view class="album-card-caption">
                       <text class="album-card-name">{{featuredAlbum.name}}</text>
-                      <text class="album-card-count">{{featuredAlbum.count}} / 50</text>
+                      <text class="album-card-count">{{featuredAlbum.count}} / {{featuredAlbum.maxImages || 15}}</text>
                     </view>
                   </view>
                 </view>
@@ -731,7 +731,7 @@
                       <view class="album-card-caption">
                         <view class="album-card-caption-main">
                           <text class="album-card-name">{{item.name}}</text>
-                          <text class="album-card-count">{{item.count}} / 50</text>
+                          <text class="album-card-count">{{item.count}} / {{item.maxImages || 15}}</text>
                         </view>
                         <text
                           class="album-card-del"

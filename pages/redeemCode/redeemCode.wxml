@@ -2,29 +2,39 @@
   <view class="bg-solid"></view>
   <view class="redeem-page-head">
     <oc-back-btn />
-    <text class="redeem-page-title">兑换码</text>
+    <text class="redeem-page-title">额度商店</text>
   </view>
 
   <view class="redeem-page-body">
     <view class="redeem-card">
-      <text class="redeem-balance">通用额度剩余 <text class="redeem-balance-num">{{extraRounds}}</text> 轮</text>
-      <text class="redeem-balance-sub">单聊 / 群聊共用，无有效期限制</text>
-      <input
-        class="redeem-input"
-        value="{{redeemCode}}"
-        bindinput="onRedeemInput"
-        placeholder="请输入兑换码"
-        maxlength="24"
-        confirm-type="done"
-        bindconfirm="onSubmitRedeem"
-      />
+      <text class="redeem-balance">额度剩余 <text class="redeem-balance-num">{{extraRounds}}</text> 点</text>
+      <text class="redeem-balance-sub">永久通用 · 对话 / 提取 / 扩容等</text>
+    </view>
+
+    <view class="redeem-card" wx:if="{{shopProducts.length}}">
+      <text class="redeem-shop-title">充值额度</text>
+      <text class="redeem-shop-sub">仅开放 10 元档 · 支付成功后自动到账</text>
       <view
-        class="redeem-btn {{redeeming ? 'redeem-btn--disabled' : ''}}"
-        bindtap="onSubmitRedeem"
+        class="redeem-shop-item"
+        wx:for="{{shopProducts}}"
+        wx:key="productId"
+        data-id="{{item.productId}}"
+        data-title="{{item.title}}"
+        bindtap="onBuyProduct"
       >
-        <text class="redeem-btn-text">{{redeeming ? '兑换中…' : '兑换'}}</text>
+        <view class="redeem-shop-item-main">
+          <text class="redeem-shop-item-title">{{item.title}}</text>
+          <text class="redeem-shop-item-desc">{{item.desc}}</text>
+        </view>
+        <view class="redeem-shop-item-buy {{buyingId === item.productId ? 'redeem-shop-item-buy--busy' : ''}}">
+          <text class="redeem-shop-item-price">¥{{item.priceYuan}}</text>
+          <text class="redeem-shop-item-cta">{{buyingId === item.productId ? '…' : '充值'}}</text>
+        </view>
       </view>
     </view>
-    <text class="redeem-tip">关注公众号可获取兑换码。本周免费额度（单聊群聊共 30 轮）用尽后，可用分享续期或兑换码继续。</text>
+
+    <view class="redeem-card" wx:else>
+      <text class="redeem-shop-sub">充值通道加载中或未配置，请稍后重试</text>
+    </view>
   </view>
 </view>

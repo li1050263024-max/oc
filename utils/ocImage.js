@@ -77,6 +77,14 @@ function primaryImagePath(images, legacyPath) {
 /** 列表展示用：同步取路径，不扫文件系统（避免白屏/卡顿） */
 function getDisplayImagePathQuick(workOrItem) {
   if (!workOrItem) return '';
+  try {
+    if (Array.isArray(workOrItem.ocAlbums) && workOrItem.ocAlbums.length) {
+      const ocAlbum = require('./ocAlbum.js');
+      const flat = ocAlbum.flattenAlbumImages(workOrItem.ocAlbums);
+      const fromAlbums = primaryImagePath(flat, '');
+      if (fromAlbums) return fromAlbums;
+    }
+  } catch (_) {}
   return primaryImagePath(workOrItem.ocImages, workOrItem.ocImagePath || '');
 }
 
@@ -162,11 +170,23 @@ function isStorageQuotaError(err) {
   );
 }
 
+function pathFileName(filePath) {
+  const s = stripDisplayCache(String(filePath || '').trim()).replace(/\\/g, '/');
+  if (!s) return '';
+  const parts = s.split('/');
+  return parts[parts.length - 1] || '';
+}
+
 function collectReferencedImagePaths() {
   const paths = new Set();
+  const names = new Set();
   const add = (p) => {
     const s = stripDisplayCache(String(p || '').trim());
-    if (s && !/^https?:\/\//i.test(s)) paths.add(s);
+    if (!s) return;
+    // 开发者工具可能存成 http://127.0.0.1/.../__usr__/xxx.jpg，仍按文件名保护
+    const name = pathFileName(s);
+    if (name) names.add(name);
+    if (!/^https?:\/\//i.test(s)) paths.add(s);
   };
   const scanWork = (w) => {
     if (!w || typeof w !== 'object') return;
@@ -174,6 +194,9 @@ function collectReferencedImagePaths() {
     add(w.chatAvatarPath);
     add(w.chatBackgroundPath);
     (w.ocImages || []).forEach((img) => add(img && img.path));
+    (w.ocAlbums || []).forEach((alb) => {
+      ((alb && alb.images) || []).forEach((img) => add(img && img.path));
+    });
     if (w.profileScene) {
       add(w.profileScene.worldTimelineBg);
       add(w.profileScene.relationGraphBg);
@@ -194,23 +217,80 @@ function collectReferencedImagePaths() {
   }
   favs.forEach((fav) => scanWork(fav));
   scanWork(work);
-  return paths;
+  // 抖音缓存里的图也要保护，避免清缓存式 cleanup 删掉正在播的图
+  try {
+    const feed = wx.getStorageSync('oc_douyin_feed') || [];
+    (Array.isArray(feed) ? feed : []).forEach((clip) => {
+      if (!clip) return;
+      add(clip.imagePath);
+      (clip.images || []).forEach((img) => add(img && img.path));
+    });
+  } catch (_) {}
+  return { paths, names };
 }
+
+let _userDataNamesCache = null;
+let _userDataNamesCacheAt = 0;
+const USER_DATA_NAMES_TTL_MS = 8000;
 
 function listUserDataFileNames() {
   const base = getUserDataDir();
   if (!base) return Promise.resolve([]);
+  const now = Date.now();
+  if (_userDataNamesCache && now - _userDataNamesCacheAt < USER_DATA_NAMES_TTL_MS) {
+    return Promise.resolve(_userDataNamesCache);
+  }
   const fs = wx.getFileSystemManager();
   if (typeof fs.readdir !== 'function') return Promise.resolve([]);
   return new Promise((resolve) => {
     fs.readdir({
       dirPath: base,
       success(res) {
-        resolve((res && res.files) || []);
+        const files = (res && res.files) || [];
+        _userDataNamesCache = files;
+        _userDataNamesCacheAt = Date.now();
+        resolve(files);
       },
-      fail: () => resolve([])
+      fail: () => resolve(_userDataNamesCache || [])
     });
   });
+}
+
+function invalidateUserDataNamesCache() {
+  _userDataNamesCache = null;
+  _userDataNamesCacheAt = 0;
+}
+
+/** 按 imageId / favoriteId 在 USER_DATA_PATH 里找回立绘文件 */
+async function findUserImageByIdToken(favoriteId, imageId) {
+  const idTok = safePathToken(imageId, '').slice(0, 32);
+  if (!idTok) return '';
+  const favTok = favoriteId ? safePathToken(favoriteId, 'fav').slice(0, 24) : '';
+  const names = await listUserDataFileNames();
+  let fallback = '';
+  // 先按文件名匹配，再最多验证少量候选，避免对整目录逐个 getFileInfo
+  const candidates = [];
+  for (let i = 0; i < names.length; i++) {
+    const name = String(names[i] || '');
+    if (!/^ocimg_/i.test(name)) continue;
+    if (name.indexOf(idTok) < 0) continue;
+    candidates.push(name);
+  }
+  candidates.sort((a, b) => {
+    const af = favTok && a.indexOf(favTok) >= 0 ? 0 : 1;
+    const bf = favTok && b.indexOf(favTok) >= 0 ? 0 : 1;
+    return af - bf;
+  });
+  const limit = Math.min(candidates.length, 4);
+  for (let i = 0; i < limit; i++) {
+    const full = joinUserPath(candidates[i]);
+    // eslint-disable-next-line no-await-in-loop
+    if (await fileExists(full)) {
+      if (favTok && candidates[i].indexOf(favTok) >= 0) return full;
+      if (!fallback) fallback = full;
+    }
+  }
+  return fallback;
 }
 
 function isRemovableUserImageName(name) {
@@ -230,10 +310,19 @@ function isRemovableUserImageName(name) {
 }
 
 /** 清理 USER_DATA_PATH 下未引用的图片与选图临时文件，释放本地 10MB 配额 */
-async function cleanupUserImageStorage() {
+async function cleanupUserImageStorage(extraKeepPaths) {
   const base = getUserDataDir();
   if (!base) return { deleted: 0 };
-  const referenced = collectReferencedImagePaths();
+  const ref = collectReferencedImagePaths();
+  const referenced = ref.paths;
+  const referencedNames = ref.names;
+  (Array.isArray(extraKeepPaths) ? extraKeepPaths : []).forEach((p) => {
+    const s = stripDisplayCache(String(p || '').trim());
+    if (!s) return;
+    const name = pathFileName(s);
+    if (name) referencedNames.add(name);
+    if (!/^https?:\/\//i.test(s)) referenced.add(s);
+  });
   const names = await listUserDataFileNames();
   let deleted = 0;
   for (let i = 0; i < names.length; i += 1) {
@@ -242,7 +331,8 @@ async function cleanupUserImageStorage() {
     const full = joinUserPath(name);
     if (!full) continue;
     const isPick = /^oc_pick_/i.test(name);
-    if (!isPick && referenced.has(full)) continue;
+    // 关键：按完整路径或文件名任一命中即保留（修路径格式不一致导致的误删）
+    if (!isPick && (referenced.has(full) || referencedNames.has(name))) continue;
     // eslint-disable-next-line no-await-in-loop
     const ok = await removeImageFile(full);
     if (ok) deleted += 1;
@@ -276,11 +366,20 @@ function ensurePersistedPickPath(tempFilePath) {
     const fs = wx.getFileSystemManager();
     const fail = (err, fb) => {
       if (isStorageQuotaError(err)) {
-        reject(
-          new Error(
-            '本地存储已满（约10MB上限），已尝试清理无效文件。请删除部分立绘或在开发者工具「清缓存」后重试'
-          )
-        );
+        try {
+          const clean = require('./ocLocalStorageClean.js');
+          reject(
+            clean.makeStorageFullError(
+              '本地存储已满（约10MB上限）。请删除部分立绘、自定义 BGM 或未引用缓存后重试'
+            )
+          );
+        } catch (_) {
+          const e = new Error(
+            '本地存储已满（约10MB上限）。请删除部分立绘或缓存后重试'
+          );
+          e.storageFull = true;
+          reject(e);
+        }
         return;
       }
       reject(new Error(formatFsError(err, fb || '临时图片读取失败')));
@@ -478,7 +577,11 @@ function persistTempImage(tempFilePath, destPath) {
   });
 }
 
-function saveImageFromTempToDest(tempFilePath, destPath) {
+async function saveImageFromTempToDest(tempFilePath, destPath, options) {
+  const opts = options || {};
+  if (!opts.skipSecCheck) {
+    await require('./ocImgSecCheck.js').assertUserImageSafe(tempFilePath);
+  }
   return persistTempImage(tempFilePath, destPath);
 }
 
@@ -486,8 +589,9 @@ function saveOcImageFromTemp(tempFilePath, favoriteId) {
   return saveOcImageListFromTemp(tempFilePath, favoriteId);
 }
 
-async function saveOcImageListFromTemp(tempFilePath, favoriteId) {
+async function saveOcImageListFromTemp(tempFilePath, favoriteId, extraKeepPaths) {
   if (!tempFilePath) throw new Error('未获取到图片');
+  await require('./ocImgSecCheck.js').assertUserImageSafe(tempFilePath);
   const id = newOcImageId();
   const ext = extractImageExt(tempFilePath);
   const dest = getOcImageListPath(favoriteId || '', id, ext);
@@ -497,7 +601,7 @@ async function saveOcImageListFromTemp(tempFilePath, favoriteId) {
     return { id, path: saved, time: Date.now() };
   } catch (err) {
     if (!isStorageQuotaError(err)) throw err;
-    const { deleted } = await cleanupUserImageStorage();
+    const { deleted } = await cleanupUserImageStorage(extraKeepPaths);
     if (!deleted) {
       throw new Error(
         '本地存储已满（约10MB上限），请删除部分立绘或在开发者工具「清缓存」后重试'
@@ -745,6 +849,7 @@ async function saveProfileSceneBgFromTemp(favoriteId, field, tempFilePath, oldPa
   const ext = extractImageExt(tempFilePath);
   const dest = getVersionedChatAssetPath(`oc_scene_${favId}_${tag}`, ext);
 
+  // 已在 saveImageFromTempToDest 内审核
   const persistOnce = () => saveImageFromTempToDest(tempFilePath, dest);
 
   let saved = '';
@@ -823,6 +928,76 @@ async function resolveDisplayImagePath(workOrItem) {
   return (await fileExists(img)) ? img : '';
 }
 
+/** 修复收藏图册里失效的本地路径（误删/路径格式变化后尽量找回文件） */
+async function repairFavoriteAlbumImagePaths() {
+  let list = [];
+  try {
+    list = wx.getStorageSync('oc_favorites') || [];
+  } catch (_) {
+    return { fixed: 0 };
+  }
+  if (!Array.isArray(list) || !list.length) return { fixed: 0 };
+  let fixed = 0;
+  const next = [];
+  for (let i = 0; i < list.length; i++) {
+    const fav = list[i];
+    if (!fav || typeof fav !== 'object') {
+      next.push(fav);
+      continue;
+    }
+    const albums = Array.isArray(fav.ocAlbums) ? fav.ocAlbums : [];
+    let favChanged = false;
+    const newAlbums = [];
+    for (let a = 0; a < albums.length; a++) {
+      const alb = albums[a];
+      if (!alb) {
+        newAlbums.push(alb);
+        continue;
+      }
+      const images = Array.isArray(alb.images) ? alb.images : [];
+      const newImages = [];
+      for (let j = 0; j < images.length; j++) {
+        const img = images[j];
+        if (!img || !img.path) {
+          newImages.push(img);
+          continue;
+        }
+        // eslint-disable-next-line no-await-in-loop
+        if (await fileExists(img.path)) {
+          newImages.push(img);
+          continue;
+        }
+        // eslint-disable-next-line no-await-in-loop
+        const found = await findUserImageByIdToken(fav.id, img.id);
+        if (found) {
+          newImages.push(Object.assign({}, img, { path: found }));
+          favChanged = true;
+          fixed += 1;
+        } else {
+          newImages.push(img);
+        }
+      }
+      newAlbums.push(Object.assign({}, alb, { images: newImages }));
+    }
+    if (favChanged) {
+      const patched = Object.assign({}, fav, { ocAlbums: newAlbums });
+      try {
+        const ocAlbum = require('./ocAlbum.js');
+        ocAlbum.syncWorkImagesFromAlbums(patched);
+      } catch (_) {}
+      next.push(patched);
+    } else {
+      next.push(fav);
+    }
+  }
+  if (fixed > 0) {
+    try {
+      wx.setStorageSync('oc_favorites', next);
+    } catch (_) {}
+  }
+  return { fixed };
+}
+
 module.exports = {
   MAX_OC_IMAGES,
   getImageDestPath,
@@ -835,6 +1010,7 @@ module.exports = {
   getProfileSceneBgPath,
   saveProfileSceneBgFromTemp,
   resolveLocalImagePath,
+  findUserImageByIdToken,
   normalizeOcImageList,
   normalizeOcImageEntry,
   primaryImagePath,
@@ -847,6 +1023,8 @@ module.exports = {
   ensurePersistedPickPath,
   captureTempImagePath,
   cleanupUserImageStorage,
+  repairFavoriteAlbumImagePaths,
+  invalidateUserDataNamesCache,
   isStorageQuotaError,
   copyImageForFavorite,
   migrateImagesToFavorite,

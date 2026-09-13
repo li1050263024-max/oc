@@ -23,7 +23,8 @@ const {
   formatMoneyAmount,
   isMoneyMessage,
   claimOcMoneyMessage,
-  rejectOcMoneyMessage
+  rejectOcMoneyMessage,
+  shouldAllowProactiveMoney
 } = require('../../utils/chatGames.js');
 const {
   MONEY_MODE_NORMAL,
@@ -73,6 +74,7 @@ const {
   syncExtraRoundsFromServer,
   flushQuotaToCloud,
   onQuotaSheetShare,
+  onQuotaSheetAd,
   onQuotaSheetRedeem,
   onQuotaSheetFollowOa,
   onQuotaSheetCloseOa,
@@ -131,7 +133,12 @@ Page({
     quotaLeft: 0,
     quotaSheetVisible: false,
     quotaSheetShareLeft: 0,
-    quotaOaQrVisible: false,
+    isVip: false,
+    adClaimSheetVisible: false,
+    adClaimDetectedClick: false,
+    adClaimMakeupDone: false,
+    adClaimMakeupBusy: false,
+    adClaimRounds: 30,
     composerToolsOpen: false,
     moneySheetVisible: false,
     moneySheetType: 'red_packet',
@@ -231,10 +238,15 @@ Page({
   },
 
   _refreshQuotaBadge() {
+    let isVip = false;
+    try {
+      isVip = require('../../utils/ocMembership.js').isMember();
+    } catch (_) {}
     const hint = buildQuotaHint(QUOTA_CHANNEL_GROUP);
     this.setData({
       quotaUsed: hint.used,
-      quotaLeft: hint.left
+      quotaLeft: hint.left,
+      isVip: isVip
     });
     syncExtraRoundsFromServer()
       .then(() => flushQuotaToCloud())
@@ -732,14 +744,20 @@ Page({
         const result = deleteGroupSessionsBatch(roomId, ids);
         if (!result.ok) {
           wx.showToast({
-            title: result.last ? '部分失败' : '删除失败',
+            title: result.last ? '至少保留一个对话' : '删除失败',
             icon: 'none'
           });
           return;
         }
         this._afterSessionsDeleted(ids);
         this.setData({ sessionPickerOpen: true });
-        wx.showToast({ title: '已删除 ' + result.deleted + ' 个对话', icon: 'none' });
+        wx.showToast({
+          title:
+            result.recreated
+              ? '已删除并新建空对话'
+              : '已删除 ' + result.deleted + ' 个对话',
+          icon: 'none'
+        });
       }
     });
   },
@@ -820,14 +838,17 @@ Page({
         const result = deleteGroupSession(roomId, id);
         if (!result.ok) {
           wx.showToast({
-            title: result.last ? '部分失败' : '删除失败',
+            title: result.last ? '至少保留一个对话' : '删除失败',
             icon: 'none'
           });
           return;
         }
         this._afterSessionsDeleted([id]);
         this.setData({ sessionPickerOpen: true });
-        wx.showToast({ title: '…', icon: 'none' });
+        wx.showToast({
+          title: result.recreated ? '已删除并新建空对话' : '已删除',
+          icon: 'none'
+        });
       }
     });
   },
@@ -1441,11 +1462,16 @@ Page({
           if (!member || !member.work) return;
           this._setChatLoading(true, member.name);
           return callMemberReply(member, members, text, messages, scenario, {
-            moneyAware: true,
+            moneyAware: shouldAllowProactiveMoney(text, messages),
             wrapSystemPrompt: (sp, mem) =>
-              withGroupMoneyProactiveRules(sp, (mem && mem.work) || member.work)
+              withGroupMoneyProactiveRules(sp, (mem && mem.work) || member.work, {
+                allowProactiveMoney: shouldAllowProactiveMoney(text, messages)
+              })
           }).then((reply) => {
-            const built = buildGroupMoneyAwareMessages(member, members, reply).map((m) =>
+            const built = buildGroupMoneyAwareMessages(member, members, reply, {
+              recentMessages: messages,
+              userMessage: text
+            }).map((m) =>
               stampOutgoingMessage(m)
             );
             messages = messages.concat(built);
@@ -1548,6 +1574,9 @@ Page({
   onQuotaSheetShareTap() {
     onQuotaSheetShare(this);
   },
+  onQuotaSheetAdTap() {
+    onQuotaSheetAd(this);
+  },
   onQuotaSheetRedeemTap() {
     onQuotaSheetRedeem(this);
   },
@@ -1559,5 +1588,14 @@ Page({
   },
   onQuotaSheetCloseTap() {
     onQuotaSheetClose(this);
+  },
+  onAdClaimMakeup() {
+    require('../../utils/adClaimDrawer.js').onAdClaimMakeup(this);
+  },
+  onAdClaimConfirm() {
+    require('../../utils/adClaimDrawer.js').onAdClaimConfirm(this);
+  },
+  onAdClaimClose() {
+    require('../../utils/adClaimDrawer.js').onAdClaimClose(this);
   }
 });

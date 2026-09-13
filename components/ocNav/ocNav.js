@@ -34,7 +34,7 @@ Component({
       this._winW = sys.windowWidth;
       this._winH = sys.windowHeight;
       this._panelW = Math.round(280 * this._winW / 750);
-      this._panelH = Math.round(540 * this._winW / 750);
+      this._panelH = Math.round(600 * this._winW / 750);
       this._fabSize = Math.round(72 * this._winW / 750);
 
       const panel = wx.getStorageSync(STORAGE_NAV_POS);
@@ -162,7 +162,19 @@ Component({
         this._fabDragged = true;
       }
       const pos = this._clampFab(this._fabDrag.origLeft + dx, this._fabDrag.origTop + dy);
-      this.setData({ fabLeft: pos.left, fabTop: pos.top });
+      // 拖动时节流，减少每帧 setData 卡顿
+      this._fabPending = pos;
+      if (this._fabRaf) return;
+      this._fabRaf = true;
+      const apply = () => {
+        this._fabRaf = false;
+        if (!this._fabPending) return;
+        const p = this._fabPending;
+        this._fabPending = null;
+        this.setData({ fabLeft: p.left, fabTop: p.top });
+      };
+      if (typeof setTimeout === 'function') setTimeout(apply, 16);
+      else apply();
     },
 
     onFabDragEnd() {
@@ -202,6 +214,16 @@ Component({
       this._emitTutorialChange(false);
       wx.navigateTo({
         url: '/pages/redeemCode/redeemCode'
+      });
+    },
+
+    onOpenStorageClean() {
+      if (this._panelDragged) return;
+      this.setData({ popupOpen: false, tutorialMask: false });
+      this._emitTutorialChange(false);
+      wx.navigateTo({
+        url: '/pages/ocApp/ocStorageClean/ocStorageClean',
+        fail: () => wx.showToast({ title: '打开失败', icon: 'none' })
       });
     },
 
@@ -265,7 +287,7 @@ Component({
         });
         return;
       }
-      if (key === 'moments' && !hasAnyOcForSocial()) {
+      if (key === 'ocapp' && !hasAnyOcForSocial()) {
         wx.showToast({
           title: '请先在设定本中保存 OC',
           icon: 'none',

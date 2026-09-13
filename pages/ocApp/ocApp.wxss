@@ -1,0 +1,297 @@
+.page {
+  min-height: 100vh;
+  position: relative;
+}
+
+.app-nav-back {
+  position: fixed;
+  left: 12px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-nav-chevron {
+  width: 18rpx;
+  height: 18rpx;
+  border-left: 4rpx solid rgba(42, 33, 64, 0.85);
+  border-bottom: 4rpx solid rgba(42, 33, 64, 0.85);
+  box-sizing: border-box;
+  transform: rotate(45deg);
+  margin-left: 6rpx;
+}
+
+.app-inner {
+  position: relative;
+  z-index: 1;
+  padding: calc(48rpx + env(safe-area-inset-top)) 36rpx calc(48rpx + env(safe-area-inset-bottom));
+}
+
+.app-hero {
+  margin-bottom: 40rpx;
+}
+
+.app-brand {
+  display: block;
+  font-size: 56rpx;
+  font-weight: 700;
+  letter-spacing: 6rpx;
+  color: #2a2140;
+}
+
+.app-desc {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: rgba(42, 33, 64, 0.62);
+  line-height: 1.5;
+}
+
+.app-desc-sub {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: rgba(42, 33, 64, 0.48);
+}
+
+.app-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28rpx 24rpx;
+}
+
+.app-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.app-card-settings {
+  align-self: flex-start;
+  padding: 8rpx 20rpx;
+  border-radius: 999rpx;
+  background: #fff;
+  border: 1rpx solid rgba(42, 33, 64, 0.12);
+  box-shadow: 0 2rpx 8rpx rgba(42, 33, 64, 0.06);
+}
+
+.app-card-settings-text {
+  font-size: 22rpx;
+  font-weight: 650;
+  color: #2a2140;
+  line-height: 1.2;
+}
+
+.app-card {
+  position: relative;
+  min-height: 240rpx;
+  padding: 28rpx 24rpx;
+  border-radius: 28rpx;
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 10rpx;
+  box-shadow: 0 12rpx 28rpx rgba(60, 40, 100, 0.12);
+}
+
+.app-card-glow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.app-card--moments {
+  background: linear-gradient(160deg, #7c6bff 0%, #5b8def 100%);
+  color: #fff;
+}
+.app-card--douyin {
+  background: linear-gradient(160deg, #1a1a1f 0%, #3a2048 55%, #fe2c55 140%);
+  color: #fff;
+}
+.app-card--xhs {
+  background: linear-gradient(160deg, #ff7a9a 0%, #ff2442 100%);
+  color: #fff;
+}
+.app-card--weibo {
+  background: linear-gradient(160deg, #ff9a4d 0%, #e6162d 100%);
+  color: #fff;
+}
+
+.app-card--disabled {
+  filter: grayscale(0.35);
+  opacity: 0.55;
+}
+
+.app-card-title {
+  position: relative;
+  z-index: 1;
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.app-card-sub {
+  position: relative;
+  z-index: 1;
+  font-size: 22rpx;
+  line-height: 1.4;
+  opacity: 0.88;
+}
+
+.app-card-badge {
+  position: absolute;
+  top: 18rpx;
+  right: 18rpx;
+  z-index: 1;
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.settings-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 80;
+  background: rgba(20, 16, 32, 0.42);
+}
+
+.settings-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  padding: 20rpx 32rpx calc(28rpx + env(safe-area-inset-bottom));
+  border-radius: 28rpx 28rpx 0 0;
+  background: #f7f4ff;
+  box-shadow: 0 -12rpx 40rpx rgba(42, 33, 64, 0.16);
+  box-sizing: border-box;
+}
+
+.settings-sheet-handle {
+  width: 64rpx;
+  height: 8rpx;
+  margin: 0 auto 20rpx;
+  border-radius: 999rpx;
+  background: rgba(42, 33, 64, 0.16);
+}
+
+.settings-sheet-title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #2a2140;
+}
+
+.settings-sheet-desc {
+  display: block;
+  margin-top: 8rpx;
+  margin-bottom: 24rpx;
+  font-size: 24rpx;
+  line-height: 1.45;
+  color: rgba(42, 33, 64, 0.58);
+}
+
+.settings-block {
+  margin-bottom: 22rpx;
+}
+
+.settings-block-label {
+  display: block;
+  margin-bottom: 12rpx;
+  font-size: 22rpx;
+  font-weight: 650;
+  color: rgba(42, 33, 64, 0.55);
+  letter-spacing: 1rpx;
+}
+
+.settings-action-btn {
+  padding: 22rpx 24rpx;
+  border-radius: 20rpx;
+  background: #fff;
+  border: 1rpx solid rgba(42, 33, 64, 0.08);
+}
+
+.settings-action-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 650;
+  color: #2a2140;
+}
+
+.settings-action-sub {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: rgba(42, 33, 64, 0.52);
+}
+
+.settings-mode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 12rpx;
+  border-radius: 20rpx;
+  background: #fff;
+  border: 2rpx solid rgba(42, 33, 64, 0.08);
+  box-sizing: border-box;
+}
+
+.settings-mode--on {
+  border-color: rgba(91, 109, 239, 0.55);
+  background: linear-gradient(160deg, #ffffff 0%, #eef1ff 100%);
+}
+
+.settings-mode-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-mode-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 650;
+  color: #2a2140;
+}
+
+.settings-mode-hint {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  line-height: 1.4;
+  color: rgba(42, 33, 64, 0.55);
+}
+
+.settings-mode-check {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #5b6def;
+}
+
+.settings-done {
+  margin-top: 8rpx;
+  height: 84rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(160deg, #7c6bff 0%, #5b8def 100%);
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
