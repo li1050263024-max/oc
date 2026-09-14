@@ -1,0 +1,3136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>OC 抽卡器 · 管理后台</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: linear-gradient(165deg, #e8e4f4 0%, #f5f0ee 50%, #dce8f4 100%);
+      color: #374151;
+      min-height: 100vh;
+    }
+    h1 { font-size: 1.35rem; margin: 0 0 8px; color: #6d28d9; }
+    .hint { font-size: 0.85rem; color: #7c7c8a; margin-bottom: 16px; line-height: 1.55; }
+    .panel {
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(255,255,255,0.6);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      backdrop-filter: blur(12px);
+    }
+    label { display: block; font-size: 0.8rem; color: #6b7280; margin-bottom: 4px; }
+    input, button {
+      font-size: 0.95rem;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    button {
+      background: linear-gradient(135deg, #a78bfa, #c084fc);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .row button { flex: 1; min-width: 140px; margin-bottom: 0; }
+    .item {
+      background: rgba(255,255,255,0.55);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      border: 1px solid rgba(139,92,246,0.12);
+    }
+    .item time { font-size: 0.75rem; color: #9ca3af; }
+    .item .contact { font-size: 0.8rem; color: #6d28d9; margin: 6px 0; }
+    .item .content { white-space: pre-wrap; line-height: 1.55; font-size: 0.9rem; }
+    .item .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      align-items: center;
+      margin: 8px 0 10px;
+      font-size: 0.78rem;
+    }
+    .item .openid {
+      color: #6b7280;
+      word-break: break-all;
+      font-family: ui-monospace, monospace;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 500;
+    }
+    .badge-unread { background: #f3f4f6; color: #6b7280; }
+    .badge-read { background: #d1fae5; color: #047857; }
+    .item-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .item-actions button { width: auto; margin-bottom: 0; padding: 8px 14px; font-size: 0.82rem; }
+    .btn-secondary {
+      background: #fff;
+      color: #6d28d9;
+      border: 1px solid #c4b5fd;
+    }
+    .btn-secondary:disabled { opacity: 0.45; }
+    .choice-btn {
+      /* 勿设 min-width:0：在 .row flex 里会被压成竖条，中文逐字换行 */
+      flex: 0 0 auto !important;
+      width: auto !important;
+      min-width: max-content !important;
+      max-width: none !important;
+      margin: 0 !important;
+      padding: 8px 16px !important;
+      border-radius: 999px !important;
+      border: 1px solid #e5e7eb !important;
+      background: #f3f4f6 !important;
+      color: #374151 !important;
+      font-size: 0.86rem !important;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap !important;
+      line-height: 1.35 !important;
+      writing-mode: horizontal-tb !important;
+    }
+    .row .choice-btn {
+      flex: 0 0 auto !important;
+    }
+    .choice-btn.is-on {
+      background: linear-gradient(135deg, #a78bfa, #c084fc) !important;
+      color: #fff !important;
+      border-color: transparent !important;
+    }
+    .choice-btn.is-on-orange {
+      background: #ea580c !important;
+      color: #fff !important;
+      border-color: transparent !important;
+    }
+    .reply-box { margin-top: 12px; }
+    .reply-box textarea {
+      width: 100%;
+      min-height: 72px;
+      font-size: 0.88rem;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      resize: vertical;
+      margin-bottom: 8px;
+    }
+    .item-reply {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(167, 139, 250, 0.12);
+      border: 1px solid rgba(139, 92, 246, 0.15);
+    }
+    .item-reply-label { font-size: 0.75rem; color: #6d28d9; margin-bottom: 4px; font-weight: 500; }
+    .item-reply-content { white-space: pre-wrap; font-size: 0.88rem; line-height: 1.5; }
+    .item-reply time { display: block; margin-top: 6px; font-size: 0.72rem; color: #9ca3af; }
+    .empty { text-align: center; color: #9ca3af; padding: 40px 0; }
+    .err { color: #c62828; font-size: 0.85rem; white-space: pre-wrap; }
+    .ok { color: #059669; font-size: 0.85rem; }
+    .warn {
+      background: #fff8e6;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.85rem;
+      color: #92400e;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    details { margin-top: 12px; font-size: 0.85rem; }
+    details summary { cursor: pointer; color: #6d28d9; margin-bottom: 8px; }
+    .link-btn {
+      background: transparent;
+      color: #6d28d9;
+      border: 1px solid #c4b5fd;
+      width: auto;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .stat-card {
+      background: rgba(255,255,255,0.65);
+      border-radius: 10px;
+      padding: 12px;
+      border: 1px solid rgba(139,92,246,0.12);
+    }
+    .stat-card b { display: block; font-size: 1.25rem; color: #6d28d9; margin-top: 4px; }
+  </style>
+  <!-- admin v5 + usageStats -->
+</head>
+<body>
+  <h1>OC 抽卡器 · 管理后台</h1>
+  <p class="hint">
+    上传触发器若报 <code>ret:-202</code>，请<strong>不要</strong>再点「上传触发器」。
+    已测通 HTTP 时请用 <strong>HTTP 加载</strong>；云环境 ID 只填 <code>cloud1-d3gkbz2nf0c84c381</code>，不要填 API 网址。
+  </p>
+
+  <div class="panel" style="padding:10px 16px">
+    <div class="row" style="margin:0">
+      <button type="button" id="tabFeedbackBtn" style="margin:0">意见反馈</button>
+      <button type="button" id="tabUsageBtn" class="btn-secondary" style="margin:0">用量统计</button>
+      <button type="button" id="tabUserDataBtn" class="btn-secondary" style="margin:0">用户数据</button>
+      <button type="button" id="tabPayLogsBtn" class="btn-secondary" style="margin:0">充值记录</button>
+      <button type="button" id="tabMembershipBtn" class="btn-secondary" style="margin:0">设置</button>
+      <button type="button" id="tabRedeemCreateBtn" class="btn-secondary" style="margin:0">兑换码</button>
+      <button type="button" id="tabRedeemListBtn" class="btn-secondary" style="margin:0">刷新明细</button>
+    </div>
+  </div>
+
+  <div id="panelFeedback">
+  <div class="panel">
+    <p class="hint" style="margin:0 0 10px">
+      API 须含 <code>-1433404171</code>（与路由管理里域名一致），勿用短域名。
+    </p>
+    <label>HTTP API 地址</label>
+      <input
+        id="apiUrl"
+        type="url"
+        placeholder="https://cloud1-d3gkbz2nf0c84c381-1433404171.ap-shanghai.app.tcloudbase.com/feedbackApi"
+      />
+      <label>管理密钥</label>
+      <div class="row">
+        <input id="adminKey" type="text" placeholder="oc-feedback-admin-2026" />
+        <button type="button" id="loadApiBtn">HTTP 加载</button>
+      </div>
+    <button type="button" class="link-btn" id="resetApiBtn">恢复正确 API 地址</button>
+
+    <details style="margin-top:14px">
+      <summary>备选：从云数据库加载（需匿名登录）</summary>
+      <div class="warn" style="margin-top:10px">
+        云开发 → 设置 → 登录授权 → 开启<strong>匿名登录</strong>；见 DEPLOY.md。
+      </div>
+      <label>云环境 ID（仅填 cloud1-d3gkbz2nf0c84c381，勿填 API 网址）</label>
+      <input id="envId" type="text" value="cloud1-d3gkbz2nf0c84c381" placeholder="cloud1-d3gkbz2nf0c84c381" />
+      <button type="button" id="loadDbBtn">从云数据库加载</button>
+      <p class="hint" style="margin:8px 0 0;font-size:0.75rem">
+        SDK 应能访问：<code id="sdkUrlHint">—</code>
+      </p>
+    </details>
+  </div>
+
+  <div class="panel">
+    <p id="status" class="hint" style="margin:0">点击「HTTP 加载」查看反馈</p>
+    <div id="list"></div>
+  </div>
+  </div>
+
+  <div id="panelUsage" style="display:none">
+  <div class="panel">
+    <label>HTTP API 地址（可直接用反馈同一地址）</label>
+    <input
+      id="usageApiUrl"
+      type="url"
+      placeholder="https://cloud1-d3gkbz2nf0c84c381-1433404171.ap-shanghai.app.tcloudbase.com/feedbackApi"
+    />
+    <label>管理密钥（与反馈后台相同）</label>
+    <div class="row">
+      <input id="usageAdminKey" type="text" placeholder="oc-feedback-admin-2026" />
+      <button type="button" id="loadUsageBtn">刷新日汇总</button>
+      <button type="button" id="loadUserQuotaBtn" class="btn-secondary">刷新用户额度</button>
+      <button type="button" id="diagUsageBtn" class="btn-secondary">诊断写入（仅排障）</button>
+    </div>
+    <p class="hint" style="margin:0">
+      日常只需点「刷新日汇总 / 刷新用户额度」。对话产生后约几秒会写入；
+      <code>diag</code> 仅用于排障试写，不必每次跑终端。
+      后台版本：<code id="adminBuildTag">admin-v21-settings</code>
+    </p>
+  </div>
+  <div class="panel">
+    <p id="usageStatus" class="hint" style="margin:0">进入本页会自动刷新；也可手动点上方按钮</p>
+    <pre id="diagBox" style="display:none;white-space:pre-wrap;font-size:0.8rem;background:#111827;color:#e5e7eb;padding:12px;border-radius:8px;overflow:auto;max-height:360px"></pre>
+    <div id="usageTotals" style="margin-bottom:12px"></div>
+    <div id="usageList"></div>
+    <hr style="border:none;border-top:1px solid #e8e0d8;margin:18px 0" />
+    <strong>用户额度（每人）</strong>
+    <label style="margin-top:10px">用户 ID / openid（支持完整或片段）</label>
+    <div class="row">
+      <input
+        id="userQuotaSearchInput"
+        type="text"
+        placeholder="例如 o6B4y3bVOWejuAOYyvhdVd9REdfI"
+        style="margin-bottom:0"
+      />
+      <button type="button" id="userQuotaSearchBtn" style="flex:0;min-width:100px;margin:0">搜索</button>
+      <button type="button" id="userQuotaSearchClearBtn" class="btn-secondary" style="flex:0;min-width:100px;margin:0">清除条件</button>
+    </div>
+    <p id="userQuotaStatus" class="hint" style="margin:8px 0">本周免费已用 / 上限，以及兑换池已耗 / 剩余。可输入用户 id 精确或模糊搜索。强制清空仅支持<strong>单用户</strong>，且需输入确认密码。</p>
+    <div id="userQuotaList"></div>
+  </div>
+  </div>
+
+  <!-- 模块：用户云同步数据 -->
+  <div id="panelUserData" style="display:none">
+  <div class="panel">
+    <strong style="display:block;margin-bottom:10px">用户云同步备份</strong>
+    <p class="hint" style="margin:0 0 12px">
+      来源：云函数 <code>userDataSync</code> 写入的 <code>user_notebook</code> / <code>user_chat_meta</code> / <code>user_chat_msgs</code>。
+      文档 ID 一般为用户 openid。需部署 <code>feedbackApi</code> 后使用 HTTP 加载。
+    </p>
+    <label>HTTP API 地址（与反馈相同）</label>
+    <input
+      id="userDataApiUrl"
+      type="url"
+      placeholder="https://cloud1-d3gkbz2nf0c84c381-1433404171.ap-shanghai.app.tcloudbase.com/feedbackApi"
+    />
+    <label>管理密钥</label>
+    <input id="userDataAdminKey" type="text" placeholder="oc-feedback-admin-2026" />
+    <div class="row" style="margin-top:8px">
+      <input id="userDataSearch" type="text" placeholder="openid 精确或模糊搜索（留空列最近同步）" style="margin:0;flex:1" />
+      <button type="button" id="userDataSearchBtn" style="flex:0;min-width:120px;margin:0">搜索</button>
+      <button type="button" id="userDataLoadBtn" class="btn-secondary" style="flex:0;min-width:100px;margin:0">刷新列表</button>
+    </div>
+    <p id="userDataStatus" class="hint" style="margin:10px 0 8px">点击「刷新列表」加载最近同步用户</p>
+    <div id="userDataList"></div>
+    <details id="userDataDetailWrap" style="margin-top:16px;display:none">
+      <summary style="font-weight:600;color:#6d28d9">详情 JSON</summary>
+      <pre id="userDataDetail" style="white-space:pre-wrap;font-size:0.78rem;background:rgba(255,255,255,0.7);padding:12px;border-radius:8px;max-height:420px;overflow:auto;margin:8px 0 0"></pre>
+    </details>
+  </div>
+  </div>
+
+  <!-- 模块：充值记录（虚拟支付） -->
+  <div id="panelPayLogs" style="display:none">
+  <div class="panel">
+    <strong style="display:block;margin-bottom:10px">充值记录</strong>
+    <label>HTTP API 地址</label>
+    <input
+      id="payLogsApiUrl"
+      type="url"
+      placeholder="https://cloud1-d3gkbz2nf0c84c381-1433404171.ap-shanghai.app.tcloudbase.com/feedbackApi"
+    />
+    <label>管理密钥</label>
+    <div class="row">
+      <input id="payLogsAdminKey" type="text" placeholder="oc-feedback-admin-2026" />
+      <button type="button" id="loadPayLogsBtn">刷新充值记录</button>
+    </div>
+    <p class="hint" style="margin:8px 0 0">来源：云数据库 <code>virtual_orders</code>（虚拟支付订单）。需已部署最新 <code>feedbackApi</code>。</p>
+  </div>
+  <div class="panel">
+    <div class="row" style="flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:10px">
+      <div style="flex:1;min-width:140px">
+        <label>开始日期</label>
+        <input id="payLogsFromDate" type="date" style="margin-bottom:0" />
+      </div>
+      <div style="flex:1;min-width:140px">
+        <label>结束日期</label>
+        <input id="payLogsToDate" type="date" style="margin-bottom:0" />
+      </div>
+      <button type="button" id="payLogsRangeBtn" style="flex:0;min-width:100px;margin:0">按时间筛选</button>
+      <button type="button" id="payLogsRecent3Btn" class="btn-secondary" style="flex:0;min-width:90px;margin:0">近3天</button>
+    </div>
+    <label>用户 openid / 订单号</label>
+    <div class="row">
+      <input
+        id="payLogsSearchInput"
+        type="text"
+        placeholder="openid 或 outTradeNo 片段"
+        style="margin-bottom:0"
+      />
+      <button type="button" id="payLogsSearchBtn" style="flex:0;min-width:100px;margin:0">搜索</button>
+      <button type="button" id="payLogsSearchClearBtn" class="btn-secondary" style="flex:0;min-width:100px;margin:0">清空</button>
+    </div>
+    <p id="payLogsStatus" class="hint" style="margin:8px 0">进入本页自动加载近 3 天充值记录</p>
+    <div id="payLogsList"></div>
+  </div>
+  </div>
+
+  <!-- 模块：设置（图片审核等） -->
+  <div id="panelMembership" style="display:none">
+  <div class="panel">
+    <strong style="display:block;margin-bottom:10px">设置</strong>
+    <label>HTTP API 地址（与反馈相同）</label>
+    <input
+      id="membershipApiUrl"
+      type="url"
+      placeholder="https://cloud1-d3gkbz2nf0c84c381-1433404171.ap-shanghai.app.tcloudbase.com/feedbackApi"
+    />
+    <label>管理密钥</label>
+    <input id="membershipAdminKey" type="text" placeholder="oc-feedback-admin-2026" />
+    <p class="hint" style="margin:8px 0 14px">
+      会员开通仍可用「兑换码」或「用量统计 → 用户额度」。此处仅保留图片审核开关。
+    </p>
+  </div>
+  <div class="panel">
+    <strong style="display:block;margin-bottom:8px">图片内容审核</strong>
+    <p class="hint" style="margin:0 0 10px">
+      开启后用户上传图片会走微信免费审核（较慢）；关闭后立即跳过审核。需已部署云函数 <code>redeemCode</code> / <code>feedbackApi</code>，集合 <code>oc_app_config</code>。
+    </p>
+    <label>审核状态</label>
+    <div class="row" id="imgSecBtns" style="margin-bottom:12px;gap:8px;flex-wrap:wrap">
+      <button type="button" class="choice-btn img-sec-btn" data-on="1">开启审核</button>
+      <button type="button" class="choice-btn img-sec-btn is-on" data-on="0">关闭审核</button>
+    </div>
+    <input id="imgSecCheckEnabled" type="hidden" value="0" />
+    <div class="row" style="margin-top:4px">
+      <button type="button" id="loadImgSecBtn" class="btn-secondary" style="margin:0">读取当前开关</button>
+      <button type="button" id="saveImgSecBtn" style="margin:0">保存开关</button>
+    </div>
+    <p id="imgSecStatus" class="hint" style="margin:10px 0 0"></p>
+  </div>
+  </div>
+
+  <!-- 模块：兑换码（生成 + 核销记录） -->
+  <div id="panelRedeemCreate" style="display:none">
+  <div class="panel">
+    <strong style="display:block;margin-bottom:10px">兑换码</strong>
+    <label>HTTP API 地址（与反馈相同）</label>
+    <input
+      id="redeemApiUrl"
+      type="url"
+      placeholder="https://cloud1-d3gkbz2nf0c84c381-1433404171.ap-shanghai.app.tcloudbase.com/feedbackApi"
+    />
+    <label>管理密钥</label>
+    <input id="redeemAdminKey" type="text" placeholder="oc-feedback-admin-2026" />
+    <div style="padding:12px 14px;margin:0 0 14px;border-radius:10px;background:linear-gradient(135deg,#f5f3ff,#ede9fe);border:1px solid #c4b5fd">
+      <strong style="display:block;margin-bottom:6px;color:#5b21b6">对话轮次兑换码</strong>
+      <p class="hint" style="margin:0;color:#5b21b6">默认生成轮次码。会员相关请到「用量统计 → 用户额度」单用户操作；本页可不选会员类型。</p>
+    </div>
+    <p class="hint" style="margin:0 0 12px">
+      码状态 / 分享记录请切到「刷新明细」。
+    </p>
+    <label>码类型</label>
+    <div class="row" id="redeemKindBtns" style="margin-bottom:12px;gap:10px;flex-wrap:wrap;align-items:center">
+      <button type="button" class="choice-btn redeem-kind-btn is-on" data-kind="rounds">对话轮次</button>
+      <button type="button" class="choice-btn redeem-kind-btn" data-kind="vip">会员（运维）</button>
+      <button type="button" class="choice-btn redeem-kind-btn" data-kind="combo">会员+轮次</button>
+    </div>
+    <input id="redeemKindValue" type="hidden" value="rounds" />
+    <div id="redeemRoundsTierBlock">
+      <label>对话轮次档位</label>
+      <div class="row" id="redeemAmountTiers" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <button type="button" class="choice-btn redeem-tier-btn" data-yuan="3" data-rounds="150">¥3 → 150 点</button>
+        <button type="button" class="choice-btn redeem-tier-btn" data-yuan="5" data-rounds="350">¥5 → 350 点</button>
+        <button type="button" class="choice-btn redeem-tier-btn" data-yuan="10" data-rounds="1000">¥10 → 1000 点</button>
+      </div>
+    </div>
+    <div class="row" id="redeemWeeklyBlock" style="display:none;margin-bottom:12px">
+      <div style="flex:1;min-width:160px">
+        <label>每周对话轮数</label>
+        <input id="redeemWeeklyRounds" type="number" min="1" max="100000" value="100" />
+        <p class="hint" style="margin:6px 0 0">会员生效后的每周免费对话上限（默认 100）</p>
+      </div>
+    </div>
+    <div class="row">
+      <div style="flex:1;min-width:120px" id="redeemRoundsFieldWrap">
+        <label>额度轮数（可兑换）</label>
+        <input id="redeemRounds" type="number" min="0" max="100000" value="30" />
+      </div>
+      <div style="flex:1;min-width:100px" id="redeemVipDaysWrap">
+        <label>会员天数</label>
+        <input id="redeemVipDays" type="number" min="0" max="3650" value="30" />
+      </div>
+      <div style="flex:1;min-width:100px">
+        <label>生成数量</label>
+        <input id="redeemCount" type="number" min="1" max="100" value="1" />
+      </div>
+      <div style="flex:1;min-width:100px">
+        <label>每码可用次数</label>
+        <input id="redeemMaxUses" type="number" min="1" max="10000" value="1" />
+      </div>
+    </div>
+    <div id="redeemExtraExpireBlock" style="display:none;margin:4px 0 12px">
+      <label>额度轮数有效期</label>
+      <div class="row" id="redeemExpireModeBtns" style="margin-bottom:8px;gap:8px;flex-wrap:wrap">
+        <button type="button" class="choice-btn redeem-expire-btn is-on" data-mode="unlimited">不限时间</button>
+        <button type="button" class="choice-btn redeem-expire-btn" data-mode="limited">限制时间</button>
+      </div>
+      <input id="redeemExpireMode" type="hidden" value="unlimited" />
+      <div id="redeemExpireDaysWrap" style="display:none">
+        <label>额度有效天数</label>
+        <input id="redeemRoundsExpireDays" type="number" min="1" max="3650" value="30" />
+      </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin:8px 0"><input id="redeemPermanent" type="checkbox" /> 永久会员（勾选后忽略天数）</label>
+    <label>备注（可选，点选档位会自动填写）</label>
+    <input id="redeemNote" type="text" placeholder="例如：打赏¥1 / 会员30天" />
+    <button type="button" id="createRedeemBtn">生成兑换码</button>
+    <p id="redeemCreateStatus" class="hint" style="margin:10px 0 0"></p>
+    <div id="redeemCreatedBox" style="margin-top:8px"></div>
+    <p class="hint" style="margin:12px 0 0">核销记录、码状态、分享记录请到「刷新明细」查看（兑换与分享已分开）。</p>
+  </div>
+  </div>
+
+  <!-- 模块：刷新明细（码状态 + 兑换核销 + 分享记录） -->
+  <div id="panelRedeemList" style="display:none">
+  <div class="panel">
+    <strong style="display:block;margin-bottom:10px">刷新明细</strong>
+    <label>HTTP API 地址</label>
+    <input
+      id="redeemListApiUrl"
+      type="url"
+      placeholder="https://cloud1-d3gkbz2nf0c84c381-1433404171.ap-shanghai.app.tcloudbase.com/feedbackApi"
+    />
+    <label>管理密钥</label>
+    <div class="row">
+      <input id="redeemListAdminKey" type="text" placeholder="oc-feedback-admin-2026" />
+      <button type="button" id="loadRedeemBtn">刷新码明细</button>
+    </div>
+    <p class="hint" style="margin:0">本页分三块：① 兑换核销记录（默认近 3 天）② 已生成兑换码状态 ③ 分享获额记录。</p>
+  </div>
+  <div class="panel">
+    <div class="row" style="margin-bottom:8px;align-items:center">
+      <strong style="flex:1">① 兑换核销记录</strong>
+      <button type="button" id="loadRedeemLogsBtn" class="btn-secondary" style="flex:0;width:auto;margin:0">刷新兑换记录</button>
+    </div>
+    <p class="hint" style="margin:0 0 10px">默认只显示最近 3 天；改时间筛选或搜索用户 ID / 兑换码可看更多。</p>
+    <div class="row" style="flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:10px">
+      <div style="flex:1;min-width:140px">
+        <label>开始日期</label>
+        <input id="redeemLogsFromDate" type="date" style="margin-bottom:0" />
+      </div>
+      <div style="flex:1;min-width:140px">
+        <label>结束日期</label>
+        <input id="redeemLogsToDate" type="date" style="margin-bottom:0" />
+      </div>
+      <button type="button" id="redeemLogsRangeBtn" style="flex:0;min-width:100px;margin:0">按时间筛选</button>
+      <button type="button" id="redeemLogsRecent3Btn" class="btn-secondary" style="flex:0;min-width:90px;margin:0">近3天</button>
+    </div>
+    <label>用户 ID / openid / 兑换码（支持完整或片段）</label>
+    <div class="row">
+      <input
+        id="redeemLogsSearchInput"
+        type="text"
+        placeholder="例如 o6B4y3bVOWejuAOYyvhdVd9REdfI 或兑换码"
+        style="margin-bottom:0"
+      />
+      <button type="button" id="redeemLogsSearchBtn" style="flex:0;min-width:100px;margin:0">搜索</button>
+      <button type="button" id="redeemLogsSearchClearBtn" class="btn-secondary" style="flex:0;min-width:100px;margin:0">清空</button>
+    </div>
+    <p id="redeemLogsStatus" class="hint" style="margin:8px 0">进入本页自动加载近 3 天兑换记录</p>
+    <div id="redeemLogsList"></div>
+  </div>
+  <div class="panel">
+    <strong style="display:block;margin-bottom:8px">② 兑换码状态</strong>
+    <p id="redeemStatus" class="hint" style="margin:0">点击「刷新码明细」查看</p>
+    <div id="redeemList"></div>
+  </div>
+  <div class="panel">
+    <div class="row" style="margin-bottom:8px;align-items:center">
+      <strong style="flex:1">③ 分享获额记录</strong>
+      <button type="button" id="loadShareLogsBtn" class="btn-secondary" style="flex:0;width:auto;margin:0">刷新分享记录</button>
+    </div>
+    <label>用户 ID / openid（支持完整或片段）</label>
+    <div class="row">
+      <input
+        id="shareLogsSearchInput"
+        type="text"
+        placeholder="例如 o6B4y3bVOWejuAOYyvhdVd9REdfI"
+        style="margin-bottom:0"
+      />
+      <button type="button" id="shareLogsSearchBtn" style="flex:0;min-width:100px;margin:0">搜索</button>
+      <button type="button" id="shareLogsSearchClearBtn" class="btn-secondary" style="flex:0;min-width:100px;margin:0">清空</button>
+    </div>
+    <p id="shareLogsStatus" class="hint" style="margin:8px 0">与兑换核销分开；用户通过分享续期成功后会出现在此</p>
+    <div id="shareLogsList"></div>
+  </div>
+  </div>
+
+  <script>
+    const ENV_DEFAULT = 'cloud1-d3gkbz2nf0c84c381';
+    const DEFAULT_API =
+      'https://cloud1-d3gkbz2nf0c84c381-1433404171.ap-shanghai.app.tcloudbase.com/feedbackApi';
+    const DEFAULT_KEY = 'oc-feedback-admin-2026';
+    // admin v9 · button refresh without terminal
+
+
+    function normalizeEnvId(input) {
+      const s = String(input || '').trim();
+      if (!s) return ENV_DEFAULT;
+      if (s.indexOf('http') >= 0 || s.indexOf('/') >= 0) {
+        const m = s.match(/(cloud1-[a-f0-9]+)/i);
+        return m ? m[1] : ENV_DEFAULT;
+      }
+      return s;
+    }
+
+    function getAdminBase() {
+      var path = location.pathname || '/';
+      if (/\.html?$/i.test(path)) {
+        return path.substring(0, path.lastIndexOf('/') + 1);
+      }
+      return path.endsWith('/') ? path : path + '/';
+    }
+
+    function getSdkFileUrl() {
+      return getAdminBase() + 'js/cloudbase.full.js';
+    }
+
+    function getTcbSdk() {
+      var g = window.cloudbase || window.tcb;
+      if (!g) return null;
+      if (g.default) g = g.default;
+      if (typeof g === 'function' && typeof g.init === 'function') return g;
+      if (g && typeof g.init === 'function') return g;
+      if (g.cloudbase && typeof g.cloudbase.init === 'function') return g.cloudbase;
+      return null;
+    }
+
+    var sdkLoadPromise = null;
+    var sdkTriedUrls = [];
+
+    function loadCloudbaseSdk() {
+      var existing = getTcbSdk();
+      if (existing) return Promise.resolve(existing);
+      if (sdkLoadPromise) return sdkLoadPromise;
+      var urls = [];
+      var primary = getSdkFileUrl();
+      urls.push(primary);
+      if (location.origin && primary.indexOf('http') !== 0) {
+        urls.push(location.origin + primary);
+      }
+      urls.push('js/cloudbase.full.js', './js/cloudbase.full.js');
+      urls.push('https://static.cloudbase.net/cloudbase-js-sdk/latest/cloudbase.full.js');
+      urls = urls.filter(function (u, idx, arr) {
+        return u && arr.indexOf(u) === idx;
+      });
+      sdkLoadPromise = new Promise(function (resolve, reject) {
+        var i = 0;
+        var loaded = {};
+        function tryNext() {
+          if (i >= urls.length) {
+            reject(new Error('SDK 全部加载失败'));
+            return;
+          }
+          var src = urls[i++];
+          if (loaded[src]) return tryNext();
+          loaded[src] = true;
+          sdkTriedUrls.push(src);
+          var el = document.createElement('script');
+          el.src = src;
+          el.onload = function () {
+            var g = getTcbSdk();
+            if (g) resolve(g);
+            else tryNext();
+          };
+          el.onerror = tryNext;
+          document.head.appendChild(el);
+        }
+        tryNext();
+      });
+      return sdkLoadPromise;
+    }
+
+    async function diagnoseSdkFile() {
+      var url = getSdkFileUrl();
+      var full = location.origin + url;
+      try {
+        var res = await fetch(url, { method: 'GET', cache: 'no-store' });
+        var ct = res.headers.get('content-type') || '';
+        if (!res.ok) return full + ' → HTTP ' + res.status;
+        if (ct.indexOf('javascript') < 0 && ct.indexOf('ecmascript') < 0) {
+          return full + ' → HTTP ' + res.status + ' 但类型是 ' + ct + '（可能路径指到了 HTML 404 页）';
+        }
+        return full + ' → HTTP ' + res.status + ' OK';
+      } catch (e) {
+        return full + ' → ' + (e.message || e);
+      }
+    }
+
+    function fixApiUrl(url) {
+      const u = String(url || '').trim();
+      if (!u) return DEFAULT_API;
+      if (
+        u.indexOf('cloud1-d3gkbz2nf0c84c381.ap-shanghai.app.tcloudbase.com') >= 0 &&
+        u.indexOf('1433404171') < 0
+      ) {
+        return DEFAULT_API;
+      }
+      return u;
+    }
+
+    const envIdEl = document.getElementById('envId');
+    const apiUrlEl = document.getElementById('apiUrl');
+    const adminKeyEl = document.getElementById('adminKey');
+    const loadDbBtn = document.getElementById('loadDbBtn');
+    const loadApiBtn = document.getElementById('loadApiBtn');
+    const listEl = document.getElementById('list');
+    const statusEl = document.getElementById('status');
+
+    apiUrlEl.value = fixApiUrl(localStorage.getItem('oc_feedback_api') || DEFAULT_API);
+    adminKeyEl.value = localStorage.getItem('oc_feedback_admin_key') || DEFAULT_KEY;
+    envIdEl.value = normalizeEnvId(envIdEl.value);
+    localStorage.setItem('oc_feedback_api', apiUrlEl.value);
+
+    document.getElementById('resetApiBtn').addEventListener('click', function () {
+      apiUrlEl.value = DEFAULT_API;
+      adminKeyEl.value = DEFAULT_KEY;
+      localStorage.setItem('oc_feedback_api', DEFAULT_API);
+      localStorage.setItem('oc_feedback_admin_key', DEFAULT_KEY);
+      statusEl.textContent = '已恢复正确 API 地址，请点 HTTP 加载';
+      statusEl.className = 'hint';
+    });
+
+    function formatTime(item) {
+      if (item.createTimeMs) return new Date(item.createTimeMs).toLocaleString('zh-CN');
+      if (item.createTime && item.createTime.$date) {
+        return new Date(item.createTime.$date).toLocaleString('zh-CN');
+      }
+      return '—';
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function statusLabel(item) {
+      return item.status === 'read' ? '已查收' : '未查收';
+    }
+
+    function statusClass(item) {
+      return item.status === 'read' ? 'badge-read' : 'badge-unread';
+    }
+
+    var currentList = [];
+
+    function renderList(list) {
+      currentList = list || [];
+      statusEl.textContent = '共 ' + currentList.length + ' 条反馈';
+      statusEl.className = 'ok';
+      if (!currentList.length) {
+        listEl.innerHTML = '<p class="empty">暂无反馈</p>';
+        return;
+      }
+      listEl.innerHTML = currentList
+        .map(function (item) {
+          var id = item._id || item.id || '';
+          var reply = String(item.reply || '').trim();
+          var isRead = item.status === 'read';
+          return (
+            '<article class="item" data-id="' +
+            escapeHtml(id) +
+            '">' +
+            '<time>' +
+            formatTime(item) +
+            '</time>' +
+            '<div class="meta">' +
+            '<span class="badge ' +
+            statusClass(item) +
+            '">' +
+            statusLabel(item) +
+            '</span>' +
+            '<span class="openid">反馈人 ID：' +
+            escapeHtml(item.openid || '—') +
+            '</span>' +
+            (item.contact
+              ? '<span class="contact">联系方式：' + escapeHtml(item.contact) + '</span>'
+              : '') +
+            '</div>' +
+            '<div class="content">' +
+            escapeHtml(item.content || '') +
+            '</div>' +
+            (reply
+              ? '<div class="item-reply">' +
+                '<div class="item-reply-label">开发者回复</div>' +
+                '<div class="item-reply-content">' +
+                escapeHtml(reply) +
+                '</div>' +
+                (item.replyTimeMs
+                  ? '<time>回复于 ' +
+                    new Date(item.replyTimeMs).toLocaleString('zh-CN') +
+                    '</time>'
+                  : '') +
+                '</div>'
+              : '') +
+            '<div class="item-actions">' +
+            '<button type="button" class="btn-secondary btn-mark-read" data-id="' +
+            escapeHtml(id) +
+            '" ' +
+            (isRead ? 'disabled' : '') +
+            '>标记已查收</button>' +
+            '</div>' +
+            '<div class="reply-box">' +
+            '<label>开发者回复</label>' +
+            '<textarea class="reply-input" data-id="' +
+            escapeHtml(id) +
+            '" placeholder="输入回复内容，用户可在小程序反馈页查看…">' +
+            escapeHtml(reply) +
+            '</textarea>' +
+            '<button type="button" class="btn-save-reply" data-id="' +
+            escapeHtml(id) +
+            '">保存回复</button>' +
+            '</div>' +
+            '</article>'
+          );
+        })
+        .join('');
+    }
+
+    function sortByTime(list) {
+      return list.slice().sort(function (a, b) {
+        return (b.createTimeMs || 0) - (a.createTimeMs || 0);
+      });
+    }
+
+    function normalizeListItem(item) {
+      if (!item.status) item.status = 'unread';
+      return item;
+    }
+
+    async function postFeedbackUpdate(id, payload) {
+      const apiUrl = fixApiUrl(apiUrlEl.value.trim());
+      const adminKey = adminKeyEl.value.trim();
+      const base = apiUrl.replace(/\/+$/, '').replace(/\/feedbackApi\/?$/i, '/feedbackApi');
+      const res = await fetch(base, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Feedback-Admin-Key': adminKey
+        },
+        body: JSON.stringify(
+          Object.assign({ action: 'update', adminKey: adminKey, id: id }, payload)
+        )
+      });
+      const data = JSON.parse(await res.text());
+      if (!data.ok) throw new Error(data.err || '更新失败');
+    }
+
+    async function updateViaDatabase(id, patch) {
+      const envId = normalizeEnvId(envIdEl.value);
+      const tcbSdk = await loadCloudbaseSdk();
+      const app = tcbSdk.init({ env: envId });
+      const auth = app.auth({ persistence: 'local' });
+      const loginState = await auth.getLoginState();
+      if (!loginState) await auth.signInAnonymously();
+      const db = app.database();
+      await db.collection('feedback').doc(id).update({ data: patch });
+    }
+
+    listEl.addEventListener('click', async function (e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      var id = btn.getAttribute('data-id');
+      if (!id) return;
+      if (btn.classList.contains('btn-mark-read')) {
+        btn.disabled = true;
+        statusEl.textContent = '正在标记已查收…';
+        statusEl.className = 'hint';
+        try {
+          try {
+            await postFeedbackUpdate(id, { status: 'read' });
+          } catch (httpErr) {
+            await updateViaDatabase(id, { status: 'read', readTimeMs: Date.now() });
+          }
+          patchLocalItem(id, { status: 'read', readTimeMs: Date.now() });
+          statusEl.textContent = '已标记为已查收';
+          statusEl.className = 'ok';
+        } catch (err) {
+          statusEl.textContent = '标记失败：' + (err.message || err);
+          statusEl.className = 'err';
+          btn.disabled = false;
+        }
+        return;
+      }
+      if (btn.classList.contains('btn-save-reply')) {
+        var article = btn.closest('.item');
+        var ta = article ? article.querySelector('.reply-input') : null;
+        var reply = ta ? ta.value.trim() : '';
+        btn.disabled = true;
+        statusEl.textContent = '正在保存回复…';
+        statusEl.className = 'hint';
+        try {
+          var now = Date.now();
+          var patch = {
+            reply: reply,
+            replyTimeMs: reply ? now : 0,
+            status: 'read',
+            readTimeMs: now
+          };
+          try {
+            await postFeedbackUpdate(id, { reply: reply });
+          } catch (httpErr) {
+            await updateViaDatabase(id, patch);
+          }
+          patchLocalItem(id, patch);
+          statusEl.textContent = '回复已保存';
+          statusEl.className = 'ok';
+        } catch (err) {
+          statusEl.textContent = '保存回复失败：' + (err.message || err);
+          statusEl.className = 'err';
+          btn.disabled = false;
+        }
+      }
+    });
+
+    function patchLocalItem(id, patch) {
+      currentList = currentList.map(function (item) {
+        var iid = item._id || item.id || '';
+        if (iid !== id) return item;
+        return Object.assign({}, item, patch);
+      });
+      renderList(currentList);
+    }
+
+    async function loadFromDatabase() {
+      const envId = normalizeEnvId(envIdEl.value);
+      envIdEl.value = envId;
+      if (!envId || envId.indexOf('http') >= 0) {
+        statusEl.textContent = '云环境 ID 填 cloud1-d3gkbz2nf0c84c381，不要填 API 网址';
+        statusEl.className = 'err';
+        return;
+      }
+      loadDbBtn.disabled = true;
+      statusEl.textContent = '正在连接云数据库…';
+      statusEl.className = 'hint';
+      listEl.innerHTML = '';
+      try {
+        const tcbSdk = await loadCloudbaseSdk();
+        const app = tcbSdk.init({ env: envId });
+        const auth = app.auth({ persistence: 'local' });
+        const loginState = await auth.getLoginState();
+        if (!loginState) {
+          await auth.signInAnonymously();
+        }
+        const db = app.database();
+        const res = await db
+          .collection('feedback')
+          .orderBy('createTimeMs', 'desc')
+          .limit(200)
+          .get();
+        renderList(sortByTime((res.data || []).map(normalizeListItem)));
+      } catch (e) {
+        var msg = e.message || String(e);
+        if (/SDK|cloudbase|加载失败/i.test(msg)) {
+          var probe = await diagnoseSdkFile();
+          msg =
+            'CloudBase SDK 未加载。请用上方「HTTP 加载」（推荐）。\n' +
+            '诊断：' +
+            probe +
+            '\n若 HTTP 404：托管里应是 cloud-admin/index.html 与 cloud-admin/js/cloudbase.full.js（不要多套一层 feedback-admin 文件夹）。';
+        } else if (/permission|权限|PERMISSION/i.test(msg)) {
+          msg +=
+            ' → 请到云开发控制台：① 设置里开启「匿名登录」；② 数据库 feedback 集合权限改为自定义：read: auth!=null, write: false（见 DEPLOY.md）。或直接用 HTTP 加载。';
+        }
+        statusEl.textContent = '错误：' + msg;
+        statusEl.className = 'err';
+      } finally {
+        loadDbBtn.disabled = false;
+      }
+    }
+
+    async function loadFromHttp() {
+      const apiUrl = apiUrlEl.value.trim();
+      const adminKey = adminKeyEl.value.trim();
+      if (!/^https?:\/\//i.test(apiUrl)) {
+        statusEl.textContent = 'HTTP API 须为 https 开头的网址';
+        statusEl.className = 'err';
+        return;
+      }
+      localStorage.setItem('oc_feedback_api', apiUrl);
+      localStorage.setItem('oc_feedback_admin_key', adminKey);
+      loadApiBtn.disabled = true;
+      statusEl.textContent = 'HTTP 加载中…';
+      statusEl.className = 'hint';
+      listEl.innerHTML = '';
+      try {
+        const apiUrlFixed = fixApiUrl(apiUrl);
+        const base = apiUrlFixed.replace(/\/+$/, '').replace(/\/feedbackApi\/?$/i, '/feedbackApi');
+        const getUrl =
+          base + '?action=list&adminKey=' + encodeURIComponent(adminKey);
+        let raw = '';
+        try {
+          const res = await fetch(getUrl, {
+            method: 'GET',
+            mode: 'cors',
+            headers: { 'X-Feedback-Admin-Key': adminKey }
+          });
+          raw = await res.text();
+        } catch (getErr) {
+          const res = await fetch(base, {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Feedback-Admin-Key': adminKey
+            },
+            body: JSON.stringify({ action: 'list', adminKey: adminKey })
+          });
+          raw = await res.text();
+        }
+        const data = JSON.parse(raw);
+        if (!data.ok) throw new Error(data.err || '加载失败');
+        renderList((data.list || []).map(normalizeListItem));
+      } catch (e) {
+        statusEl.textContent = 'HTTP 错误：' + (e.message || e);
+        statusEl.className = 'err';
+      } finally {
+        loadApiBtn.disabled = false;
+      }
+    }
+
+    document.getElementById('sdkUrlHint').textContent =
+      location.origin + getSdkFileUrl();
+
+    loadDbBtn.addEventListener('click', loadFromDatabase);
+    loadApiBtn.addEventListener('click', loadFromHttp);
+
+    // —— 用量统计（默认复用已测通的 feedbackApi HTTP）——
+    const DEFAULT_USAGE_API =
+      'https://cloud1-d3gkbz2nf0c84c381-1433404171.ap-shanghai.app.tcloudbase.com/feedbackApi';
+    const usageApiUrlEl = document.getElementById('usageApiUrl');
+    const usageAdminKeyEl = document.getElementById('usageAdminKey');
+    const loadUsageBtn = document.getElementById('loadUsageBtn');
+    const loadUserQuotaBtn = document.getElementById('loadUserQuotaBtn');
+    const diagUsageBtn = document.getElementById('diagUsageBtn');
+    const usageStatusEl = document.getElementById('usageStatus');
+    const diagBoxEl = document.getElementById('diagBox');
+    const usageTotalsEl = document.getElementById('usageTotals');
+    const usageListEl = document.getElementById('usageList');
+    const userQuotaStatusEl = document.getElementById('userQuotaStatus');
+    const userQuotaListEl = document.getElementById('userQuotaList');
+    const panelFeedback = document.getElementById('panelFeedback');
+    const panelUsage = document.getElementById('panelUsage');
+    const panelUserData = document.getElementById('panelUserData');
+    const panelPayLogs = document.getElementById('panelPayLogs');
+    const panelMembership = document.getElementById('panelMembership');
+    const panelRedeemCreate = document.getElementById('panelRedeemCreate');
+    const panelRedeemList = document.getElementById('panelRedeemList');
+    const tabFeedbackBtn = document.getElementById('tabFeedbackBtn');
+    const tabUsageBtn = document.getElementById('tabUsageBtn');
+    const tabUserDataBtn = document.getElementById('tabUserDataBtn');
+    const tabPayLogsBtn = document.getElementById('tabPayLogsBtn');
+    const tabMembershipBtn = document.getElementById('tabMembershipBtn');
+    const tabRedeemCreateBtn = document.getElementById('tabRedeemCreateBtn');
+    const tabRedeemListBtn = document.getElementById('tabRedeemListBtn');
+
+    (function initUsageApiUrl() {
+      var saved = localStorage.getItem('oc_usage_api') || '';
+      // 旧默认 /usageStats 若未绑定会 Failed to fetch，自动改用 feedbackApi
+      if (!saved || /\/usageStats\/?$/i.test(saved)) {
+        usageApiUrlEl.value = DEFAULT_USAGE_API;
+      } else {
+        usageApiUrlEl.value = saved;
+      }
+    })();
+    usageAdminKeyEl.value = localStorage.getItem('oc_feedback_admin_key') || DEFAULT_KEY;
+
+    function switchTab(which) {
+      panelFeedback.style.display = which === 'feedback' ? 'block' : 'none';
+      panelUsage.style.display = which === 'usage' ? 'block' : 'none';
+      if (panelUserData) panelUserData.style.display = which === 'userData' ? 'block' : 'none';
+      if (panelPayLogs) panelPayLogs.style.display = which === 'payLogs' ? 'block' : 'none';
+      if (panelMembership) panelMembership.style.display = which === 'membership' ? 'block' : 'none';
+      panelRedeemCreate.style.display = which === 'redeemCreate' ? 'block' : 'none';
+      panelRedeemList.style.display = which === 'redeemList' ? 'block' : 'none';
+      tabFeedbackBtn.className = which === 'feedback' ? '' : 'btn-secondary';
+      tabUsageBtn.className = which === 'usage' ? '' : 'btn-secondary';
+      if (tabUserDataBtn) tabUserDataBtn.className = which === 'userData' ? '' : 'btn-secondary';
+      if (tabPayLogsBtn) tabPayLogsBtn.className = which === 'payLogs' ? '' : 'btn-secondary';
+      if (tabMembershipBtn) tabMembershipBtn.className = which === 'membership' ? '' : 'btn-secondary';
+      tabRedeemCreateBtn.className = which === 'redeemCreate' ? '' : 'btn-secondary';
+      tabRedeemListBtn.className = which === 'redeemList' ? '' : 'btn-secondary';
+    }
+    tabFeedbackBtn.addEventListener('click', function () {
+      switchTab('feedback');
+    });
+    tabUsageBtn.addEventListener('click', function () {
+      switchTab('usage');
+      if (typeof loadUsage === 'function') loadUsage();
+      if (typeof loadUserQuota === 'function') loadUserQuota();
+    });
+    if (tabUserDataBtn) {
+      tabUserDataBtn.addEventListener('click', function () {
+        switchTab('userData');
+        syncUserDataApiFields();
+        if (typeof loadUserDataList === 'function') loadUserDataList();
+      });
+    }
+    if (tabPayLogsBtn) {
+      tabPayLogsBtn.addEventListener('click', function () {
+        switchTab('payLogs');
+        syncPayLogsApiFields();
+        if (typeof loadPayLogs === 'function') loadPayLogs({ recent3: true });
+      });
+    }
+    if (tabMembershipBtn) {
+      tabMembershipBtn.addEventListener('click', function () {
+        switchTab('membership');
+        syncMembershipApiFields();
+        if (typeof loadImgSec === 'function') loadImgSec();
+      });
+    }
+    tabRedeemCreateBtn.addEventListener('click', function () {
+      switchTab('redeemCreate');
+      syncRedeemApiFields();
+    });
+    tabRedeemListBtn.addEventListener('click', function () {
+      switchTab('redeemList');
+      syncRedeemApiFields();
+      if (typeof setRedeemLogsRecent3Dates === 'function') setRedeemLogsRecent3Dates();
+      loadRedeemList();
+      if (typeof loadRedeemLogs === 'function') loadRedeemLogs();
+      if (typeof loadShareLogs === 'function') loadShareLogs();
+    });
+
+    function renderUsage(data) {
+      const list = data.list || [];
+      const totals = data.totals || {};
+      usageStatusEl.textContent = '已加载最近 ' + list.length + ' 天';
+      usageStatusEl.className = 'ok';
+      usageTotalsEl.innerHTML =
+        '<div class="item" style="margin:0">' +
+        '<strong>区间合计</strong><div class="meta">' +
+        '<span>对话轮次 <b>' +
+        (totals.chatRounds || 0) +
+        '</b></span>' +
+        '<span>API 调用 <b>' +
+        (totals.apiCalls || 0) +
+        '</b></span>' +
+        '<span>广告续期 <b>' +
+        (totals.unlockAd || 0) +
+        '</b> 次 / ' +
+        (totals.unlockRoundsAd || 0) +
+        ' 轮</span>' +
+        '<span>分享续期 <b>' +
+        (totals.unlockShare || 0) +
+        '</b> 次 / ' +
+        (totals.unlockRoundsShare || 0) +
+        ' 轮</span>' +
+        '<span>失败续期 <b>' +
+        (totals.unlockFailOpen || 0) +
+        '</b> 次 / ' +
+        (totals.unlockRoundsFailOpen || 0) +
+        ' 轮</span>' +
+        '</div></div>';
+
+      if (!list.length) {
+        usageListEl.innerHTML =
+          '<p class="empty">暂无日汇总数据。<br/>请确认：① 已部署云函数 <code>usageStats</code>；② 小程序里真实发送过对话（约 2 秒后上报）；③ 云库 <code>usage_daily</code>「记录管理」里能看到当天文档。<br/>可选：为 <code>dateKey</code> 建降序索引。</p>';
+        return;
+      }
+      usageListEl.innerHTML = list
+        .map(function (row) {
+          var apiNames = row.apiByName || {};
+          var apiDetail = Object.keys(apiNames)
+            .map(function (k) {
+              return k + ':' + apiNames[k];
+            })
+            .join(' · ');
+          return (
+            '<article class="item">' +
+            '<time>' +
+            escapeHtml(row.dateKey || '—') +
+            '</time>' +
+            '<div class="meta">' +
+            '<span>对话 <b>' +
+            (row.chatRounds || 0) +
+            '</b>（单聊 ' +
+            (row.chatRoundsDm || 0) +
+            ' / 群聊 ' +
+            (row.chatRoundsGroup || 0) +
+            '）</span>' +
+            '<span>API <b>' +
+            (row.apiCalls || 0) +
+            '</b></span>' +
+            '<span>广告续 ' +
+            (row.unlockAd || 0) +
+            ' 次/' +
+            (row.unlockRoundsAd || 0) +
+            ' 轮</span>' +
+            '<span>分享续 ' +
+            (row.unlockShare || 0) +
+            ' 次/' +
+            (row.unlockRoundsShare || 0) +
+            ' 轮</span>' +
+            '<span>失败续 ' +
+            (row.unlockFailOpen || 0) +
+            ' 次/' +
+            (row.unlockRoundsFailOpen || 0) +
+            ' 轮</span>' +
+            '</div>' +
+            (apiDetail
+              ? '<p class="hint" style="margin:6px 0 0;font-size:0.78rem">API 明细：' +
+                escapeHtml(apiDetail) +
+                '</p>'
+              : '') +
+            '</article>'
+          );
+        })
+        .join('');
+    }
+
+    async function loadUsage() {
+      loadUsageBtn.disabled = true;
+      usageStatusEl.textContent = '刷新中…';
+      usageStatusEl.className = 'hint';
+      try {
+        const base = String(usageApiUrlEl.value || DEFAULT_USAGE_API)
+          .trim()
+          .replace(/\/$/, '');
+        const adminKey = String(usageAdminKeyEl.value || '').trim();
+        localStorage.setItem('oc_usage_api', base);
+        localStorage.setItem('oc_feedback_admin_key', adminKey);
+        // 与终端脚本一致：只用 POST，避免 GET 假成功/空列表
+        const useFeedbackApi = /feedbackApi/i.test(base);
+        const actionName = useFeedbackApi ? 'usageSummary' : 'summary';
+        const res = await fetch(base, {
+          method: 'POST',
+          mode: 'cors',
+          cache: 'no-store',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Feedback-Admin-Key': adminKey
+          },
+          body: JSON.stringify({
+            action: actionName,
+            days: 14,
+            adminKey: adminKey,
+            _ts: Date.now()
+          })
+        });
+        const raw = await res.text();
+        const data = JSON.parse(raw);
+        if (!data.ok) {
+          var detail = data.errMsg || data.err || '加载失败';
+          if (data.got) detail += '（收到 action=' + data.got + '）';
+          throw new Error(detail);
+        }
+        renderUsage(data);
+        var nowLabel = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+        usageStatusEl.textContent =
+          '已刷新 ' +
+          (data.list || []).length +
+          ' 天 · ' +
+          nowLabel +
+          (data.apiVer ? ' · ' + data.apiVer : '');
+        usageStatusEl.className = 'ok';
+        if (data.warn) {
+          usageStatusEl.textContent += ' · ' + data.warn;
+          usageStatusEl.className = 'err';
+        }
+      } catch (e) {
+        usageStatusEl.textContent =
+          '刷新失败：' +
+          (e.message || e) +
+          '\n请确认 API 地址为 feedbackApi，并已部署云函数。';
+        usageStatusEl.className = 'err';
+      } finally {
+        loadUsageBtn.disabled = false;
+      }
+    }
+
+    function formatVipLabel(row) {
+      if (!row) return '普通用户';
+      var exp = Number(row.vipExpireAt) || 0;
+      if (row.vipPaused) {
+        if (!exp) return '会员已暂停 · 永久档';
+        return '会员已暂停 · 原至 ' + formatTimeMs(exp);
+      }
+      if (!row.isVip && !row.vipRecord) return '普通用户';
+      if (!row.isVip) return '普通用户';
+      if (!exp) return '会员 · 永久';
+      return '会员 · 至 ' + formatTimeMs(exp);
+    }
+
+    function renderUserQuota(list, searchKeyword) {
+      if (!list || !list.length) {
+        userQuotaListEl.innerHTML =
+          '<p class="empty">暂无用户额度数据。请确认集合 <code>user_quota</code> 已建，并让用户打开对话页（会同步）或完成一次兑换。</p>';
+        return;
+      }
+      var kw = String(searchKeyword || '').trim();
+      // 仅在已搜索且结果为单人时显示清空按钮，禁止列表里批量点清空
+      var allowClear = !!kw && list.length === 1;
+      userQuotaListEl.innerHTML = list
+        .map(function (row) {
+          var freeUsed = Number(row.freeUsed) || 0;
+          var freeAllowed = Number(row.freeAllowed) || 0;
+          var used = Number(row.quotaUsed != null ? row.quotaUsed : row.extraConsumed) || 0;
+          var left = Number(row.quotaLeft != null ? row.quotaLeft : row.extraRounds) || 0;
+          var total = Number(row.redeemedTotal) || 0;
+          var oid = String(row.openid || row._id || '');
+          var vipLabel = formatVipLabel(row);
+          return (
+            '<article class="item">' +
+            '<div class="meta">' +
+            '<span class="openid">' +
+            escapeHtml(oid || '—') +
+            '</span>' +
+            '<span>会员 <b>' +
+            escapeHtml(vipLabel) +
+            '</b></span>' +
+            '<span>本周免费 <b>' +
+            freeUsed +
+            '</b>/' +
+            (freeAllowed || 30) +
+            '</span>' +
+            '<span>兑换池已耗 <b>' +
+            used +
+            '</b> / 剩余 <b>' +
+            left +
+            '</b></span>' +
+            (total ? '<span>累计兑入 ' + total + '</span>' : '') +
+            '</div>' +
+            '<time>' +
+            formatTimeMs(row.updateTimeMs || row.createTimeMs) +
+            (row.weekKey ? ' · 周 ' + escapeHtml(row.weekKey) : '') +
+            '</time>' +
+            (allowClear && oid
+              ? '<div class="item-actions" style="display:flex;flex-wrap:wrap;gap:8px">' +
+                '<button type="button" class="btn-secondary vip-open-btn" data-openid="' +
+                escapeHtml(oid) +
+                '">开通会员</button>' +
+                (row.vipPaused
+                  ? '<button type="button" class="btn-secondary vip-resume-btn" data-openid="' +
+                    escapeHtml(oid) +
+                    '" style="background:linear-gradient(135deg,#34d399,#10b981);color:#052e1b">恢复权益</button>'
+                  : row.isVip || row.vipRecord
+                    ? '<button type="button" class="btn-secondary vip-pause-btn" data-openid="' +
+                      escapeHtml(oid) +
+                      '" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#422006">暂停权益</button>'
+                    : '') +
+                '<button type="button" class="btn-secondary vip-close-btn" data-openid="' +
+                escapeHtml(oid) +
+                '">关闭会员</button>' +
+                '<button type="button" class="btn-secondary quota-clear-btn" data-openid="' +
+                escapeHtml(oid) +
+                '" style="background:linear-gradient(135deg,#f87171,#ef4444)">强制清空该用户额度</button>' +
+                '</div>'
+              : !kw
+                ? '<p class="hint" style="margin:8px 0 0;font-size:0.75rem">请先搜索精确到<strong>单个用户</strong>后再操作额度/会员（不支持批量）。</p>'
+                : list.length > 1
+                  ? '<p class="hint" style="margin:8px 0 0;font-size:0.75rem">当前匹配多人，请缩小到唯一用户后再操作。</p>'
+                  : '') +
+            '</article>'
+          );
+        })
+        .join('');
+    }
+
+    async function clearUserQuotaByOpenid(openid) {
+      var oid = String(openid || '').trim();
+      if (!oid) {
+        alert('缺少 openid');
+        return;
+      }
+      var ok = window.confirm(
+        '仅清空该用户额度（不可批量）。\n\n' +
+          oid +
+          '\n\n将：兑换池剩余 → 0，本周免费视为已用尽。\n累计兑入记录会保留。\n用户需重新打开对话页才会同步本地显示。'
+      );
+      if (!ok) return;
+      var pwd = window.prompt('请输入确认密码后继续清空：', '');
+      if (pwd == null) return;
+      if (String(pwd).trim() !== '223356') {
+        alert('确认密码错误，已取消清空');
+        return;
+      }
+      const base = String(usageApiUrlEl.value || DEFAULT_USAGE_API)
+        .trim()
+        .replace(/\/$/, '');
+      const adminKey = String(usageAdminKeyEl.value || '').trim();
+      userQuotaStatusEl.textContent = '正在清空该用户…';
+      userQuotaStatusEl.className = 'hint';
+      try {
+        const data = await postFeedbackAction(base, adminKey, 'userQuotaClear', {
+          openid: oid,
+          clearExtra: true,
+          clearFree: true,
+          confirmPassword: String(pwd).trim(),
+          note: 'admin-ui-single'
+        });
+        if (!data.ok) throw new Error(data.err || data.errMsg || '清空失败');
+        userQuotaStatusEl.textContent =
+          '已清空该用户额度 · ' + oid.slice(0, 18) + '…';
+        userQuotaStatusEl.className = 'ok';
+        var inp = document.getElementById('userQuotaSearchInput');
+        if (inp) inp.value = oid;
+        await loadUserQuota(oid);
+      } catch (e) {
+        userQuotaStatusEl.textContent = '清空失败：' + (e.message || e);
+        userQuotaStatusEl.className = 'err';
+        alert('清空失败：' + (e.message || e));
+      }
+    }
+
+    async function setUserVipByOpenid(openid, enable) {
+      var oid = String(openid || '').trim();
+      if (!oid) {
+        alert('缺少 openid');
+        return;
+      }
+      var vipDays = 30;
+      var permanent = false;
+      if (enable) {
+        var daysRaw = window.prompt('开通会员天数（填 0 并下一步可设永久；默认 30）：', '30');
+        if (daysRaw == null) return;
+        vipDays = Math.max(0, Math.floor(Number(daysRaw) || 0));
+        if (vipDays <= 0) {
+          permanent = window.confirm('天数为 0：是否开通「永久会员」？\n点取消则放弃开通。');
+          if (!permanent) return;
+        }
+      } else {
+        if (!window.confirm('确认关闭该用户会员？\n\n' + oid + '\n\n将清除会员身份与到期时间（与「暂停」不同）。')) return;
+      }
+      var pwd = window.prompt('请输入确认密码：', '');
+      if (pwd == null) return;
+      if (String(pwd).trim() !== '223356') {
+        alert('确认密码错误');
+        return;
+      }
+      const base = String(usageApiUrlEl.value || DEFAULT_USAGE_API)
+        .trim()
+        .replace(/\/$/, '');
+      const adminKey = String(usageAdminKeyEl.value || '').trim();
+      userQuotaStatusEl.textContent = enable ? '正在开通会员…' : '正在关闭会员…';
+      userQuotaStatusEl.className = 'hint';
+      try {
+        const data = await postFeedbackAction(base, adminKey, 'userVipSet', {
+          openid: oid,
+          enable: !!enable,
+          vipDays: vipDays,
+          permanent: !!permanent,
+          confirmPassword: String(pwd).trim(),
+          note: enable ? 'admin-ui-open' : 'admin-ui-close'
+        });
+        if (!data.ok) throw new Error(data.err || data.errMsg || '操作失败');
+        userQuotaStatusEl.textContent =
+          (enable ? '已开通会员 · ' : '已关闭会员 · ') + oid.slice(0, 18) + '…';
+        userQuotaStatusEl.className = 'ok';
+        var inp = document.getElementById('userQuotaSearchInput');
+        if (inp) inp.value = oid;
+        await loadUserQuota(oid);
+      } catch (e) {
+        userQuotaStatusEl.textContent = '会员操作失败：' + (e.message || e);
+        userQuotaStatusEl.className = 'err';
+        alert('会员操作失败：' + (e.message || e));
+      }
+    }
+
+    async function pauseOrResumeVipByOpenid(openid, pause) {
+      var oid = String(openid || '').trim();
+      if (!oid) {
+        alert('缺少 openid');
+        return;
+      }
+      var tip = pause
+        ? '确认暂停该用户会员权益？\n\n' +
+          oid +
+          '\n\n用户将立刻无法享受会员功能；到期时间保留，可再点「恢复权益」。'
+        : '确认恢复该用户会员权益？\n\n' + oid;
+      if (!window.confirm(tip)) return;
+      var pwd = window.prompt('请输入确认密码：', '');
+      if (pwd == null) return;
+      if (String(pwd).trim() !== '223356') {
+        alert('确认密码错误');
+        return;
+      }
+      const base = String(usageApiUrlEl.value || DEFAULT_USAGE_API)
+        .trim()
+        .replace(/\/$/, '');
+      const adminKey = String(usageAdminKeyEl.value || '').trim();
+      userQuotaStatusEl.textContent = pause ? '正在暂停权益…' : '正在恢复权益…';
+      userQuotaStatusEl.className = 'hint';
+      try {
+        const data = await postFeedbackAction(
+          base,
+          adminKey,
+          pause ? 'userVipPause' : 'userVipResume',
+          {
+            openid: oid,
+            confirmPassword: String(pwd).trim(),
+            note: pause ? 'admin-ui-pause' : 'admin-ui-resume'
+          }
+        );
+        if (!data.ok) throw new Error(data.err || data.errMsg || '操作失败');
+        userQuotaStatusEl.textContent =
+          (pause ? '已暂停权益 · ' : '已恢复权益 · ') + oid.slice(0, 18) + '…';
+        userQuotaStatusEl.className = 'ok';
+        var inp = document.getElementById('userQuotaSearchInput');
+        if (inp) inp.value = oid;
+        await loadUserQuota(oid);
+      } catch (e) {
+        userQuotaStatusEl.textContent = '操作失败：' + (e.message || e);
+        userQuotaStatusEl.className = 'err';
+        alert('操作失败：' + (e.message || e));
+      }
+    }
+
+    if (userQuotaListEl) {
+      userQuotaListEl.addEventListener('click', function (ev) {
+        var t = ev.target;
+        if (!t || !t.classList) return;
+        if (t.classList.contains('quota-clear-btn')) {
+          clearUserQuotaByOpenid(t.getAttribute('data-openid') || '');
+          return;
+        }
+        if (t.classList.contains('vip-open-btn')) {
+          setUserVipByOpenid(t.getAttribute('data-openid') || '', true);
+          return;
+        }
+        if (t.classList.contains('vip-close-btn')) {
+          setUserVipByOpenid(t.getAttribute('data-openid') || '', false);
+          return;
+        }
+        if (t.classList.contains('vip-pause-btn')) {
+          pauseOrResumeVipByOpenid(t.getAttribute('data-openid') || '', true);
+          return;
+        }
+        if (t.classList.contains('vip-resume-btn')) {
+          pauseOrResumeVipByOpenid(t.getAttribute('data-openid') || '', false);
+        }
+      });
+    }
+
+    // —— 会员权益面板配置（已下线，保留空引用避免旧脚本报错） ——
+    const membershipApiUrlEl = document.getElementById('membershipApiUrl');
+    const membershipAdminKeyEl = document.getElementById('membershipAdminKey');
+    const vipPanelStatusEl = document.getElementById('vipPanelStatus');
+    function syncMembershipApiFields() {
+      if (!membershipApiUrlEl) return;
+      var saved = localStorage.getItem('oc_usage_api') || '';
+      membershipApiUrlEl.value =
+        saved && !/\/usageStats\/?$/i.test(saved) ? saved : DEFAULT_USAGE_API;
+      if (membershipAdminKeyEl) {
+        membershipAdminKeyEl.value =
+          localStorage.getItem('oc_feedback_admin_key') || DEFAULT_KEY;
+      }
+    }
+
+    // —— 充值记录（虚拟支付） ——
+    const payLogsApiUrlEl = document.getElementById('payLogsApiUrl');
+    const payLogsAdminKeyEl = document.getElementById('payLogsAdminKey');
+    const payLogsStatusEl = document.getElementById('payLogsStatus');
+    const payLogsListEl = document.getElementById('payLogsList');
+    const loadPayLogsBtn = document.getElementById('loadPayLogsBtn');
+
+    function syncPayLogsApiFields() {
+      if (!payLogsApiUrlEl) return;
+      var saved = localStorage.getItem('oc_usage_api') || '';
+      payLogsApiUrlEl.value =
+        saved && !/\/usageStats\/?$/i.test(saved) ? saved : DEFAULT_USAGE_API;
+      if (payLogsAdminKeyEl) {
+        payLogsAdminKeyEl.value =
+          localStorage.getItem('oc_feedback_admin_key') || DEFAULT_KEY;
+      }
+    }
+
+    function setPayLogsRecent3Dates() {
+      var to = new Date();
+      var from = new Date(to.getTime() - 2 * 24 * 60 * 60 * 1000);
+      function ymd(d) {
+        var m = d.getMonth() + 1;
+        var day = d.getDate();
+        return (
+          d.getFullYear() +
+          '-' +
+          (m < 10 ? '0' : '') +
+          m +
+          '-' +
+          (day < 10 ? '0' : '') +
+          day
+        );
+      }
+      var fromEl = document.getElementById('payLogsFromDate');
+      var toEl = document.getElementById('payLogsToDate');
+      if (fromEl) fromEl.value = ymd(from);
+      if (toEl) toEl.value = ymd(to);
+    }
+
+    function renderPayLogs(list) {
+      if (!payLogsListEl) return;
+      if (!list || !list.length) {
+        payLogsListEl.innerHTML = '<p class="empty">暂无充值记录</p>';
+        return;
+      }
+      payLogsListEl.innerHTML = list
+        .map(function (row) {
+          var oid = String(row.openid || '');
+          var oto = String(row.outTradeNo || row._id || '');
+          var price =
+            row.priceYuan
+              ? '¥' + row.priceYuan
+              : Number(row.goodsPrice) > 0
+                ? '¥' + (Number(row.goodsPrice) / 100).toFixed(2)
+                : '—';
+          return (
+            '<div class="item">' +
+            '<div class="meta"><span class="openid">' +
+            oid +
+            '</span></div>' +
+            '<div class="content">' +
+            '订单 <code>' +
+            oto +
+            '</code><br/>' +
+            '商品：' +
+            (row.productId || '—') +
+            ' · 金额 <b>' +
+            price +
+            '</b> · 到账额度 <b>+' +
+            (Number(row.grantRounds) || 0) +
+            '</b><br/>' +
+            '状态：<b>' +
+            (row.statusLabel || row.status || '—') +
+            '</b> · 当前剩余额度 ' +
+            (row.quotaLeft != null ? row.quotaLeft : '—') +
+            '<br/>时间：' +
+            formatTimeMs(row.createTimeMs || row.deliveredAt) +
+            '</div></div>'
+          );
+        })
+        .join('');
+    }
+
+    async function loadPayLogs(opts) {
+      if (!payLogsStatusEl) return;
+      if (loadPayLogsBtn) loadPayLogsBtn.disabled = true;
+      payLogsStatusEl.textContent = '刷新中…';
+      payLogsStatusEl.className = 'hint';
+      try {
+        syncPayLogsApiFields();
+        var base = String(payLogsApiUrlEl.value || DEFAULT_USAGE_API)
+          .trim()
+          .replace(/\/$/, '');
+        var adminKey = String(payLogsAdminKeyEl.value || '').trim();
+        var kw = String(
+          (document.getElementById('payLogsSearchInput') || {}).value || ''
+        ).trim();
+        var forceRecent3 = !!(opts && opts.recent3);
+        var forceCustom = !!(opts && opts.customRange);
+        var fromEl = document.getElementById('payLogsFromDate');
+        var toEl = document.getElementById('payLogsToDate');
+        if (forceRecent3) setPayLogsRecent3Dates();
+        var payload = { limit: 120, _ts: Date.now() };
+        if (kw) payload.openid = kw;
+        if (!kw || forceCustom || forceRecent3) {
+          var fromMs = parseDateInputStartMs(fromEl && fromEl.value);
+          var toMs = parseDateInputEndMs(toEl && toEl.value);
+          if (fromMs == null || toMs == null) {
+            setPayLogsRecent3Dates();
+            fromMs = parseDateInputStartMs(fromEl && fromEl.value);
+            toMs = parseDateInputEndMs(toEl && toEl.value);
+          }
+          if (fromMs != null) payload.fromMs = fromMs;
+          if (toMs != null) payload.toMs = toMs;
+        }
+        var data = await postFeedbackAction(base, adminKey, 'payLogs', payload);
+        if (!data.ok) throw new Error(data.err || '加载失败');
+        localStorage.setItem('oc_usage_api', base);
+        localStorage.setItem('oc_feedback_admin_key', adminKey);
+        var n = (data.list || []).length;
+        var nowLabel = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+        payLogsStatusEl.textContent =
+          (kw ? '搜索 · ' : '') +
+          '共 ' +
+          n +
+          ' 条 · 刷新于 ' +
+          nowLabel +
+          (data.apiVer ? ' · ' + data.apiVer : '') +
+          (data.warn ? ' · ' + data.warn : '');
+        payLogsStatusEl.className = data.warn ? 'err' : 'ok';
+        renderPayLogs(data.list || []);
+      } catch (e) {
+        payLogsStatusEl.textContent =
+          '刷新失败：' +
+          (e.message || e) +
+          '\n请建集合 virtual_orders，并重新部署 feedbackApi。';
+        payLogsStatusEl.className = 'err';
+      } finally {
+        if (loadPayLogsBtn) loadPayLogsBtn.disabled = false;
+      }
+    }
+
+    if (loadPayLogsBtn) {
+      loadPayLogsBtn.addEventListener('click', function () {
+        loadPayLogs({ recent3: true });
+      });
+    }
+    var payLogsRangeBtn = document.getElementById('payLogsRangeBtn');
+    if (payLogsRangeBtn) {
+      payLogsRangeBtn.addEventListener('click', function () {
+        loadPayLogs({ customRange: true });
+      });
+    }
+    var payLogsRecent3Btn = document.getElementById('payLogsRecent3Btn');
+    if (payLogsRecent3Btn) {
+      payLogsRecent3Btn.addEventListener('click', function () {
+        loadPayLogs({ recent3: true });
+      });
+    }
+    var payLogsSearchBtn = document.getElementById('payLogsSearchBtn');
+    if (payLogsSearchBtn) {
+      payLogsSearchBtn.addEventListener('click', function () {
+        loadPayLogs({});
+      });
+    }
+    var payLogsSearchClearBtn = document.getElementById('payLogsSearchClearBtn');
+    if (payLogsSearchClearBtn) {
+      payLogsSearchClearBtn.addEventListener('click', function () {
+        var inp = document.getElementById('payLogsSearchInput');
+        if (inp) inp.value = '';
+        loadPayLogs({ recent3: true });
+      });
+    }
+
+    // —— 用户云同步数据 ——
+    var userDataApiUrlEl = document.getElementById('userDataApiUrl');
+    var userDataAdminKeyEl = document.getElementById('userDataAdminKey');
+    var userDataStatusEl = document.getElementById('userDataStatus');
+    var userDataListEl = document.getElementById('userDataList');
+    var userDataDetailWrap = document.getElementById('userDataDetailWrap');
+    var userDataDetailEl = document.getElementById('userDataDetail');
+
+    function syncUserDataApiFields() {
+      if (!userDataApiUrlEl) return;
+      var saved = localStorage.getItem('oc_usage_api') || '';
+      userDataApiUrlEl.value =
+        saved && !/\/usageStats\/?$/i.test(saved) ? saved : DEFAULT_USAGE_API;
+      if (userDataAdminKeyEl) {
+        userDataAdminKeyEl.value =
+          localStorage.getItem('oc_feedback_admin_key') || DEFAULT_KEY;
+      }
+    }
+
+    function renderUserDataList(list) {
+      if (!userDataListEl) return;
+      if (!list || !list.length) {
+        userDataListEl.innerHTML =
+          '<p class="empty">暂无云同步数据。请确认 userDataSync 已部署，且用户已打开小程序同步。</p>';
+        return;
+      }
+      userDataListEl.innerHTML = list
+        .map(function (row) {
+          var nb = row.notebook || {};
+          var cm = row.chatMeta || {};
+          var oid = String(row.openid || '');
+          var ocNames = (nb.ocNamesPreview || []).join('、') || '—';
+          return (
+            '<div class="item">' +
+            '<div class="meta"><span class="openid">' +
+            oid +
+            '</span></div>' +
+            '<div class="content">' +
+            '设定本 OC：<b>' +
+            (nb.ocCount || 0) +
+            '</b> 个' +
+            (nb.deletedCount ? '（已删标记 ' + nb.deletedCount + '）' : '') +
+            '<br/>家族：' +
+            (nb.familyCount || 0) +
+            ' · 对话 OC：' +
+            (cm.ocWithChat || 0) +
+            ' · 会话：' +
+            (cm.sessionCount || 0) +
+            '<br/>OC 预览：' +
+            ocNames +
+            '<br/>同步：' +
+            formatTimeMs(nb.syncedAt || nb.updatedAt) +
+            '</div>' +
+            '<div class="item-actions">' +
+            '<button type="button" class="link-btn user-data-detail-btn" data-openid="' +
+            oid.replace(/"/g, '&quot;') +
+            '">查看详情</button>' +
+            '</div></div>'
+          );
+        })
+        .join('');
+      var btns = userDataListEl.querySelectorAll('.user-data-detail-btn');
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].addEventListener('click', function () {
+          loadUserDataDetail(this.getAttribute('data-openid') || '');
+        });
+      }
+    }
+
+    async function loadUserDataList(openidKeyword) {
+      if (!userDataStatusEl) return;
+      userDataStatusEl.textContent = '加载中…';
+      userDataStatusEl.className = 'hint';
+      try {
+        syncUserDataApiFields();
+        var base = String(userDataApiUrlEl.value || DEFAULT_USAGE_API)
+          .trim()
+          .replace(/\/$/, '');
+        var adminKey = String(userDataAdminKeyEl.value || '').trim();
+        localStorage.setItem('oc_usage_api', base);
+        localStorage.setItem('oc_feedback_admin_key', adminKey);
+        var kw =
+          openidKeyword != null && typeof openidKeyword !== 'object'
+            ? String(openidKeyword).trim()
+            : String((document.getElementById('userDataSearch') || {}).value || '').trim();
+        var payload = { limit: 50 };
+        if (kw) payload.openid = kw;
+        var data = await postFeedbackAction(base, adminKey, 'userDataList', payload);
+        if (!data.ok) throw new Error(data.errMsg || data.err || '加载失败');
+        renderUserDataList(data.list || []);
+        userDataStatusEl.textContent =
+          (kw ? '搜索「' + kw.slice(0, 20) + '」· ' : '') +
+          '共 ' +
+          (data.list || []).length +
+          ' 条' +
+          (data.warn ? ' · ' + data.warn : '');
+        userDataStatusEl.className = data.warn ? 'hint' : 'ok';
+        if (userDataDetailWrap) userDataDetailWrap.style.display = 'none';
+      } catch (e) {
+        userDataStatusEl.textContent = String(e.message || e);
+        userDataStatusEl.className = 'err';
+        if (userDataListEl) userDataListEl.innerHTML = '';
+      }
+    }
+
+    async function loadUserDataDetail(openid) {
+      if (!openid || !userDataDetailEl) return;
+      userDataStatusEl.textContent = '加载详情…';
+      userDataStatusEl.className = 'hint';
+      try {
+        syncUserDataApiFields();
+        var base = String(userDataApiUrlEl.value || DEFAULT_USAGE_API)
+          .trim()
+          .replace(/\/$/, '');
+        var adminKey = String(userDataAdminKeyEl.value || '').trim();
+        var data = await postFeedbackAction(base, adminKey, 'userDataGet', { openid: openid });
+        if (!data.ok) throw new Error(data.errMsg || data.err || '加载失败');
+        userDataDetailEl.textContent = JSON.stringify(data, null, 2);
+        if (userDataDetailWrap) {
+          userDataDetailWrap.style.display = 'block';
+          userDataDetailWrap.open = true;
+        }
+        userDataStatusEl.textContent = '已加载 ' + openid.slice(0, 24) + '… 的备份详情';
+        userDataStatusEl.className = 'ok';
+      } catch (e) {
+        userDataStatusEl.textContent = String(e.message || e);
+        userDataStatusEl.className = 'err';
+      }
+    }
+
+    var VIP_BENEFIT_PRESETS = [
+      '会员仅享：免广告',
+      '对话 / 额度 / 选人 / 抖音次数与普通用户相同',
+      '额度可在「额度商店」购买道具',
+      '视频提取：免费 3 次，之后 10 点/次',
+      '选择 OC 超 10 人：10 点永久 +1 人'
+    ];
+
+    function setVipVisibleButtons(on) {
+      var hid = document.getElementById('vipPanelVisible');
+      if (hid) hid.value = on ? '1' : '0';
+      var btns = document.querySelectorAll('.vip-vis-btn');
+      for (var i = 0; i < btns.length; i++) {
+        var b = btns[i];
+        var v = b.getAttribute('data-visible') === '1';
+        b.className = 'choice-btn vip-vis-btn' + (v === !!on ? ' is-on' : '');
+      }
+    }
+
+    function syncVipLinesFromButtons() {
+      var box = document.getElementById('vipBenefitBtns');
+      var linesEl = document.getElementById('vipPanelLines');
+      if (!box || !linesEl) return;
+      var picked = [];
+      var btns = box.querySelectorAll('.vip-line-btn.is-on');
+      for (var i = 0; i < btns.length; i++) {
+        var t = String(btns[i].getAttribute('data-line') || '').trim();
+        if (t) picked.push(t);
+      }
+      linesEl.value = picked.join('\n');
+    }
+
+    function renderVipBenefitButtons(selectedLines) {
+      var box = document.getElementById('vipBenefitBtns');
+      if (!box) return;
+      var selected = {};
+      (selectedLines || []).forEach(function (x) {
+        var s = String(x || '').trim();
+        if (s) selected[s] = true;
+      });
+      var all = VIP_BENEFIT_PRESETS.slice();
+      Object.keys(selected).forEach(function (s) {
+        if (all.indexOf(s) < 0) all.push(s);
+      });
+      box.innerHTML = '';
+      all.forEach(function (line) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'choice-btn vip-line-btn' + (selected[line] ? ' is-on' : '');
+        btn.setAttribute('data-line', line);
+        btn.textContent = line;
+        btn.addEventListener('click', function () {
+          if (btn.classList.contains('is-on')) btn.classList.remove('is-on');
+          else btn.classList.add('is-on');
+          syncVipLinesFromButtons();
+        });
+        box.appendChild(btn);
+      });
+      syncVipLinesFromButtons();
+    }
+
+    function fillVipPanelForm(panel) {
+      var p = panel || {};
+      var title = document.getElementById('vipPanelTitle');
+      var footer = document.getElementById('vipPanelFooter');
+      setVipVisibleButtons(!!p.visible);
+      if (title) title.value = p.title || '会员权益';
+      if (footer) footer.value = p.footer || '';
+      var lines = Array.isArray(p.lines) && p.lines.length
+        ? p.lines
+        : VIP_BENEFIT_PRESETS.slice();
+      renderVipBenefitButtons(lines);
+    }
+
+    var vipVisBox = document.getElementById('vipPanelVisibleBtns');
+    if (vipVisBox) {
+      vipVisBox.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.classList || !t.classList.contains('vip-vis-btn')) return;
+        setVipVisibleButtons(t.getAttribute('data-visible') === '1');
+      });
+    }
+    async function loadVipPanel() {
+      if (!vipPanelStatusEl) return;
+      syncMembershipApiFields();
+      const base = String(membershipApiUrlEl.value || DEFAULT_USAGE_API)
+        .trim()
+        .replace(/\/$/, '');
+      const adminKey = String(membershipAdminKeyEl.value || '').trim();
+      vipPanelStatusEl.textContent = '读取中…';
+      vipPanelStatusEl.className = 'hint';
+      try {
+        const data = await postFeedbackAction(base, adminKey, 'membershipPanelGet', {});
+        if (!data.ok) throw new Error(data.err || '读取失败');
+        fillVipPanelForm(data.membershipPanel || {});
+        vipPanelStatusEl.textContent =
+          '已读取 · 面板' +
+          (data.membershipPanel && data.membershipPanel.visible ? '显示中' : '已关闭') +
+          (data.warn ? ' · ' + data.warn : '');
+        vipPanelStatusEl.className = 'ok';
+      } catch (e) {
+        vipPanelStatusEl.textContent =
+          '读取失败：' + (e.message || e) + '（请部署最新 feedbackApi）';
+        vipPanelStatusEl.className = 'err';
+      }
+    }
+    async function saveVipPanel() {
+      if (!vipPanelStatusEl) return;
+      syncMembershipApiFields();
+      const base = String(membershipApiUrlEl.value || DEFAULT_USAGE_API)
+        .trim()
+        .replace(/\/$/, '');
+      const adminKey = String(membershipAdminKeyEl.value || '').trim();
+      const vis = document.getElementById('vipPanelVisible');
+      const title = document.getElementById('vipPanelTitle');
+      const lines = document.getElementById('vipPanelLines');
+      const footer = document.getElementById('vipPanelFooter');
+      syncVipLinesFromButtons();
+      vipPanelStatusEl.textContent = '保存中…';
+      vipPanelStatusEl.className = 'hint';
+      try {
+        const data = await postFeedbackAction(base, adminKey, 'membershipPanelSet', {
+          visible: !!(vis && String(vis.value) === '1'),
+          title: title ? title.value : '',
+          linesText: lines ? lines.value : '',
+          footer: footer ? footer.value : ''
+        });
+        if (!data.ok) throw new Error(data.err || '保存失败');
+        fillVipPanelForm(data.membershipPanel || {});
+        localStorage.setItem('oc_usage_api', base);
+        localStorage.setItem('oc_feedback_admin_key', adminKey);
+        vipPanelStatusEl.textContent =
+          '已保存 · 面板' +
+          (data.membershipPanel && data.membershipPanel.visible ? '显示' : '关闭');
+        vipPanelStatusEl.className = 'ok';
+      } catch (e) {
+        vipPanelStatusEl.textContent = '保存失败：' + (e.message || e);
+        vipPanelStatusEl.className = 'err';
+        alert('保存失败：' + (e.message || e));
+      }
+    }
+    var loadVipPanelBtn = document.getElementById('loadVipPanelBtn');
+    var saveVipPanelBtn = document.getElementById('saveVipPanelBtn');
+    if (loadVipPanelBtn) loadVipPanelBtn.addEventListener('click', loadVipPanel);
+    if (saveVipPanelBtn) saveVipPanelBtn.addEventListener('click', saveVipPanel);
+    // 默认渲染权益按钮（含每周 100 对话）——权益面板已下线，仅在 DOM 仍存在时执行
+    if (document.getElementById('vipBenefitBtns')) {
+      renderVipBenefitButtons(VIP_BENEFIT_PRESETS.slice());
+      setVipVisibleButtons(false);
+    }
+
+    // —— 图片审核开关 ——
+    const imgSecStatusEl = document.getElementById('imgSecStatus');
+    function setImgSecButtons(on) {
+      var v = document.getElementById('imgSecCheckEnabled');
+      if (v) v.value = on ? '1' : '0';
+      var box = document.getElementById('imgSecBtns');
+      if (!box) return;
+      Array.prototype.forEach.call(box.querySelectorAll('.img-sec-btn'), function (btn) {
+        var isOn = btn.getAttribute('data-on') === '1';
+        if (isOn === !!on) btn.classList.add('is-on');
+        else btn.classList.remove('is-on');
+      });
+    }
+    var imgSecBox = document.getElementById('imgSecBtns');
+    if (imgSecBox) {
+      imgSecBox.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.classList || !t.classList.contains('img-sec-btn')) return;
+        setImgSecButtons(t.getAttribute('data-on') === '1');
+      });
+    }
+    async function loadImgSec() {
+      if (!imgSecStatusEl) return;
+      syncMembershipApiFields();
+      const base = String(membershipApiUrlEl.value || DEFAULT_USAGE_API)
+        .trim()
+        .replace(/\/$/, '');
+      const adminKey = String(membershipAdminKeyEl.value || '').trim();
+      imgSecStatusEl.textContent = '读取中…';
+      imgSecStatusEl.className = 'hint';
+      try {
+        const data = await postFeedbackAction(base, adminKey, 'appFeaturesGet', {});
+        if (!data.ok) throw new Error(data.err || '读取失败');
+        var on = !!(data.features && data.features.imgSecCheckEnabled);
+        setImgSecButtons(on);
+        imgSecStatusEl.textContent =
+          '已读取 · 图片审核' + (on ? '开启中（上传较慢）' : '已关闭') +
+          (data.warn ? ' · ' + data.warn : '');
+        imgSecStatusEl.className = 'ok';
+      } catch (e) {
+        imgSecStatusEl.textContent =
+          '读取失败：' + (e.message || e) + '（请部署最新 feedbackApi）';
+        imgSecStatusEl.className = 'err';
+      }
+    }
+    async function saveImgSec() {
+      if (!imgSecStatusEl) return;
+      syncMembershipApiFields();
+      const base = String(membershipApiUrlEl.value || DEFAULT_USAGE_API)
+        .trim()
+        .replace(/\/$/, '');
+      const adminKey = String(membershipAdminKeyEl.value || '').trim();
+      var hid = document.getElementById('imgSecCheckEnabled');
+      var on = !!(hid && String(hid.value) === '1');
+      imgSecStatusEl.textContent = '保存中…';
+      imgSecStatusEl.className = 'hint';
+      try {
+        const data = await postFeedbackAction(base, adminKey, 'appFeaturesSet', {
+          imgSecCheckEnabled: on
+        });
+        if (!data.ok) throw new Error(data.err || '保存失败');
+        setImgSecButtons(!!(data.features && data.features.imgSecCheckEnabled));
+        localStorage.setItem('oc_usage_api', base);
+        localStorage.setItem('oc_feedback_admin_key', adminKey);
+        imgSecStatusEl.textContent =
+          '已保存 · 图片审核' +
+          (data.features && data.features.imgSecCheckEnabled
+            ? '开启（用户重进小程序后生效）'
+            : '关闭（用户重进小程序后生效）');
+        imgSecStatusEl.className = 'ok';
+      } catch (e) {
+        imgSecStatusEl.textContent = '保存失败：' + (e.message || e);
+        imgSecStatusEl.className = 'err';
+        alert('保存失败：' + (e.message || e));
+      }
+    }
+    var loadImgSecBtn = document.getElementById('loadImgSecBtn');
+    var saveImgSecBtn = document.getElementById('saveImgSecBtn');
+    if (loadImgSecBtn) loadImgSecBtn.addEventListener('click', loadImgSec);
+    if (saveImgSecBtn) saveImgSecBtn.addEventListener('click', saveImgSec);
+    setImgSecButtons(false);
+
+    /** 从兑换记录按 openid 聚合（兼容云端尚未部署 userQuotaList） */
+    function aggregateUsersFromRedeemLogs(logs) {
+      var map = {};
+      (logs || []).forEach(function (row) {
+        var oid = row && row.openid;
+        if (!oid) return;
+        var cur = map[oid];
+        if (!cur) {
+          map[oid] = {
+            openid: oid,
+            freeUsed: Number(row.freeUsed) || 0,
+            freeAllowed: Number(row.freeAllowed) || 0,
+            extraRounds: Number(row.extraRounds != null ? row.extraRounds : row.quotaLeft) || 0,
+            extraConsumed:
+              Number(row.extraConsumed != null ? row.extraConsumed : row.quotaUsed) || 0,
+            redeemedTotal: Number(row.redeemedTotal) || Number(row.rounds) || 0,
+            updateTimeMs: Number(row.createTimeMs) || 0,
+            weekKey: row.weekKey || '',
+            quotaUsed:
+              Number(row.quotaUsed != null ? row.quotaUsed : row.extraConsumed) || 0,
+            quotaLeft:
+              Number(row.quotaLeft != null ? row.quotaLeft : row.extraRounds) || 0
+          };
+          return;
+        }
+        cur.redeemedTotal += Number(row.rounds) || 0;
+        if ((Number(row.createTimeMs) || 0) > (cur.updateTimeMs || 0)) {
+          cur.updateTimeMs = Number(row.createTimeMs) || 0;
+          cur.freeUsed = Number(row.freeUsed) || cur.freeUsed;
+          cur.freeAllowed = Number(row.freeAllowed) || cur.freeAllowed;
+          cur.extraRounds =
+            Number(row.extraRounds != null ? row.extraRounds : row.quotaLeft) ||
+            cur.extraRounds;
+          cur.extraConsumed =
+            Number(row.extraConsumed != null ? row.extraConsumed : row.quotaUsed) ||
+            cur.extraConsumed;
+          cur.quotaUsed = cur.extraConsumed;
+          cur.quotaLeft = cur.extraRounds;
+          cur.weekKey = row.weekKey || cur.weekKey;
+        }
+      });
+      return Object.keys(map)
+        .map(function (k) {
+          return map[k];
+        })
+        .sort(function (a, b) {
+          return (b.updateTimeMs || 0) - (a.updateTimeMs || 0);
+        });
+    }
+
+    async function postFeedbackAction(base, adminKey, action, extra) {
+      const payload = Object.assign(
+        { action: action, adminKey: adminKey },
+        extra || {}
+      );
+      const res = await fetch(base, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Feedback-Admin-Key': adminKey
+        },
+        body: JSON.stringify(payload)
+      });
+      const raw = await res.text();
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch (e) {
+        throw new Error('响应不是 JSON：' + raw.slice(0, 120));
+      }
+      return data;
+    }
+
+    async function loadUserQuota(openidKeyword) {
+      if (!loadUserQuotaBtn) return;
+      loadUserQuotaBtn.disabled = true;
+      var searchBtn = document.getElementById('userQuotaSearchBtn');
+      if (searchBtn) searchBtn.disabled = true;
+      userQuotaStatusEl.textContent = '加载中…';
+      userQuotaStatusEl.className = 'hint';
+      try {
+        const base = String(usageApiUrlEl.value || DEFAULT_USAGE_API)
+          .trim()
+          .replace(/\/$/, '');
+        const adminKey = String(usageAdminKeyEl.value || '').trim();
+        localStorage.setItem('oc_usage_api', base);
+        localStorage.setItem('oc_feedback_admin_key', adminKey);
+
+        var kw =
+          openidKeyword != null && typeof openidKeyword !== 'object'
+            ? String(openidKeyword).trim()
+            : String(
+                (document.getElementById('userQuotaSearchInput') || {}).value || ''
+              ).trim();
+
+        var payload = { limit: kw ? 50 : 100 };
+        if (kw) payload.openid = kw;
+
+        let data = await postFeedbackAction(base, adminKey, 'userQuotaList', payload);
+        let fromFallback = false;
+
+        // 云端旧版无 userQuotaList：改从已支持的 redeemLogs 聚合
+        if (
+          !data.ok &&
+          /未知 action/i.test(String(data.err || data.errMsg || ''))
+        ) {
+          const logsData = await postFeedbackAction(base, adminKey, 'redeemLogs', {
+            limit: 200
+          });
+          if (!logsData.ok) {
+            throw new Error(
+              (data.err || data.errMsg || '未知 action') +
+                '；回退 redeemLogs 也失败：' +
+                (logsData.err || logsData.errMsg || '')
+            );
+          }
+          var fallbackList = aggregateUsersFromRedeemLogs(logsData.list || []);
+          if (kw) {
+            fallbackList = fallbackList.filter(function (row) {
+              var oid = String(row.openid || '');
+              return oid.indexOf(kw) >= 0;
+            });
+          }
+          data = {
+            ok: true,
+            list: fallbackList,
+            warn:
+              '云端 feedbackApi 尚未包含最新 userQuotaList，已用兑换记录回退。请部署 feedbackApi。'
+          };
+          fromFallback = true;
+        }
+
+        if (!data.ok) throw new Error(data.errMsg || data.err || '加载失败');
+        // 旧云端不支持 openid 参数时，前端再滤一遍
+        var list = data.list || [];
+        if (kw && !data.keyword) {
+          list = list.filter(function (row) {
+            var oid = String(row.openid || '');
+            var id = String(row._id || '');
+            return oid.indexOf(kw) >= 0 || id.indexOf(kw) >= 0;
+          });
+        }
+        const n = list.length;
+        userQuotaStatusEl.textContent =
+          (kw ? '搜索「' + kw.slice(0, 16) + (kw.length > 16 ? '…' : '') + '」· ' : '') +
+          '共 ' +
+          n +
+          ' 人' +
+          (fromFallback ? '（兑换记录回退）' : '') +
+          (data.warn ? ' · ' + data.warn : '');
+        userQuotaStatusEl.className = data.warn || fromFallback ? 'err' : 'ok';
+        renderUserQuota(list, kw);
+      } catch (e) {
+        userQuotaStatusEl.textContent =
+          '加载失败：' +
+          (e.message || e) +
+          '\n请重新部署 feedbackApi（需支持 action=userQuotaList）。';
+        userQuotaStatusEl.className = 'err';
+      } finally {
+        loadUserQuotaBtn.disabled = false;
+        if (searchBtn) searchBtn.disabled = false;
+      }
+    }
+
+    var userQuotaSearchInput = document.getElementById('userQuotaSearchInput');
+    var userQuotaSearchBtn = document.getElementById('userQuotaSearchBtn');
+    var userQuotaSearchClearBtn = document.getElementById('userQuotaSearchClearBtn');
+    if (userQuotaSearchBtn) {
+      userQuotaSearchBtn.addEventListener('click', function () {
+        loadUserQuota(
+          userQuotaSearchInput ? userQuotaSearchInput.value : ''
+        );
+      });
+    }
+    if (userQuotaSearchClearBtn) {
+      userQuotaSearchClearBtn.addEventListener('click', function () {
+        if (userQuotaSearchInput) userQuotaSearchInput.value = '';
+        loadUserQuota('');
+      });
+    }
+    if (userQuotaSearchInput) {
+      userQuotaSearchInput.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          loadUserQuota(userQuotaSearchInput.value);
+        }
+      });
+    }
+
+    loadUsageBtn.addEventListener('click', loadUsage);
+    if (loadUserQuotaBtn) {
+      loadUserQuotaBtn.addEventListener('click', function () {
+        var inp = document.getElementById('userQuotaSearchInput');
+        loadUserQuota(inp ? inp.value : '');
+      });
+    }
+
+    async function runUsageDiag() {
+      if (!diagUsageBtn) return;
+      diagUsageBtn.disabled = true;
+      usageStatusEl.textContent = '诊断中（会试写今天 usage_daily）…';
+      usageStatusEl.className = 'hint';
+      diagBoxEl.style.display = 'block';
+      diagBoxEl.textContent = '请求中…';
+      try {
+        const base = String(usageApiUrlEl.value || DEFAULT_USAGE_API)
+          .trim()
+          .replace(/\/$/, '');
+        const adminKey = String(usageAdminKeyEl.value || '').trim();
+        localStorage.setItem('oc_usage_api', base);
+        localStorage.setItem('oc_feedback_admin_key', adminKey);
+        const data = await postFeedbackAction(base, adminKey, 'diagUsage', {});
+        if (!data.ok && data.err) {
+          if (/未知 action/i.test(String(data.err))) {
+            throw new Error(
+              '云端 feedbackApi 还是旧版（不支持 diagUsage）。请右键部署最新 feedbackApi 后再点诊断。got=' +
+                (data.got || '')
+            );
+          }
+          throw new Error(data.errMsg || data.err || '诊断失败');
+        }
+        const lines = [];
+        lines.push('apiVer: ' + (data.apiVer || '—'));
+        lines.push('今天 dateKey: ' + (data.dateKey || '—'));
+        lines.push('结论: ' + (data.verdict || '—'));
+        lines.push('');
+        (data.steps || []).forEach(function (s, i) {
+          lines.push(
+            (s.ok ? '✅' : '❌') +
+              ' [' +
+              (i + 1) +
+              '] ' +
+              s.id +
+              '\n   ' +
+              (s.detail || '')
+          );
+        });
+        if (data.readBack) {
+          lines.push('');
+          lines.push(
+            '回读今天: chatRounds=' +
+              data.readBack.chatRounds +
+              ' apiCalls=' +
+              data.readBack.apiCalls
+          );
+        }
+        diagBoxEl.textContent = lines.join('\n');
+        usageStatusEl.textContent = data.writeOk
+          ? '诊断完成：已试写成功，请再点「加载日汇总」'
+          : '诊断完成：写入失败，见下方黑框';
+        usageStatusEl.className = data.writeOk ? 'ok' : 'err';
+        if (data.writeOk) {
+          try {
+            await loadUsage();
+          } catch (_) {}
+        }
+      } catch (e) {
+        diagBoxEl.textContent = String(e.message || e);
+        usageStatusEl.textContent = '诊断失败：' + (e.message || e);
+        usageStatusEl.className = 'err';
+      } finally {
+        diagUsageBtn.disabled = false;
+      }
+    }
+
+    if (diagUsageBtn) diagUsageBtn.addEventListener('click', runUsageDiag);
+
+    // —— 兑换码：生成 / 明细 分模块 ——
+    const redeemApiUrlEl = document.getElementById('redeemApiUrl');
+    const redeemAdminKeyEl = document.getElementById('redeemAdminKey');
+    const redeemListApiUrlEl = document.getElementById('redeemListApiUrl');
+    const redeemListAdminKeyEl = document.getElementById('redeemListAdminKey');
+    const redeemRoundsEl = document.getElementById('redeemRounds');
+    const redeemVipDaysEl = document.getElementById('redeemVipDays');
+    const redeemPermanentEl = document.getElementById('redeemPermanent');
+    const redeemCountEl = document.getElementById('redeemCount');
+    const redeemMaxUsesEl = document.getElementById('redeemMaxUses');
+    const redeemNoteEl = document.getElementById('redeemNote');
+    const createRedeemBtn = document.getElementById('createRedeemBtn');
+
+    function getRedeemKind() {
+      var hid = document.getElementById('redeemKindValue');
+      var v = hid ? String(hid.value || '').trim() : '';
+      if (v === 'vip' || v === 'combo' || v === 'rounds') return v;
+      return 'rounds';
+    }
+
+    function setRedeemExpireMode(mode) {
+      var m = mode === 'limited' ? 'limited' : 'unlimited';
+      var hid = document.getElementById('redeemExpireMode');
+      if (hid) hid.value = m;
+      var btns = document.querySelectorAll('.redeem-expire-btn');
+      for (var i = 0; i < btns.length; i++) {
+        var on = btns[i].getAttribute('data-mode') === m;
+        btns[i].className = 'choice-btn redeem-expire-btn' + (on ? ' is-on' : '');
+      }
+      var wrap = document.getElementById('redeemExpireDaysWrap');
+      if (wrap) wrap.style.display = m === 'limited' ? '' : 'none';
+    }
+
+    function syncRedeemFormByKind() {
+      var k = getRedeemKind();
+      var tier = document.getElementById('redeemRoundsTierBlock');
+      var weekly = document.getElementById('redeemWeeklyBlock');
+      var roundsWrap = document.getElementById('redeemRoundsFieldWrap');
+      var expire = document.getElementById('redeemExtraExpireBlock');
+      var vipDaysWrap = document.getElementById('redeemVipDaysWrap');
+      if (tier) tier.style.display = k === 'rounds' ? '' : 'none';
+      if (weekly) weekly.style.display = k === 'vip' || k === 'combo' ? '' : 'none';
+      if (roundsWrap) roundsWrap.style.display = k === 'vip' ? 'none' : '';
+      if (expire) expire.style.display = k === 'combo' || k === 'rounds' ? '' : 'none';
+      if (vipDaysWrap) vipDaysWrap.style.display = k === 'rounds' ? 'none' : '';
+      if (k === 'vip' && redeemRoundsEl) redeemRoundsEl.value = '0';
+      if (k === 'rounds' && redeemVipDaysEl) {
+        redeemVipDaysEl.value = '0';
+        if (redeemPermanentEl) redeemPermanentEl.checked = false;
+      }
+      if (k === 'vip' || k === 'combo') {
+        var wEl = document.getElementById('redeemWeeklyRounds');
+        if (wEl && (!wEl.value || Number(wEl.value) <= 0)) wEl.value = '100';
+        // 月卡 / 组合码默认 30 天（未勾选永久时）
+        if (
+          redeemVipDaysEl &&
+          !(redeemPermanentEl && redeemPermanentEl.checked) &&
+          (!redeemVipDaysEl.value || Number(redeemVipDaysEl.value) <= 0)
+        ) {
+          redeemVipDaysEl.value = '30';
+        }
+      }
+      if (k === 'combo' && redeemRoundsEl && Number(redeemRoundsEl.value) <= 0) {
+        redeemRoundsEl.value = '30';
+      }
+    }
+
+    function setRedeemKind(kind) {
+      var k = kind === 'vip' || kind === 'combo' ? kind : 'rounds';
+      var hid = document.getElementById('redeemKindValue');
+      if (hid) hid.value = k;
+      var btns = document.querySelectorAll('.redeem-kind-btn');
+      for (var i = 0; i < btns.length; i++) {
+        var on = btns[i].getAttribute('data-kind') === k;
+        btns[i].className = 'choice-btn redeem-kind-btn' + (on ? ' is-on' : '');
+      }
+      syncRedeemFormByKind();
+    }
+
+    var redeemKindBtns = document.getElementById('redeemKindBtns');
+    if (redeemKindBtns) {
+      redeemKindBtns.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.classList || !t.classList.contains('redeem-kind-btn')) return;
+        setRedeemKind(t.getAttribute('data-kind'));
+      });
+    }
+    var redeemExpireModeBtns = document.getElementById('redeemExpireModeBtns');
+    if (redeemExpireModeBtns) {
+      redeemExpireModeBtns.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.classList || !t.classList.contains('redeem-expire-btn')) return;
+        setRedeemExpireMode(t.getAttribute('data-mode'));
+      });
+    }
+    setRedeemExpireMode('unlimited');
+    syncRedeemFormByKind();
+    const loadRedeemBtn = document.getElementById('loadRedeemBtn');
+    const loadRedeemLogsBtn = document.getElementById('loadRedeemLogsBtn');
+    const redeemStatusEl = document.getElementById('redeemStatus');
+    const redeemListEl = document.getElementById('redeemList');
+    const redeemCreateStatusEl = document.getElementById('redeemCreateStatus');
+    const redeemCreatedBoxEl = document.getElementById('redeemCreatedBox');
+    const redeemLogsStatusEl = document.getElementById('redeemLogsStatus');
+    const redeemLogsListEl = document.getElementById('redeemLogsList');
+    const shareLogsStatusEl = document.getElementById('shareLogsStatus');
+    const shareLogsListEl = document.getElementById('shareLogsList');
+    const loadShareLogsBtn = document.getElementById('loadShareLogsBtn');
+
+    function syncRedeemApiFields() {
+      var base =
+        String(
+          (usageApiUrlEl && usageApiUrlEl.value) ||
+            (redeemApiUrlEl && redeemApiUrlEl.value) ||
+            (redeemListApiUrlEl && redeemListApiUrlEl.value) ||
+            localStorage.getItem('oc_usage_api') ||
+            localStorage.getItem('oc_feedback_api') ||
+            DEFAULT_API
+        ).trim() || DEFAULT_API;
+      var key =
+        String(
+          (usageAdminKeyEl && usageAdminKeyEl.value) ||
+            (redeemAdminKeyEl && redeemAdminKeyEl.value) ||
+            (redeemListAdminKeyEl && redeemListAdminKeyEl.value) ||
+            localStorage.getItem('oc_feedback_admin_key') ||
+            DEFAULT_KEY
+        ).trim() || DEFAULT_KEY;
+      if (redeemApiUrlEl) redeemApiUrlEl.value = base;
+      if (redeemAdminKeyEl) redeemAdminKeyEl.value = key;
+      if (redeemListApiUrlEl) redeemListApiUrlEl.value = base;
+      if (redeemListAdminKeyEl) redeemListAdminKeyEl.value = key;
+    }
+
+    syncRedeemApiFields();
+
+    async function postRedeemAction(action, payload, fromList) {
+      syncRedeemApiFields();
+      const base = String(
+        (fromList ? redeemListApiUrlEl && redeemListApiUrlEl.value : redeemApiUrlEl && redeemApiUrlEl.value) ||
+          DEFAULT_API
+      )
+        .trim()
+        .replace(/\/$/, '');
+      const adminKey = String(
+        (fromList
+          ? redeemListAdminKeyEl && redeemListAdminKeyEl.value
+          : redeemAdminKeyEl && redeemAdminKeyEl.value) || ''
+      ).trim();
+      localStorage.setItem('oc_feedback_admin_key', adminKey);
+      localStorage.setItem('oc_usage_api', base);
+      if (redeemApiUrlEl) redeemApiUrlEl.value = base;
+      if (redeemListApiUrlEl) redeemListApiUrlEl.value = base;
+      if (redeemAdminKeyEl) redeemAdminKeyEl.value = adminKey;
+      if (redeemListAdminKeyEl) redeemListAdminKeyEl.value = adminKey;
+      const body = Object.assign({ action: action, adminKey: adminKey }, payload || {});
+      const res = await fetch(base, {
+        method: 'POST',
+        mode: 'cors',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Feedback-Admin-Key': adminKey
+        },
+        body: JSON.stringify(body)
+      });
+      const raw = await res.text();
+      const data = JSON.parse(raw);
+      if (!data.ok) {
+        throw new Error(data.errMsg || data.err || '请求失败');
+      }
+      return data;
+    }
+
+    function formatTimeMs(ms, fallback) {
+      var n = 0;
+      if (ms != null && ms !== '') {
+        if (typeof ms === 'object') {
+          if (ms.$date) n = Number(ms.$date) || 0;
+          else if (typeof ms.toDate === 'function') {
+            try {
+              n = ms.toDate().getTime();
+            } catch (_) {}
+          } else if (ms.seconds != null) {
+            n = Number(ms.seconds) * 1000;
+          }
+        } else {
+          n = Number(ms) || 0;
+          // 秒级时间戳
+          if (n > 0 && n < 1e12) n = n * 1000;
+        }
+      }
+      if (!n && fallback != null) {
+        if (typeof fallback === 'string' && fallback) {
+          var parsed = Date.parse(fallback);
+          if (Number.isFinite(parsed)) n = parsed;
+        } else if (fallback && fallback.$date) {
+          n = Number(fallback.$date) || 0;
+        } else if (fallback && typeof fallback === 'object' && fallback.seconds != null) {
+          n = Number(fallback.seconds) * 1000;
+        }
+      }
+      if (!n) return '—';
+      try {
+        return new Date(n).toLocaleString('zh-CN', {
+          timeZone: 'Asia/Shanghai',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
+      } catch (e) {
+        try {
+          return new Date(n).toLocaleString('zh-CN');
+        } catch (e2) {
+          return String(ms);
+        }
+      }
+    }
+
+    function redeemKindLabel(row) {
+      var kind = String((row && row.kind) || '').toLowerCase();
+      if (row && row.kindLabel) return String(row.kindLabel);
+      if (kind === 'vip') return '会员';
+      if (kind === 'combo') return '会员+轮次';
+      if ((row && Number(row.vipDays) > 0) || (row && row.permanent)) return '会员';
+      return '对话轮次';
+    }
+
+    function toDateInputValue(ms) {
+      var d = new Date(ms);
+      var y = d.getFullYear();
+      var m = d.getMonth() + 1;
+      var day = d.getDate();
+      return (
+        y +
+        '-' +
+        (m < 10 ? '0' : '') +
+        m +
+        '-' +
+        (day < 10 ? '0' : '') +
+        day
+      );
+    }
+
+    function setRedeemLogsRecent3Dates() {
+      var fromEl = document.getElementById('redeemLogsFromDate');
+      var toEl = document.getElementById('redeemLogsToDate');
+      var now = Date.now();
+      if (fromEl) fromEl.value = toDateInputValue(now - 3 * 24 * 60 * 60 * 1000);
+      if (toEl) toEl.value = toDateInputValue(now);
+    }
+
+    function parseDateInputStartMs(yyyyMmDd) {
+      var s = String(yyyyMmDd || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+      var t = new Date(s.replace(/-/g, '/') + ' 00:00:00').getTime();
+      return Number.isFinite(t) ? t : null;
+    }
+
+    function parseDateInputEndMs(yyyyMmDd) {
+      var s = String(yyyyMmDd || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+      var t = new Date(s.replace(/-/g, '/') + ' 23:59:59').getTime();
+      return Number.isFinite(t) ? t : null;
+    }
+
+    function renderRedeemList(list) {
+      if (!list || !list.length) {
+        redeemListEl.innerHTML = '<p class="empty">暂无兑换码，请先生成</p>';
+        return;
+      }
+      redeemListEl.innerHTML = list
+        .map(function (row) {
+          var enabled = row.enabled !== false;
+          var used = Number(row.usedCount) || 0;
+          var maxUses = Number(row.maxUses) || 1;
+          var kindText = redeemKindLabel(row);
+          var badge = enabled
+            ? used >= maxUses
+              ? '<span class="badge badge-read">已用尽</span>'
+              : '<span class="badge badge-read">可用</span>'
+            : '<span class="badge badge-unread">已停用</span>';
+          var vipBits = [];
+          if (row.permanent) vipBits.push('永久会员');
+          else if (Number(row.vipDays) > 0) vipBits.push('会员' + Number(row.vipDays) + '天');
+          if (Number(row.weeklyRounds) > 0) vipBits.push('每周' + Number(row.weeklyRounds) + '对话');
+          return (
+            '<article class="item">' +
+            '<div class="meta">' +
+            badge +
+            '<span class="badge badge-read">' +
+            escapeHtml(kindText) +
+            '</span>' +
+            '<span class="openid"><b>' +
+            escapeHtml(row.code || '') +
+            '</b></span>' +
+            '<span>额度 <b>' +
+            (row.rounds || 0) +
+            '</b> 轮</span>' +
+            (vipBits.length
+              ? '<span>' + escapeHtml(vipBits.join(' · ')) + '</span>'
+              : '') +
+            '<span>已用 ' +
+            used +
+            ' / ' +
+            maxUses +
+            (function () {
+              var ids =
+                Array.isArray(row.usedByOpenids) && row.usedByOpenids.length
+                  ? row.usedByOpenids
+                  : Array.isArray(row.usedBy)
+                    ? row.usedBy
+                    : row.lastUsedOpenid
+                      ? [row.lastUsedOpenid]
+                      : [];
+              ids = ids
+                .map(function (x) {
+                  return String(x || '').trim();
+                })
+                .filter(Boolean);
+              if (!ids.length) {
+                return used > 0 ? ' · 用户 ID 未知（旧记录）' : '';
+              }
+              return (
+                ' · 用户 ID：' +
+                escapeHtml(ids.slice(0, 5).join('、')) +
+                (ids.length > 5 ? ' 等' + ids.length + '人' : '')
+              );
+            })() +
+            '</span>' +
+            '</div>' +
+            (row.note
+              ? '<p class="hint" style="margin:4px 0 0">备注：' +
+                escapeHtml(row.note) +
+                '</p>'
+              : '') +
+            '<time>' +
+            formatTimeMs(row.createTimeMs) +
+            '</time>' +
+            '<div class="item-actions">' +
+            (enabled
+              ? '<button type="button" class="btn-secondary redeem-disable-btn" data-id="' +
+                escapeHtml(row._id || '') +
+                '">停用</button>'
+              : '<button type="button" class="redeem-enable-btn" data-id="' +
+                escapeHtml(row._id || '') +
+                '">启用</button>') +
+            '</div>' +
+            '</article>'
+          );
+        })
+        .join('');
+    }
+
+    function renderRedeemLogs(list) {
+      if (!list || !list.length) {
+        redeemLogsListEl.innerHTML =
+          '<p class="empty">暂无核销记录。默认仅近 3 天；可改时间或搜索用户 ID / 兑换码。若确认有兑换仍为空：请建集合 <code>redeem_logs</code> 并部署 <code>feedbackApi</code>。</p>';
+        return;
+      }
+      redeemLogsListEl.innerHTML = list
+        .map(function (row) {
+          var poolUsed =
+            Number(row.quotaUsed != null ? row.quotaUsed : row.extraConsumed) || 0;
+          var poolLeft =
+            Number(row.quotaLeft != null ? row.quotaLeft : row.extraRounds) || 0;
+          var total = Number(row.redeemedTotal) || 0;
+          var freeUsed = Number(row.freeUsed) || 0;
+          var freeAllowed = Number(row.freeAllowed) || 30;
+          var kindText = redeemKindLabel(row);
+          var vipLine = '';
+          if (row.permanent) vipLine = '永久会员';
+          else if (Number(row.vipDays) > 0) vipLine = '会员 +' + Number(row.vipDays) + ' 天';
+          return (
+            '<article class="item">' +
+            '<div class="meta">' +
+            '<span class="badge badge-read">' +
+            escapeHtml(kindText) +
+            '</span>' +
+            '<span class="openid">' +
+            escapeHtml(row.code || '') +
+            '</span>' +
+            '<span>+' +
+            (row.rounds || 0) +
+            ' 轮</span>' +
+            (vipLine ? '<span>' + escapeHtml(vipLine) + '</span>' : '') +
+            '<span class="openid" title="openid">' +
+            escapeHtml(row.openid || '') +
+            '</span>' +
+            '</div>' +
+            '<div class="meta" style="margin-top:8px">' +
+            '<span style="color:#6d28d9"><b>本周免费已用</b> ' +
+            freeUsed +
+            ' / ' +
+            freeAllowed +
+            '</span>' +
+            '<span><b>兑换池剩余</b> ' +
+            poolLeft +
+            '</span>' +
+            '<span>兑换池已耗 ' +
+            poolUsed +
+            '</span>' +
+            '<span>累计兑入 ' +
+            total +
+            '</span>' +
+            '</div>' +
+            '<p class="hint" style="margin:6px 0 0;font-size:0.75rem">说明：本周免费与兑换池是两套额度；免费没用完时，兑换池「已耗」可为 0。</p>' +
+            '<time>兑换时间：' +
+            formatTimeMs(row.createTimeMs, row.createTime) +
+            '</time>' +
+            '</article>'
+          );
+        })
+        .join('');
+    }
+
+    function renderShareLogs(list) {
+      if (!shareLogsListEl) return;
+      if (!list || !list.length) {
+        shareLogsListEl.innerHTML =
+          '<p class="empty">暂无分享获额记录。请确认：① 已建集合 <code>share_logs</code>；② 已部署 <code>usageStats</code>（含 logShare）与 <code>feedbackApi</code>；③ 用户端已更新并成功分享续期。</p>';
+        return;
+      }
+      shareLogsListEl.innerHTML = list
+        .map(function (row) {
+          return (
+            '<article class="item">' +
+            '<div class="meta">' +
+            '<span><b>分享续期</b></span>' +
+            '<span>+' +
+            (row.rounds || 0) +
+            ' 轮</span>' +
+            '<span>' +
+            escapeHtml(row.channelLabel || row.channel || '—') +
+            '</span>' +
+            '<span class="openid" title="openid">' +
+            escapeHtml(row.openid || '') +
+            '</span>' +
+            '</div>' +
+            '<time>分享时间：' +
+            formatTimeMs(row.createTimeMs, row.createTime) +
+            (row.dateKey ? ' · ' + escapeHtml(row.dateKey) : '') +
+            '</time>' +
+            '</article>'
+          );
+        })
+        .join('');
+    }
+
+    async function loadRedeemList() {
+      loadRedeemBtn.disabled = true;
+      redeemStatusEl.textContent = '加载中…';
+      redeemStatusEl.className = 'hint';
+      try {
+        const data = await postRedeemAction('redeemList', { limit: 100 }, true);
+        redeemStatusEl.textContent = '共 ' + (data.list || []).length + ' 条';
+        redeemStatusEl.className = 'ok';
+        renderRedeemList(data.list || []);
+      } catch (e) {
+        redeemStatusEl.textContent =
+          '加载失败：' +
+          (e.message || e) +
+          '\n请建集合 redeem_codes 并重新部署 feedbackApi。';
+        redeemStatusEl.className = 'err';
+      } finally {
+        loadRedeemBtn.disabled = false;
+      }
+    }
+
+    async function loadRedeemLogs(openidKeyword, opts) {
+      if (loadRedeemLogsBtn) loadRedeemLogsBtn.disabled = true;
+      redeemLogsStatusEl.textContent = '刷新中…';
+      redeemLogsStatusEl.className = 'hint';
+      try {
+        // 与用量页同步地址，避免一边新一边旧
+        syncRedeemApiFields();
+        var kw =
+          openidKeyword != null && typeof openidKeyword !== 'object'
+            ? String(openidKeyword).trim()
+            : String(
+                (document.getElementById('redeemLogsSearchInput') || {}).value || ''
+              ).trim();
+        var forceRecent3 = !!(opts && opts.recent3);
+        var forceCustom = !!(opts && opts.customRange);
+        var fromEl = document.getElementById('redeemLogsFromDate');
+        var toEl = document.getElementById('redeemLogsToDate');
+        if (forceRecent3) setRedeemLogsRecent3Dates();
+        var payload = {
+          limit: 200,
+          _ts: Date.now()
+        };
+        if (kw) payload.openid = kw;
+        // 有搜索词：默认不限时间；仅当用户点了「按时间筛选」才带时间
+        // 无搜索词：带日期（默认近 3 天或手选）
+        if (!kw || forceCustom) {
+          var fromMs = parseDateInputStartMs(fromEl && fromEl.value);
+          var toMs = parseDateInputEndMs(toEl && toEl.value);
+          if (fromMs == null || toMs == null) {
+            setRedeemLogsRecent3Dates();
+            fromMs = parseDateInputStartMs(fromEl && fromEl.value);
+            toMs = parseDateInputEndMs(toEl && toEl.value);
+          }
+          if (fromMs != null) payload.fromMs = fromMs;
+          if (toMs != null) payload.toMs = toMs;
+        }
+        const data = await postRedeemAction('redeemLogs', payload, true);
+        var n = (data.list || []).length;
+        var nowLabel = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+        var rangeTip =
+          data.rangeMode === 'recent3d'
+            ? '近3天 · '
+            : data.rangeMode === 'custom'
+              ? '时间筛选 · '
+              : data.rangeMode === 'search'
+                ? '搜索（不限时间）· '
+                : '';
+        redeemLogsStatusEl.textContent =
+          rangeTip +
+          (kw
+            ? '搜索「' + kw.slice(0, 18) + (kw.length > 18 ? '…' : '') + '」· '
+            : '') +
+          '共 ' +
+          n +
+          ' 条 · 刷新于 ' +
+          nowLabel +
+          (data.apiVer ? ' · ' + data.apiVer : '') +
+          (data.warn ? ' · ' + data.warn : '');
+        redeemLogsStatusEl.className = data.warn ? 'err' : 'ok';
+        renderRedeemLogs(data.list || []);
+      } catch (e) {
+        redeemLogsStatusEl.textContent =
+          '刷新失败：' +
+          (e.message || e) +
+          '\n请建集合 redeem_logs，并重新部署 feedbackApi。';
+        redeemLogsStatusEl.className = 'err';
+      } finally {
+        if (loadRedeemLogsBtn) loadRedeemLogsBtn.disabled = false;
+      }
+    }
+
+    async function loadShareLogs(openidKeyword) {
+      if (!shareLogsStatusEl || !shareLogsListEl) return;
+      if (loadShareLogsBtn) loadShareLogsBtn.disabled = true;
+      shareLogsStatusEl.textContent = '刷新中…';
+      shareLogsStatusEl.className = 'hint';
+      try {
+        syncRedeemApiFields();
+        var kw =
+          openidKeyword != null && typeof openidKeyword !== 'object'
+            ? String(openidKeyword).trim()
+            : String(
+                (document.getElementById('shareLogsSearchInput') || {}).value || ''
+              ).trim();
+        var payload = { limit: 80, _ts: Date.now() };
+        if (kw) payload.openid = kw;
+        const data = await postRedeemAction('shareLogs', payload, true);
+        if (!data.ok && data.err) throw new Error(data.err);
+        var n = (data.list || []).length;
+        var nowLabel = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+        shareLogsStatusEl.textContent =
+          (kw
+            ? '搜索「' + kw.slice(0, 18) + (kw.length > 18 ? '…' : '') + '」· '
+            : '') +
+          '共 ' +
+          n +
+          ' 条 · 刷新于 ' +
+          nowLabel +
+          (data.apiVer ? ' · ' + data.apiVer : '') +
+          (data.warn ? ' · ' + data.warn : '');
+        shareLogsStatusEl.className = data.warn ? 'err' : 'ok';
+        renderShareLogs(data.list || []);
+      } catch (e) {
+        shareLogsStatusEl.textContent =
+          '刷新失败：' +
+          (e.message || e) +
+          '\n请建集合 share_logs，并重新部署 feedbackApi（需支持 action=shareLogs）。';
+        shareLogsStatusEl.className = 'err';
+      } finally {
+        if (loadShareLogsBtn) loadShareLogsBtn.disabled = false;
+      }
+    }
+
+    async function createRedeemCodes() {
+      createRedeemBtn.disabled = true;
+      redeemCreateStatusEl.textContent = '生成中…';
+      redeemCreateStatusEl.className = 'hint';
+      redeemCreatedBoxEl.innerHTML = '';
+      try {
+        var kind = getRedeemKind();
+        var permanent = !!(redeemPermanentEl && redeemPermanentEl.checked);
+        var vipDays = Number(redeemVipDaysEl && redeemVipDaysEl.value) || 0;
+        var weeklyEl = document.getElementById('redeemWeeklyRounds');
+        var weeklyRounds = Number(weeklyEl && weeklyEl.value) || 100;
+        var expireModeEl = document.getElementById('redeemExpireMode');
+        var expireMode = expireModeEl ? String(expireModeEl.value || '') : 'unlimited';
+        var expireDaysEl = document.getElementById('redeemRoundsExpireDays');
+        var roundsExpireDays =
+          expireMode === 'limited' ? Math.max(1, Number(expireDaysEl && expireDaysEl.value) || 30) : 0;
+        const data = await postRedeemAction('redeemCreate', {
+          kind: kind,
+          rounds: Number(redeemRoundsEl.value) || 0,
+          weeklyRounds: weeklyRounds,
+          roundsExpireDays: roundsExpireDays,
+          vipDays: vipDays,
+          permanent: permanent,
+          count: Number(redeemCountEl.value) || 1,
+          maxUses: Number(redeemMaxUsesEl.value) || 1,
+          note: String(redeemNoteEl.value || '').trim()
+        }, false);
+        const codes = (data.codes || []).map(function (c) {
+          return c.code;
+        });
+        var tip = '已生成 ' + codes.length + ' 个';
+        if (data.kind === 'vip' || data.kind === 'combo' || data.permanent) {
+          tip += data.permanent ? ' · 永久会员' : ' · 会员 ' + (data.vipDays || 0) + ' 天';
+          if (data.weeklyRounds) tip += ' · 每周 ' + data.weeklyRounds + ' 轮';
+        }
+        if (data.rounds) {
+          tip += ' · 额度 +' + data.rounds + ' 轮';
+          if (data.roundsExpireDays) tip += '（' + data.roundsExpireDays + ' 天内）';
+          else tip += '（不限时）';
+        }
+        redeemCreateStatusEl.textContent = tip;
+        redeemCreateStatusEl.className = 'ok';
+        redeemCreatedBoxEl.innerHTML =
+          '<div class="item" style="margin:0"><p class="content" style="font-family:ui-monospace,monospace">' +
+          escapeHtml(codes.join('\n')) +
+          '</p><button type="button" class="btn-secondary" id="copyRedeemCodesBtn" style="width:auto;margin-top:8px">复制全部</button></div>';
+        var copyBtn = document.getElementById('copyRedeemCodesBtn');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', function () {
+            var text = codes.join('\n');
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(text).then(function () {
+                redeemCreateStatusEl.textContent = '已复制到剪贴板';
+                redeemCreateStatusEl.className = 'ok';
+              });
+            } else {
+              redeemCreateStatusEl.textContent = '请手动复制上方码';
+            }
+          });
+        }
+        loadRedeemList();
+      } catch (e) {
+        redeemCreateStatusEl.textContent = '生成失败：' + (e.message || e);
+        redeemCreateStatusEl.className = 'err';
+      } finally {
+        createRedeemBtn.disabled = false;
+      }
+    }
+
+    redeemListEl.addEventListener('click', async function (e) {
+      var t = e.target;
+      if (!t || !t.getAttribute) return;
+      var id = t.getAttribute('data-id');
+      if (!id) return;
+      if (t.classList.contains('redeem-disable-btn')) {
+        try {
+          await postRedeemAction('redeemDisable', { id: id }, true);
+          loadRedeemList();
+        } catch (err) {
+          alert(err.message || err);
+        }
+      }
+      if (t.classList.contains('redeem-enable-btn')) {
+        try {
+          await postRedeemAction('redeemEnable', { id: id }, true);
+          loadRedeemList();
+        } catch (err) {
+          alert(err.message || err);
+        }
+      }
+    });
+
+    createRedeemBtn.addEventListener('click', createRedeemCodes);
+    var redeemTierBox = document.getElementById('redeemAmountTiers');
+    if (redeemTierBox) {
+      redeemTierBox.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.classList || !t.classList.contains('redeem-tier-btn')) return;
+        var yuan = t.getAttribute('data-yuan') || '';
+        var rounds = Number(t.getAttribute('data-rounds')) || 0;
+        if (redeemRoundsEl && rounds > 0) redeemRoundsEl.value = String(rounds);
+        setRedeemKind('rounds');
+        if (redeemNoteEl) redeemNoteEl.value = yuan ? '打赏¥' + yuan : '';
+        var btns = redeemTierBox.querySelectorAll('.redeem-tier-btn');
+        for (var i = 0; i < btns.length; i++) {
+          btns[i].className = 'choice-btn redeem-tier-btn';
+        }
+        t.className = 'choice-btn redeem-tier-btn is-on';
+      });
+    }
+    var redeemVipBox = document.getElementById('redeemVipTiers');
+    if (redeemVipBox) {
+      redeemVipBox.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.classList || !t.classList.contains('redeem-vip-btn')) return;
+        var days = Number(t.getAttribute('data-days')) || 0;
+        var permanent = t.getAttribute('data-permanent') === '1';
+        setRedeemKind('vip');
+        if (redeemVipDaysEl) redeemVipDaysEl.value = String(days);
+        if (redeemPermanentEl) redeemPermanentEl.checked = !!permanent;
+        if (redeemRoundsEl) redeemRoundsEl.value = '0';
+        var weeklyEl = document.getElementById('redeemWeeklyRounds');
+        if (weeklyEl) weeklyEl.value = '100';
+        if (redeemNoteEl) {
+          var price = t.getAttribute('data-price') || '';
+          var w = weeklyEl ? String(weeklyEl.value || '100') : '100';
+          redeemNoteEl.value = permanent
+            ? '永久会员（含每周' + w + '对话）'
+            : price
+              ? '会员月卡¥' + price + '（含每周' + w + '对话）'
+              : '会员' + days + '天（含每周' + w + '对话）';
+        }
+        var btns = redeemVipBox.querySelectorAll('.redeem-vip-btn');
+        for (var i = 0; i < btns.length; i++) {
+          btns[i].className = 'choice-btn redeem-vip-btn';
+        }
+        t.className = 'choice-btn redeem-vip-btn is-on-orange';
+      });
+    }
+    loadRedeemBtn.addEventListener('click', loadRedeemList);
+    if (loadRedeemLogsBtn) {
+      loadRedeemLogsBtn.addEventListener('click', function () {
+        loadRedeemLogs();
+      });
+    }
+    if (loadShareLogsBtn) {
+      loadShareLogsBtn.addEventListener('click', function () {
+        loadShareLogs();
+      });
+    }
+
+    (function bindLogSearch() {
+      var redeemInp = document.getElementById('redeemLogsSearchInput');
+      var redeemBtn = document.getElementById('redeemLogsSearchBtn');
+      var redeemClear = document.getElementById('redeemLogsSearchClearBtn');
+      var rangeBtn = document.getElementById('redeemLogsRangeBtn');
+      var recent3Btn = document.getElementById('redeemLogsRecent3Btn');
+      if (rangeBtn) {
+        rangeBtn.addEventListener('click', function () {
+          loadRedeemLogs(redeemInp ? redeemInp.value : '', { customRange: true });
+        });
+      }
+      if (recent3Btn) {
+        recent3Btn.addEventListener('click', function () {
+          if (redeemInp) redeemInp.value = '';
+          loadRedeemLogs('', { recent3: true });
+        });
+      }
+      if (redeemBtn) {
+        redeemBtn.addEventListener('click', function () {
+          loadRedeemLogs(redeemInp ? redeemInp.value : '');
+        });
+      }
+      if (redeemClear) {
+        redeemClear.addEventListener('click', function () {
+          if (redeemInp) redeemInp.value = '';
+          loadRedeemLogs('', { recent3: true });
+        });
+      }
+      if (redeemInp) {
+        redeemInp.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter') {
+            ev.preventDefault();
+            loadRedeemLogs(redeemInp.value);
+          }
+        });
+      }
+
+      var shareInp = document.getElementById('shareLogsSearchInput');
+      var shareBtn = document.getElementById('shareLogsSearchBtn');
+      var shareClear = document.getElementById('shareLogsSearchClearBtn');
+      if (shareBtn) {
+        shareBtn.addEventListener('click', function () {
+          loadShareLogs(shareInp ? shareInp.value : '');
+        });
+      }
+      if (shareClear) {
+        shareClear.addEventListener('click', function () {
+          if (shareInp) shareInp.value = '';
+          loadShareLogs('');
+        });
+      }
+      if (shareInp) {
+        shareInp.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter') {
+            ev.preventDefault();
+            loadShareLogs(shareInp.value);
+          }
+        });
+      }
+
+      var userDataLoadBtn = document.getElementById('userDataLoadBtn');
+      var userDataSearchBtn = document.getElementById('userDataSearchBtn');
+      var userDataSearchInp = document.getElementById('userDataSearch');
+      if (userDataLoadBtn) {
+        userDataLoadBtn.addEventListener('click', function () {
+          loadUserDataList('');
+        });
+      }
+      if (userDataSearchBtn) {
+        userDataSearchBtn.addEventListener('click', function () {
+          loadUserDataList();
+        });
+      }
+      if (userDataSearchInp) {
+        userDataSearchInp.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter') {
+            ev.preventDefault();
+            loadUserDataList();
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
