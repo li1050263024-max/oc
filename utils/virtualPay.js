@@ -122,7 +122,12 @@ function reconcileMyOrders(opts) {
     timeout: 45000
   }).then((res) => {
     const r = (res && res.result) || {};
-    if (!r.ok) throw new Error(r.errMsg || '对账失败');
+    if (!r.ok) {
+      const msg = r.errMsg || r.error || '对账失败';
+      const err = new Error(msg);
+      err.cloudResult = r;
+      throw err;
+    }
     try {
       const ai = require('./aiChatQuota.js');
       if (r.extraRounds != null && typeof ai.writeExtraRounds === 'function') {
@@ -139,6 +144,26 @@ function reconcileMyOrders(opts) {
         });
       }
     } catch (_) {}
+    return r;
+  });
+}
+
+/** 分步诊断支付/额度 */
+function diagnosePay() {
+  if (!ensureCloudReady()) {
+    return Promise.reject(new Error('云开发未就绪'));
+  }
+  return callCloudFunction({
+    name: 'virtualPay',
+    data: { action: 'diagnosePay' },
+    timeout: 30000
+  }).then((res) => {
+    const r = (res && res.result) || {};
+    if (!r.ok && r.errMsg) {
+      const err = new Error(r.errMsg);
+      err.cloudResult = r;
+      throw err;
+    }
     return r;
   });
 }
@@ -246,5 +271,6 @@ module.exports = {
   buyProduct,
   buyAdFree,
   pollUntilDelivered,
-  reconcileMyOrders
+  reconcileMyOrders,
+  diagnosePay
 };

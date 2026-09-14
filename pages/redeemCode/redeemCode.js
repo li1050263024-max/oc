@@ -8,6 +8,12 @@ const {
 const membership = require('../../utils/ocMembership.js');
 const virtualPay = require('../../utils/virtualPay.js');
 
+function errText(err) {
+  if (!err) return '未知错误';
+  if (typeof err === 'string') return err;
+  return String(err.errMsg || err.message || err.err_msg || JSON.stringify(err)).slice(0, 200);
+}
+
 Page({
   data: {
     uiThemeClass: '',
@@ -90,6 +96,7 @@ Page({
               wx.hideLoading();
             } catch (_) {}
             const gained = Number(r && r.granted) || 0;
+            const ver = (r && r.apiVer) || '';
             if (n > 0) {
               wx.showToast({
                 title: gained ? '已补发到账：' + n + ' 点' : '当前额度 ' + n + ' 点',
@@ -97,10 +104,17 @@ Page({
                 duration: 2800
               });
             } else {
-              wx.showToast({
-                title: '未找到可补发订单，请先部署最新 virtualPay 云函数',
-                icon: 'none',
-                duration: 3200
+              wx.showModal({
+                title: '仍未到账',
+                content:
+                  '扫描订单 ' +
+                  (r && r.scanned != null ? r.scanned : '?') +
+                  ' 条，补发 ' +
+                  gained +
+                  ' 笔。\n版本：' +
+                  (ver || '未知') +
+                  '\n请再点「分步检测问题」把结果发我。',
+                showCancel: false
               });
             }
           })
@@ -109,13 +123,80 @@ Page({
             try {
               wx.hideLoading();
             } catch (_) {}
-            wx.showToast({
-              title: String((err && err.message) || '刷新失败').slice(0, 36),
-              icon: 'none'
+            wx.showModal({
+              title: '刷新报错',
+              content: errText(err),
+              confirmText: '去检测',
+              success: (r2) => {
+                if (r2.confirm) this.onDiagnosePay();
+              }
             });
           });
       }
     });
+  },
+
+  onDiagnosePay() {
+    wx.showLoading({ title: '检测中…', mask: true });
+    virtualPay
+      .diagnosePay()
+      .then((r) => {
+        try {
+          wx.hideLoading();
+        } catch (_) {}
+        if (!r || /未知 action/.test(String((r && r.errMsg) || ''))) {
+          wx.showModal({
+            title: '云函数不是最新版',
+            content:
+              '未找到 diagnosePay。请重新上传部署 virtualPay（需显示 virtualPay-quota-fix-v3）。',
+            showCancel: false
+          });
+          return;
+        }
+        const lines = (r.steps || []).map(
+          (s) => (s.ok ? '✓' : '✗') + ' ' + s.step + '.' + s.name + '：' + s.detail
+        );
+        const text =
+          '版本：' +
+          (r.apiVer || '?') +
+          '\nopenid：' +
+          (r.openidMask || '?') +
+          '\n额度：' +
+          r.extraRounds +
+          '\n订单：' +
+          r.orderCount +
+          '\nVPAY日志：' +
+          r.vpayLogs +
+          '\n\n' +
+          lines.join('\n') +
+          '\n\n结论：' +
+          (r.hint || '');
+        wx.showModal({
+          title: '检测结果',
+          content: text.slice(0, 500),
+          confirmText: '复制全文',
+          cancelText: '关闭',
+          success: (res) => {
+            if (!res.confirm) return;
+            wx.setClipboardData({
+              data: text,
+              success: () => wx.showToast({ title: '已复制', icon: 'none' })
+            });
+          }
+        });
+      })
+      .catch((err) => {
+        try {
+          wx.hideLoading();
+        } catch (_) {}
+        wx.showModal({
+          title: '检测失败',
+          content:
+            errText(err) +
+            '\n\n若提示未知 action，说明云函数未部署到含 diagnosePay 的版本。',
+          showCancel: false
+        });
+      });
   },
 
   _syncVip() {
@@ -194,7 +275,7 @@ Page({
           .catch((err) => {
             wx.hideLoading();
             this.setData({ buyingId: '' });
-            const msg = String((err && (err.errMsg || err.message)) || err || '支付失败');
+            const msg = errText(err);
             if (/cancel|取消|-2/.test(msg)) {
               wx.showToast({ title: '已取消支付', icon: 'none' });
               return;
@@ -237,7 +318,7 @@ Page({
             wx.hideLoading();
             this.setData({ buyingAdFree: false });
             wx.showToast({
-              title: String((err && (err.errMsg || err.message)) || '开通失败').slice(0, 36),
+              title: errText(err).slice(0, 36),
               icon: 'none'
             });
           });

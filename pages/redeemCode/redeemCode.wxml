@@ -12,6 +12,9 @@
       <view class="redeem-refresh" catchtap="onRefreshQuota">
         <text class="redeem-refresh-t">{{reconciling ? '正在核对订单…' : '已付款但额度未到？点此刷新到账'}}</text>
       </view>
+      <view class="redeem-refresh redeem-refresh--diag" catchtap="onDiagnosePay">
+        <text class="redeem-refresh-t">分步检测问题（把结果发给开发）</text>
+      </view>
     </view>
 
     <view class="redeem-card" wx:if="{{shopProducts.length}}">

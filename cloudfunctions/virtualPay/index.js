@@ -601,7 +601,152 @@ async function reconcileMyOrders(openid, event) {
       quota.isVip &&
       (!(Number(quota.vipExpireAt) > 0) || Number(quota.vipExpireAt) > Date.now())
     ),
-    vipExpireAt: Number(quota.vipExpireAt) || 0
+    vipExpireAt: Number(quota.vipExpireAt) || 0,
+    apiVer: 'virtualPay-quota-fix-v3',
+    forcePending: forcePending
+  };
+}
+
+/** 分步自检：尽量不改数据，回报卡在哪 */
+async function diagnosePay(openid) {
+  const oid = String(openid || '').trim();
+  const steps = [];
+  const c = cfg();
+  steps.push({
+    step: 1,
+    name: '云函数版本',
+    ok: true,
+    detail: 'virtualPay-quota-fix-v3'
+  });
+  steps.push({
+    step: 2,
+    name: '识别 openid',
+    ok: !!oid,
+    detail: oid ? oid.slice(0, 6) + '…' + oid.slice(-4) : '空（未登录云开发）'
+  });
+  steps.push({
+    step: 3,
+    name: '环境变量',
+    ok: !!(c.offerId && c.appKey && c.appId && c.secret),
+    detail:
+      'offerId=' +
+      (c.offerId ? '有' : '缺') +
+      ' appKey=' +
+      (c.appKey ? '有' : '缺') +
+      ' WX_APPID=' +
+      (c.appId ? '有' : '缺') +
+      ' WX_SECRET=' +
+      (c.secret ? '有' : '缺') +
+      ' env=' +
+      c.env
+  });
+
+  let orderCount = 0;
+  let latest = [];
+  let orderErr = '';
+  try {
+    const res = await db.collection('virtual_orders').where({ openid: oid }).limit(10).get();
+    const rows = ((res && res.data) || []).slice();
+    rows.sort((a, b) => (Number(b.createTimeMs) || 0) - (Number(a.createTimeMs) || 0));
+    orderCount = rows.length;
+    latest = rows.slice(0, 5).map((r) => ({
+      outTradeNo: String(r.outTradeNo || r._id || '').slice(0, 24),
+      status: r.status || '',
+      productId: r.productId || '',
+      grantRounds: Number(r.grantRounds) || 0,
+      clientPaidAt: Number(r.clientPaidAt) || 0,
+      createTimeMs: Number(r.createTimeMs) || 0,
+      ageMin: r.createTimeMs
+        ? Math.round((Date.now() - Number(r.createTimeMs)) / 60000)
+        : -1
+    }));
+  } catch (e) {
+    orderErr = String((e && (e.message || e.errMsg)) || e);
+  }
+  steps.push({
+    step: 4,
+    name: '读取 virtual_orders',
+    ok: !orderErr,
+    detail: orderErr
+      ? orderErr
+      : '本用户订单 ' +
+        orderCount +
+        ' 条；最近：' +
+        (latest.length
+          ? latest
+              .map(
+                (x) =>
+                  x.status + '/' + (x.grantRounds || 0) + '轮/' + x.ageMin + '分钟前'
+              )
+              .join('；')
+          : '无订单')
+  });
+
+  let quotaExtra = -1;
+  let quotaErr = '';
+  try {
+    const q = await getOrCreateQuota(oid);
+    quotaExtra = Math.max(0, Number(q.extraRounds) || 0);
+  } catch (e) {
+    quotaErr = String((e && (e.message || e.errMsg)) || e);
+  }
+  steps.push({
+    step: 5,
+    name: '读取 user_quota',
+    ok: !quotaErr,
+    detail: quotaErr ? quotaErr : 'extraRounds=' + quotaExtra
+  });
+
+  let vpayLogs = 0;
+  let logErr = '';
+  try {
+    const res = await db
+      .collection('redeem_logs')
+      .where({ openid: oid, source: 'virtual_pay' })
+      .limit(10)
+      .get();
+    vpayLogs = ((res && res.data) || []).length;
+  } catch (e1) {
+    try {
+      const res = await db.collection('redeem_logs').where({ openid: oid }).limit(20).get();
+      vpayLogs = ((res && res.data) || []).filter(
+        (r) =>
+          String(r.source || '') === 'virtual_pay' ||
+          String(r.code || '').indexOf('VPAY:') === 0
+      ).length;
+    } catch (e2) {
+      logErr = String((e2 && (e2.message || e2.errMsg)) || e2);
+    }
+  }
+  steps.push({
+    step: 6,
+    name: '读取 VPAY 发货日志',
+    ok: !logErr,
+    detail: logErr ? logErr : 'virtual_pay 日志 ' + vpayLogs + ' 条'
+  });
+
+  let hint = '';
+  if (!oid) hint = 'openid 为空，请用真机登录后再试';
+  else if (orderErr) hint = 'virtual_orders 读失败：检查集合是否已建';
+  else if (!orderCount) hint = '没有本用户订单：支付时 openid 可能与现在不一致，或订单未写入';
+  else if (quotaExtra === 0 && vpayLogs === 0)
+    hint = '有订单但未发货：点「刷新到账」并确认已付款';
+  else if (quotaExtra === 0 && vpayLogs > 0)
+    hint = '已有发货日志但额度为0：可能配额文档分裂，再点刷新到账';
+  else if (quotaExtra > 0) hint = '云端已有额度 ' + quotaExtra + '，若页面仍显示0是本地未同步';
+  else hint = '基础检查通过，可再点刷新到账';
+
+  return {
+    ok: true,
+    apiVer: 'virtualPay-quota-fix-v3',
+    openidMask: oid ? oid.slice(0, 6) + '…' + oid.slice(-4) : '',
+    orderCount: orderCount,
+    latestOrders: latest,
+    extraRounds: quotaExtra,
+    vpayLogs: vpayLogs,
+    steps: steps,
+    failedCount: steps.filter((s) => !s.ok).length,
+    hint: hint
   };
 }
 
@@ -961,8 +1106,9 @@ exports.main = async (event) => {
     if (action === 'createOrder') return await createOrder(event, openid);
     if (action === 'pollOrder') return await pollOrder(event, openid);
     if (action === 'reconcileMyOrders') return await reconcileMyOrders(openid, event);
+    if (action === 'diagnosePay') return await diagnosePay(openid);
     if (action === 'buyAdFree') return await buyAdFree(openid);
-    return { ok: false, errMsg: '未知 action' };
+    return { ok: false, errMsg: '未知 action: ' + action, apiVer: 'virtualPay-quota-fix-v3' };
   } catch (e) {
     return { ok: false, errMsg: String((e && e.message) || e) };
   }
