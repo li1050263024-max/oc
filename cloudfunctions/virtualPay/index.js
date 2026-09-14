@@ -586,27 +586,24 @@ async function repairDoubledQuota(openid) {
   const quota = await getOrCreateQuota(oid);
   let extra = Math.max(0, Number(quota.extraRounds) || 0);
 
-  // —— B) 近时同商品双单：保留最早一单，其余标 duplicate 并扣额度 ——
+  // —— B) 同商品多笔 delivered：保留最早一单；近时重复 / forcePending 补发单一律作废 ——
   const keep = {};
   const dupes = [];
   for (let i = 0; i < grantedOrders.length; i++) {
     const cur = grantedOrders[i];
-    let matchedKeep = null;
-    const keys = Object.keys(keep);
-    for (let k = 0; k < keys.length; k++) {
-      const prev = keep[keys[k]];
-      if (prev._pid !== cur._pid) continue;
-      if (prev._g !== cur._g) continue;
-      // 15 分钟内同商品同额度 → 视为重复单
-      if (Math.abs(cur._t - prev._t) <= 15 * 60 * 1000) {
-        matchedKeep = prev;
-        break;
-      }
+    const prev = keep[cur._pid];
+    if (!prev) {
+      keep[cur._pid] = cur;
+      continue;
     }
-    if (matchedKeep) {
+    const near = Math.abs(cur._t - prev._t) <= 30 * 60 * 1000;
+    const forced = !!(cur.forcePending || cur.reconcileHint);
+    // 近 30 分钟同商品，或带强制补发标记的后单 → 视为重复
+    if (near || forced) {
       dupes.push(cur);
     } else {
-      keep[cur._oid] = cur;
+      // 间隔较久：视为另一次真实购买，保留
+      keep[cur._pid + '::' + cur._oid] = cur;
     }
   }
 
@@ -622,11 +619,12 @@ async function repairDoubledQuota(openid) {
           .update({
             data: {
               status: 'duplicate',
-              duplicateOf: (keep[Object.keys(keep)[0]] && keep[Object.keys(keep)[0]]._oid) || '',
+              duplicateOf: Object.keys(keep)
+                .map((k) => keep[k]._oid)
+                .filter(Boolean)[0] || '',
               duplicateFixedAt: Date.now(),
-              // 保留历史 grantRounds 便于审计，但不再计入有效发货
               quotaGranted: true,
-              note: '同额近时重复单，已作废并扣回额度'
+              note: '重复/强制补发单，已作废并扣回额度'
             }
           });
       } catch (_) {}
@@ -795,11 +793,11 @@ async function reconcileMyOrders(openid, event) {
     const row = rows[i];
     if (!row) continue;
     const st = String(row.status || '');
-    if (st === 'refunded') continue;
+    if (st === 'refunded' || st === 'duplicate') continue;
     const created = Number(row.createTimeMs) || 0;
     if (created && created < since) continue;
 
-    // 未付款 pending：查微信；或用户在「刷新到账」里确认已付款后强制补发
+    // 未付款 pending：仅微信查单确认后才发货；禁止 forcePending 盲发（会把点「刷新」当成付款）
     if (st === 'pending' && !row.clientPaidAt) {
       let paid = false;
       try {
@@ -833,10 +831,6 @@ async function reconcileMyOrders(openid, event) {
       } catch (_) {
         paid = false;
       }
-      // 代币单常查不到现金单：仅当用户显式确认已付款时才补发 pending
-      if (!paid && forcePending && created && Date.now() - created > 60 * 1000) {
-        paid = true;
-      }
       if (!paid) continue;
       try {
         await db
@@ -846,8 +840,7 @@ async function reconcileMyOrders(openid, event) {
             data: {
               status: 'paid',
               clientPaidAt: Date.now(),
-              reconcileHint: true,
-              forcePending: !!forcePending
+              reconcileHint: true
             }
           });
       } catch (_) {}
@@ -898,7 +891,7 @@ async function reconcileMyOrders(openid, event) {
       (!(Number(quota.vipExpireAt) > 0) || Number(quota.vipExpireAt) > Date.now())
     ),
     vipExpireAt: Number(quota.vipExpireAt) || 0,
-    apiVer: 'virtualPay-quota-fix-v5',
+    apiVer: 'virtualPay-quota-fix-v6',
     forcePending: forcePending
   };
 }
@@ -912,7 +905,7 @@ async function diagnosePay(openid) {
     step: 1,
     name: '云函数版本',
     ok: true,
-    detail: 'virtualPay-quota-fix-v5'
+    detail: 'virtualPay-quota-fix-v6'
   });
   steps.push({
     step: 2,
@@ -1036,13 +1029,13 @@ async function diagnosePay(openid) {
     hint =
       '检测到多笔已到账订单且额度为 ' +
       quotaExtra +
-      '。若只付了一次，请点「刷新到账」自动作废重复单并改回 1000';
+      '。若只付了一次，请点「刷新到账」自动作废重复单并改回正确额度';
   else if (quotaExtra > 0) hint = '云端已有额度 ' + quotaExtra + '，若页面仍显示0是本地未同步';
   else hint = '基础检查通过，可再点刷新到账';
 
   return {
     ok: true,
-    apiVer: 'virtualPay-quota-fix-v5',
+    apiVer: 'virtualPay-quota-fix-v6',
     openidMask: oid ? oid.slice(0, 6) + '…' + oid.slice(-4) : '',
     orderCount: orderCount,
     latestOrders: latest,
@@ -1412,7 +1405,7 @@ exports.main = async (event) => {
     if (action === 'reconcileMyOrders') return await reconcileMyOrders(openid, event);
     if (action === 'diagnosePay') return await diagnosePay(openid);
     if (action === 'buyAdFree') return await buyAdFree(openid);
-    return { ok: false, errMsg: '未知 action: ' + action, apiVer: 'virtualPay-quota-fix-v5' };
+    return { ok: false, errMsg: '未知 action: ' + action, apiVer: 'virtualPay-quota-fix-v6' };
   } catch (e) {
     return { ok: false, errMsg: String((e && e.message) || e) };
   }
