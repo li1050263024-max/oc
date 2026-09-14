@@ -949,6 +949,12 @@ async function diagnosePay(openid) {
   return {
     ok: true,
     apiVer: 'virtualPay-quota-fix-v4',
+    openidMask: oid ? oid.slice(0, 6) + '…' + oid.slice(-4) : '',
+    orderCount: orderCount,
+    latestOrders: latest,
+    extraRounds: quotaExtra,
+    vpayLogs: vpayLogs,
+    steps: steps,
     failedCount: steps.filter((s) => !s.ok).length,
     hint: hint
   };
