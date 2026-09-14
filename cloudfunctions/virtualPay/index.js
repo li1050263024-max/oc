@@ -286,7 +286,25 @@ async function deliverProduct(openid, product, orderMeta) {
   }
 
   // 一律写 openid 文档，保证与 balance 读路径一致
-  await db.collection('user_quota').doc(openid).update({ data: patch });
+  try {
+    await db.collection('user_quota').doc(openid).update({ data: patch });
+  } catch (e) {
+    // 文档异常时兜底 set.merge
+    const base = Object.assign({}, quota);
+    delete base._id;
+    if (rounds > 0) {
+      base.extraRounds = Math.max(0, Number(base.extraRounds) || 0) + rounds;
+      base.redeemedTotal = Math.max(0, Number(base.redeemedTotal) || 0) + rounds;
+      base.extraRoundsExpireAt = 0;
+    }
+    if (vipDays > 0) {
+      base.isVip = true;
+      base.vipPaused = false;
+      base.vipExpireAt = nextVipExpire;
+    }
+    base.updateTimeMs = Date.now();
+    await db.collection('user_quota').doc(openid).set({ data: base });
+  }
 
   // redeem_logs 按订单号去重，避免 notify+poll 双记
   const code = 'VPAY:' + outTradeNo;
@@ -357,12 +375,59 @@ async function hasVpayLog(outTradeNo) {
   }
 }
 
+/** 确保订单已加额度（幂等）。代币充值无道具发货推送，必须靠这条链路到账。 */
+async function ensureOrderGranted(order, extras) {
+  if (!order) return { ok: false, errMsg: '无订单' };
+  const outTradeNo = String(order.outTradeNo || order._id || '').trim();
+  if (!outTradeNo) return { ok: false, errMsg: '缺少订单号' };
+  const openid = String(order.openid || '').trim();
+  if (!openid) return { ok: false, errMsg: '订单无 openid' };
+  const product = productById(order.productId) || COIN_PACK;
+
+  if (await hasVpayLog(outTradeNo)) {
+    if (order.status !== 'delivered') {
+      await markDelivered(outTradeNo, {
+        mchOrderNo: extras && extras.mchOrderNo,
+        recovered: true,
+        grantRounds: Number(order.grantRounds) || product.rounds || 0
+      });
+    }
+    const quota = await getOrCreateQuota(openid);
+    return {
+      ok: true,
+      already: true,
+      grant: {
+        extraRounds: Math.max(0, Number(quota.extraRounds) || 0),
+        rounds: Number(order.grantRounds) || product.rounds || 0,
+        vipDays: Number(order.grantVipDays) || 0,
+        isVip: !!(
+          quota.isVip &&
+          (!(Number(quota.vipExpireAt) > 0) || Number(quota.vipExpireAt) > Date.now())
+        ),
+        vipExpireAt: Number(quota.vipExpireAt) || 0
+      }
+    };
+  }
+
+  // 假 delivered（旧逻辑未加额）：允许补发
+  const grant = await deliverProduct(openid, product, { outTradeNo: outTradeNo });
+  await markDelivered(outTradeNo, {
+    mchOrderNo: extras && extras.mchOrderNo,
+    grantRounds: grant.rounds,
+    grantVipDays: grant.vipDays,
+    repaired: !!(order.status === 'delivered')
+  });
+  return { ok: true, grant: grant, already: false };
+}
+
 async function deliverOrderDoc(order, extras) {
   if (!order) return { ok: false, errMsg: '无订单' };
   const outTradeNo = String(order.outTradeNo || order._id || '').trim();
   if (!outTradeNo) return { ok: false, errMsg: '缺少订单号' };
+
+  // 已 delivered：仍校验是否真正加过额，未加则补发
   if (order.status === 'delivered') {
-    return { ok: true, already: true };
+    return ensureOrderGranted(order, extras);
   }
 
   // 原子占坑：仅 pending/paid 可进入发货，防止 notify 与 poll 并发双发
@@ -389,7 +454,7 @@ async function deliverOrderDoc(order, extras) {
       const got = await db.collection('virtual_orders').doc(outTradeNo).get();
       const cur = got && got.data;
       if (cur && cur.status === 'delivered') {
-        return { ok: true, already: true };
+        return ensureOrderGranted(Object.assign({ _id: outTradeNo }, cur), extras);
       }
       if (cur && cur.status === 'delivering') {
         const at = Number(cur.deliveringAt) || 0;
@@ -398,56 +463,90 @@ async function deliverOrderDoc(order, extras) {
         if (age >= 0 && age < 20000) {
           return { ok: false, busy: true, errMsg: '发货中' };
         }
-        // 超时卡死：若已有 VPAY 日志则只收尾；否则重新占坑补发
-        if (await hasVpayLog(outTradeNo)) {
-          await markDelivered(outTradeNo, {
-            mchOrderNo: extras && extras.mchOrderNo,
-            recovered: true
-          });
-          return { ok: true, already: true, recovered: true };
-        }
-        try {
-          await db.collection('virtual_orders').doc(outTradeNo).update({
-            data: { status: 'delivering', deliveringAt: Date.now() }
-          });
-          claimed = 1;
-        } catch (_) {
-          return { ok: false, busy: true, errMsg: '发货锁定中' };
-        }
+        // 超时卡死：直接补发（ensure 内有 VPAY 幂等）
+        return ensureOrderGranted(Object.assign({ _id: outTradeNo }, cur, order), extras);
       } else if (cur && (cur.status === 'pending' || cur.status === 'paid')) {
         await db.collection('virtual_orders').doc(outTradeNo).update({
           data: { status: 'delivering', deliveringAt: Date.now() }
         });
         claimed = 1;
+        order = Object.assign({}, order, cur, { status: 'delivering' });
       }
     } catch (_) {}
   }
-  if (!claimed) {
-    // 无法确认状态时不要谎报 already，让客户端继续等
-    return { ok: false, busy: true, errMsg: '发货未就绪' };
+  if (!claimed && order.status !== 'delivering') {
+    // 无法占坑时仍尝试幂等补发（例如权限/竞态）
+    return ensureOrderGranted(order, extras);
   }
 
-  const product = productById(order.productId);
-  if (!product) return { ok: false, errMsg: '未知商品' };
-  const openid = String(order.openid || '').trim();
-  if (!openid) return { ok: false, errMsg: '订单无 openid' };
+  return ensureOrderGranted(order, extras);
+}
 
-  // 幂等：已有发货日志则不再加额
-  if (await hasVpayLog(outTradeNo)) {
-    await markDelivered(outTradeNo, {
-      mchOrderNo: extras && extras.mchOrderNo,
-      recovered: true
-    });
-    return { ok: true, already: true, recovered: true };
+/**
+ * 补发近期货币充值订单到 user_quota。
+ * 代币充值（short_series_coin）平台不推道具发货，只能靠支付成功后的补发。
+ */
+async function reconcileMyOrders(openid) {
+  const oid = String(openid || '').trim();
+  if (!oid) return { ok: false, errMsg: '缺少 openid' };
+  let rows = [];
+  try {
+    const res = await db
+      .collection('virtual_orders')
+      .where({ openid: oid })
+      .orderBy('createTimeMs', 'desc')
+      .limit(30)
+      .get();
+    rows = (res && res.data) || [];
+  } catch (_) {
+    try {
+      const res = await db.collection('virtual_orders').where({ openid: oid }).limit(30).get();
+      rows = ((res && res.data) || []).slice();
+      rows.sort(
+        (a, b) => (Number(b.createTimeMs) || 0) - (Number(a.createTimeMs) || 0)
+      );
+    } catch (e2) {
+      return { ok: false, errMsg: '读取订单失败：' + String((e2 && e2.message) || e2) };
+    }
   }
 
-  const grant = await deliverProduct(openid, product, { outTradeNo: outTradeNo });
-  await markDelivered(outTradeNo, {
-    mchOrderNo: extras && extras.mchOrderNo,
-    grantRounds: grant.rounds,
-    grantVipDays: grant.vipDays
-  });
-  return { ok: true, grant: grant, already: false };
+  const since = Date.now() - 14 * DAY_MS;
+  let repaired = 0;
+  let granted = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row) continue;
+    const st = String(row.status || '');
+    if (st === 'refunded') continue;
+    // 未付款的 pending 绝不能补发（防白嫖）
+    if (st === 'pending' && !row.clientPaidAt) continue;
+    const created = Number(row.createTimeMs) || 0;
+    if (created && created < since) continue;
+    const order = Object.assign({ _id: row._id || row.outTradeNo }, row);
+    try {
+      const r = await ensureOrderGranted(order, {});
+      if (r && r.ok) {
+        if (!r.already) granted += 1;
+        else if (r.grant) repaired += 1;
+      }
+    } catch (e) {
+      console.warn('[virtualPay] reconcile one fail', e && e.message);
+    }
+  }
+
+  const quota = await getOrCreateQuota(oid);
+  return {
+    ok: true,
+    repaired: repaired,
+    granted: granted,
+    scanned: rows.length,
+    extraRounds: Math.max(0, Number(quota.extraRounds) || 0),
+    isVip: !!(
+      quota.isVip &&
+      (!(Number(quota.vipExpireAt) > 0) || Number(quota.vipExpireAt) > Date.now())
+    ),
+    vipExpireAt: Number(quota.vipExpireAt) || 0
+  };
 }
 
 async function handleDeliverNotify(event) {
@@ -613,20 +712,27 @@ async function pollOrder(event, openid) {
   }
 
   if (order.status === 'delivered') {
+    // 假 delivered（未写 VPAY 日志）时补发
+    const fix = await ensureOrderGranted(order, {});
     const quota = await getOrCreateQuota(openid);
+    const grantExtra =
+      fix && fix.grant && fix.grant.extraRounds != null
+        ? Number(fix.grant.extraRounds)
+        : Math.max(0, Number(quota.extraRounds) || 0);
     return {
       ok: true,
       status: 'delivered',
-      extraRounds: Math.max(0, Number(quota.extraRounds) || 0),
+      extraRounds: Math.max(0, grantExtra, Number(quota.extraRounds) || 0),
       isVip: !!(
         quota.isVip &&
         (!(Number(quota.vipExpireAt) > 0) || Number(quota.vipExpireAt) > Date.now())
       ),
-      vipExpireAt: Number(quota.vipExpireAt) || 0
+      vipExpireAt: Number(quota.vipExpireAt) || 0,
+      via: fix && !fix.already ? 'repair_delivered' : 'delivered'
     };
   }
 
-  // 客户端支付控件已 success：可直接尝试发货（查单接口不可用时的兜底）
+  // 客户端支付控件已 success：代币充值必须在此发货（无道具发货推送）
   if (event && event.clientPaid && (order.status === 'pending' || order.status === 'paid' || order.status === 'delivering')) {
     if (order.status === 'pending') {
       try {
@@ -660,7 +766,7 @@ async function pollOrder(event, openid) {
     }
   }
 
-  // 可选：查微信单（需 access_token）；失败则仍返回 pending，等消息推送
+  // 可选：查微信单（现金单）；代币单可能查不到，失败则仍走 clientPaid/reconcile
   try {
     const c = cfg();
     if (c.appKey && c.offerId) {
@@ -798,6 +904,7 @@ exports.main = async (event) => {
     if (!openid) return { ok: false, errMsg: '无法识别用户' };
     if (action === 'createOrder') return await createOrder(event, openid);
     if (action === 'pollOrder') return await pollOrder(event, openid);
+    if (action === 'reconcileMyOrders') return await reconcileMyOrders(openid);
     if (action === 'buyAdFree') return await buyAdFree(openid);
     return { ok: false, errMsg: '未知 action' };
   } catch (e) {

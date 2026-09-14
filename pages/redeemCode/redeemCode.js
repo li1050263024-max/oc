@@ -18,21 +18,24 @@ Page({
     buyingId: '',
     buyingAdFree: false,
     adFreeCost: 300,
-    adFreeDays: 30
+    adFreeDays: 30,
+    reconciling: false
   },
 
   onLoad() {
     this._syncTheme();
-    this._syncExtra();
+    this._syncExtra({ skipFlush: true });
     this._syncVip();
     this._loadShop();
+    this._reconcileQuiet();
   },
 
   onShow() {
     applyPageGradientBg();
     this._syncTheme();
-    this._syncExtra();
+    this._syncExtra({ skipFlush: true });
     this._syncVip();
+    this._reconcileQuiet();
   },
 
   _syncTheme() {
@@ -46,6 +49,65 @@ Page({
       this.setData({ extraRounds: n });
       this._syncVip();
     });
+  },
+
+  _reconcileQuiet() {
+    if (this._reconciling) return;
+    this._reconciling = true;
+    virtualPay
+      .reconcileMyOrders()
+      .then((r) => {
+        const n = Math.max(0, Number(r && r.extraRounds) || 0);
+        if (n > 0) writeExtraRounds(n);
+        this.setData({ extraRounds: Math.max(n, readExtraRounds()) });
+        this._syncVip();
+      })
+      .catch(() => {})
+      .then(() => {
+        this._reconciling = false;
+      });
+  },
+
+  onRefreshQuota() {
+    if (this.data.reconciling) return;
+    this.setData({ reconciling: true });
+    wx.showLoading({ title: '核对订单…', mask: true });
+    virtualPay
+      .reconcileMyOrders()
+      .then((r) => {
+        const n = Math.max(0, Number(r && r.extraRounds) || 0);
+        writeExtraRounds(n);
+        this.setData({ extraRounds: n, reconciling: false });
+        this._syncExtra({ skipFlush: true });
+        this._syncVip();
+        try {
+          wx.hideLoading();
+        } catch (_) {}
+        const gained = Number(r && r.granted) || 0;
+        if (n > 0) {
+          wx.showToast({
+            title: gained ? '已补发到账：' + n + ' 点' : '当前额度 ' + n + ' 点',
+            icon: 'none',
+            duration: 2800
+          });
+        } else {
+          wx.showToast({
+            title: '未找到可补发订单，请确认已部署最新 virtualPay',
+            icon: 'none',
+            duration: 3200
+          });
+        }
+      })
+      .catch((err) => {
+        this.setData({ reconciling: false });
+        try {
+          wx.hideLoading();
+        } catch (_) {}
+        wx.showToast({
+          title: String((err && err.message) || '刷新失败').slice(0, 36),
+          icon: 'none'
+        });
+      });
   },
 
   _syncVip() {
@@ -102,23 +164,21 @@ Page({
             }
             this._syncExtra({ skipFlush: true });
             this._syncVip();
-            if (delivered) {
+            if (delivered && Number(r.extraRounds) > 0) {
               wx.showToast({ title: '充值成功，额度已到账', icon: 'none', duration: 2600 });
-              // 延迟再拉一次，支付窗口内禁止 flush 盖额度
               setTimeout(() => this._syncExtra({ skipFlush: true }), 2000);
-              setTimeout(() => this._syncExtra({ skipFlush: true }), 6000);
-              setTimeout(() => this._syncExtra({ skipFlush: true }), 12000);
+              setTimeout(() => this._reconcileQuiet(), 4000);
               return;
             }
             wx.showModal({
               title: '支付已提交',
-              content: '正在确认到账，请稍候；本页额度会自动刷新。',
+              content: '正在确认到账。若仍为 0，请点余额下方「刷新到账」。',
               showCancel: false
             });
-            // 支付成功但发货延迟：持续同步一段时间
             let n = 0;
             const timer = setInterval(() => {
               n += 1;
+              this._reconcileQuiet();
               this._syncExtra({ skipFlush: true });
               if (n >= 20) clearInterval(timer);
             }, 2000);

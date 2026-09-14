@@ -9,6 +9,9 @@
     <view class="redeem-card">
       <text class="redeem-balance">额度剩余 <text class="redeem-balance-num">{{extraRounds}}</text> 点</text>
       <text class="redeem-balance-sub">永久通用 · 对话 / 提取 / 扩容等</text>
+      <view class="redeem-refresh" catchtap="onRefreshQuota">
+        <text class="redeem-refresh-t">{{reconciling ? '正在核对订单…' : '已付款但额度未到？点此刷新到账'}}</text>
+      </view>
     </view>
 
     <view class="redeem-card" wx:if="{{shopProducts.length}}">

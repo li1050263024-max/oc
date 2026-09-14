@@ -1,5 +1,6 @@
 /**
- * 虚拟支付 · 道具直购客户端
+ * 虚拟支付 · 代币充值客户端
+ * 注意：short_series_coin 无道具发货推送，到账依赖 poll/reconcile 写 user_quota
  */
 const { callCloudFunction, ensureCloudReady } = require('./cloudInit.js');
 const membership = require('./ocMembership.js');
@@ -58,14 +59,14 @@ function pollUntilDelivered(outTradeNo, tries) {
       data: {
         action: 'pollOrder',
         outTradeNo: outTradeNo,
-        // 支付控件 success 后提示云端可发货（查单失败时的兜底）
+        // 支付控件 success 后提示云端可发货（代币充值无道具推送时的主路径）
         clientPaid: true
       },
       timeout: 20000
     }).then((res) => {
       const r = (res && res.result) || {};
-      if (r.ok && r.status === 'delivered') return r;
-      // busy / pending / delivering：继续等，不要提前结束
+      if (r.ok && r.status === 'delivered' && Number(r.extraRounds) > 0) return r;
+      if (r.ok && r.status === 'delivered' && i >= 3) return r;
       if (i >= max) return r;
       return new Promise((resolve) => {
         setTimeout(() => resolve(tick()), 1200);
@@ -109,8 +110,40 @@ function forceSyncQuotaAfterPay() {
   return Promise.resolve(0);
 }
 
+/** 扫描近期订单并补发到额度（打开商店 / 支付后调用） */
+function reconcileMyOrders() {
+  if (!ensureCloudReady()) {
+    return Promise.reject(new Error('云开发未就绪'));
+  }
+  return callCloudFunction({
+    name: 'virtualPay',
+    data: { action: 'reconcileMyOrders' },
+    timeout: 45000
+  }).then((res) => {
+    const r = (res && res.result) || {};
+    if (!r.ok) throw new Error(r.errMsg || '对账失败');
+    try {
+      const ai = require('./aiChatQuota.js');
+      if (r.extraRounds != null && typeof ai.writeExtraRounds === 'function') {
+        const server = Math.max(0, Number(r.extraRounds) || 0);
+        const local =
+          typeof ai.readExtraRounds === 'function' ? ai.readExtraRounds() : 0;
+        ai.writeExtraRounds(Math.max(server, local));
+      }
+      if (r.isVip) {
+        membership.writeCache({
+          isVip: !!r.isVip,
+          vipExpireAt: Number(r.vipExpireAt) || 0,
+          syncedAt: Date.now()
+        });
+      }
+    } catch (_) {}
+    return r;
+  });
+}
+
 /**
- * 购买道具：createOrder → requestVirtualPayment → poll 发货
+ * 购买：createOrder → requestVirtualPayment → poll 发货 → reconcile
  */
 function buyProduct(productId) {
   if (!ensureCloudReady()) {
@@ -136,50 +169,45 @@ function buyProduct(productId) {
         const outTradeNo = r.outTradeNo;
         applyDeliveredQuota(polled);
 
-        const finish = forceSyncQuotaAfterPay().then((extra) => {
-          const polledExtra = Number(polled && polled.extraRounds) || 0;
-          const synced = Number(extra) || 0;
-          let local = 0;
-          try {
-            const ai = require('./aiChatQuota.js');
-            if (typeof ai.readExtraRounds === 'function') local = ai.readExtraRounds();
-          } catch (_) {}
-          const merged = Math.max(polledExtra, synced, local);
-          const delivered = !!(polled && polled.status === 'delivered');
-          if (delivered && merged >= 0) {
+        // 支付成功后强制扫单补发，解决「钱扣了额度仍 0」
+        return reconcileMyOrders()
+          .catch(() => forceSyncQuotaAfterPay().then((extra) => ({ extraRounds: extra })))
+          .then((rec) => {
+            const polledExtra = Number(polled && polled.extraRounds) || 0;
+            const synced = Number(rec && rec.extraRounds) || 0;
+            let local = 0;
             try {
               const ai = require('./aiChatQuota.js');
-              if (typeof ai.writeExtraRounds === 'function') {
-                ai.writeExtraRounds(merged);
-              }
+              if (typeof ai.readExtraRounds === 'function') local = ai.readExtraRounds();
             } catch (_) {}
-          }
-          return Object.assign({}, polled || {}, {
-            outTradeNo: outTradeNo,
-            extraRounds: merged,
-            status: delivered ? 'delivered' : (polled && polled.status) || 'pending'
+            const merged = Math.max(polledExtra, synced, local);
+            if (merged >= 0) {
+              try {
+                const ai = require('./aiChatQuota.js');
+                if (typeof ai.writeExtraRounds === 'function') {
+                  ai.writeExtraRounds(merged);
+                }
+              } catch (_) {}
+            }
+            const delivered =
+              !!(polled && polled.status === 'delivered') ||
+              merged > 0 ||
+              !!(rec && (rec.granted || rec.repaired));
+            if (!delivered || merged <= 0) {
+              pollUntilDelivered(outTradeNo, 40)
+                .then((again) => {
+                  applyDeliveredQuota(again);
+                  return reconcileMyOrders().catch(() => {});
+                })
+                .catch(() => {});
+            }
+            return Object.assign({}, polled || {}, {
+              outTradeNo: outTradeNo,
+              extraRounds: merged,
+              status: delivered ? 'delivered' : (polled && polled.status) || 'pending',
+              reconciled: true
+            });
           });
-        });
-
-        if (!polled || polled.status !== 'delivered') {
-          pollUntilDelivered(outTradeNo, 40)
-            .then((again) => {
-              applyDeliveredQuota(again);
-              return forceSyncQuotaAfterPay().then((extra) => {
-                applyDeliveredQuota(
-                  Object.assign({}, again || {}, {
-                    status: 'delivered',
-                    extraRounds: Math.max(
-                      Number(again && again.extraRounds) || 0,
-                      Number(extra) || 0
-                    )
-                  })
-                );
-              });
-            })
-            .catch(() => {});
-        }
-        return finish;
       })
     );
 }
@@ -216,5 +244,6 @@ module.exports = {
   listProducts,
   buyProduct,
   buyAdFree,
-  pollUntilDelivered
+  pollUntilDelivered,
+  reconcileMyOrders
 };
