@@ -70,44 +70,52 @@ Page({
 
   onRefreshQuota() {
     if (this.data.reconciling) return;
-    this.setData({ reconciling: true });
-    wx.showLoading({ title: '核对订单…', mask: true });
-    virtualPay
-      .reconcileMyOrders()
-      .then((r) => {
-        const n = Math.max(0, Number(r && r.extraRounds) || 0);
-        writeExtraRounds(n);
-        this.setData({ extraRounds: n, reconciling: false });
-        this._syncExtra({ skipFlush: true });
-        this._syncVip();
-        try {
-          wx.hideLoading();
-        } catch (_) {}
-        const gained = Number(r && r.granted) || 0;
-        if (n > 0) {
-          wx.showToast({
-            title: gained ? '已补发到账：' + n + ' 点' : '当前额度 ' + n + ' 点',
-            icon: 'none',
-            duration: 2800
+    wx.showModal({
+      title: '刷新到账',
+      content: '请确认你已支付成功。系统将扫描近 14 天订单并补发额度。',
+      confirmText: '我已付款',
+      success: (res) => {
+        if (!res.confirm) return;
+        this.setData({ reconciling: true });
+        wx.showLoading({ title: '核对订单…', mask: true });
+        virtualPay
+          .reconcileMyOrders({ forcePending: true })
+          .then((r) => {
+            const n = Math.max(0, Number(r && r.extraRounds) || 0);
+            writeExtraRounds(n);
+            this.setData({ extraRounds: n, reconciling: false });
+            this._syncExtra({ skipFlush: true });
+            this._syncVip();
+            try {
+              wx.hideLoading();
+            } catch (_) {}
+            const gained = Number(r && r.granted) || 0;
+            if (n > 0) {
+              wx.showToast({
+                title: gained ? '已补发到账：' + n + ' 点' : '当前额度 ' + n + ' 点',
+                icon: 'none',
+                duration: 2800
+              });
+            } else {
+              wx.showToast({
+                title: '未找到可补发订单，请先部署最新 virtualPay 云函数',
+                icon: 'none',
+                duration: 3200
+              });
+            }
+          })
+          .catch((err) => {
+            this.setData({ reconciling: false });
+            try {
+              wx.hideLoading();
+            } catch (_) {}
+            wx.showToast({
+              title: String((err && err.message) || '刷新失败').slice(0, 36),
+              icon: 'none'
+            });
           });
-        } else {
-          wx.showToast({
-            title: '未找到可补发订单，请确认已部署最新 virtualPay',
-            icon: 'none',
-            duration: 3200
-          });
-        }
-      })
-      .catch((err) => {
-        this.setData({ reconciling: false });
-        try {
-          wx.hideLoading();
-        } catch (_) {}
-        wx.showToast({
-          title: String((err && err.message) || '刷新失败').slice(0, 36),
-          icon: 'none'
-        });
-      });
+      }
+    });
   },
 
   _syncVip() {

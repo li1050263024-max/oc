@@ -111,13 +111,14 @@ function forceSyncQuotaAfterPay() {
 }
 
 /** 扫描近期订单并补发到额度（打开商店 / 支付后调用） */
-function reconcileMyOrders() {
+function reconcileMyOrders(opts) {
   if (!ensureCloudReady()) {
     return Promise.reject(new Error('云开发未就绪'));
   }
+  const forcePending = !!(opts && opts.forcePending);
   return callCloudFunction({
     name: 'virtualPay',
-    data: { action: 'reconcileMyOrders' },
+    data: { action: 'reconcileMyOrders', forcePending: forcePending },
     timeout: 45000
   }).then((res) => {
     const r = (res && res.result) || {};

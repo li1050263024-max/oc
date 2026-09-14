@@ -486,7 +486,7 @@ async function deliverOrderDoc(order, extras) {
  * 补发近期货币充值订单到 user_quota。
  * 代币充值（short_series_coin）平台不推道具发货，只能靠支付成功后的补发。
  */
-async function reconcileMyOrders(openid) {
+async function reconcileMyOrders(openid, event) {
   const oid = String(openid || '').trim();
   if (!oid) return { ok: false, errMsg: '缺少 openid' };
   let rows = [];
@@ -510,6 +510,7 @@ async function reconcileMyOrders(openid) {
     }
   }
 
+  const forcePending = !!(event && event.forcePending);
   const since = Date.now() - 14 * DAY_MS;
   let repaired = 0;
   let granted = 0;
@@ -518,11 +519,66 @@ async function reconcileMyOrders(openid) {
     if (!row) continue;
     const st = String(row.status || '');
     if (st === 'refunded') continue;
-    // 未付款的 pending 绝不能补发（防白嫖）
-    if (st === 'pending' && !row.clientPaidAt) continue;
     const created = Number(row.createTimeMs) || 0;
     if (created && created < since) continue;
-    const order = Object.assign({ _id: row._id || row.outTradeNo }, row);
+
+    // 未付款 pending：查微信；或用户在「刷新到账」里确认已付款后强制补发
+    if (st === 'pending' && !row.clientPaidAt) {
+      let paid = false;
+      try {
+        const c = cfg();
+        if (c.appKey && c.offerId) {
+          const token = await getAccessToken();
+          const outTradeNo = String(row.outTradeNo || row._id || '');
+          const body = {
+            openid: oid,
+            env: c.env,
+            order_id: { out_trade_no: outTradeNo }
+          };
+          const uri = '/xpay/query_order';
+          const postBody = JSON.stringify(body);
+          const paySig = hmacSha256Hex(c.appKey, uri + '&' + postBody);
+          const url =
+            'https://api.weixin.qq.com' +
+            uri +
+            '?access_token=' +
+            encodeURIComponent(token) +
+            '&pay_sig=' +
+            encodeURIComponent(paySig);
+          const q = await httpsPostJson(url, body);
+          paid = !!(
+            q &&
+            (q.order_state === 1 ||
+              q.status === 1 ||
+              (q.order && (q.order.status === 1 || q.order.order_state === 1)))
+          );
+        }
+      } catch (_) {
+        paid = false;
+      }
+      // 代币单常查不到现金单：仅当用户显式确认已付款时才补发 pending
+      if (!paid && forcePending && created && Date.now() - created > 60 * 1000) {
+        paid = true;
+      }
+      if (!paid) continue;
+      try {
+        await db
+          .collection('virtual_orders')
+          .doc(String(row.outTradeNo || row._id))
+          .update({
+            data: {
+              status: 'paid',
+              clientPaidAt: Date.now(),
+              reconcileHint: true,
+              forcePending: !!forcePending
+            }
+          });
+      } catch (_) {}
+    }
+
+    const order = Object.assign({ _id: row._id || row.outTradeNo }, row, {
+      status: st === 'pending' ? 'paid' : st
+    });
     try {
       const r = await ensureOrderGranted(order, {});
       if (r && r.ok) {
@@ -904,7 +960,7 @@ exports.main = async (event) => {
     if (!openid) return { ok: false, errMsg: '无法识别用户' };
     if (action === 'createOrder') return await createOrder(event, openid);
     if (action === 'pollOrder') return await pollOrder(event, openid);
-    if (action === 'reconcileMyOrders') return await reconcileMyOrders(openid);
+    if (action === 'reconcileMyOrders') return await reconcileMyOrders(openid, event);
     if (action === 'buyAdFree') return await buyAdFree(openid);
     return { ok: false, errMsg: '未知 action' };
   } catch (e) {
