@@ -101,8 +101,8 @@ Page({
               wx.showModal({
                 title: '已纠正重复到账',
                 content:
-                  '检测到同一笔充值被加了两次，已从 ' +
-                  (r.doubleFixedFrom || 2000) +
+                  '检测到重复订单/重复加额，已从 ' +
+                  (r.doubleFixedFrom || '?') +
                   ' 点改回 ' +
                   n +
                   ' 点。',

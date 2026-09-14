@@ -538,7 +538,9 @@ async function ensureOrderGranted(order, extras) {
 }
 
 /**
- * 纠正「只付一笔却加了两次」
+ * 纠正重复到账：
+ * A) 一笔订单却加了 2 倍额度
+ * B) 短时间内两笔同商品同额度 delivered（只付一次却生成/发货两单）——作废多余订单并扣回额度
  */
 async function repairDoubledQuota(openid) {
   const oid = String(openid || '').trim();
@@ -546,9 +548,11 @@ async function repairDoubledQuota(openid) {
   const since = Date.now() - 14 * DAY_MS;
   let rows = [];
   try {
-    const res = await db.collection('virtual_orders').where({ openid: oid }).limit(30).get();
+    const res = await db.collection('virtual_orders').where({ openid: oid }).limit(40).get();
     rows = ((res && res.data) || []).filter((r) => {
-      if (!r || String(r.status || '') === 'refunded') return false;
+      if (!r || String(r.status || '') === 'refunded' || String(r.status || '') === 'duplicate') {
+        return false;
+      }
       const created = Number(r.createTimeMs) || 0;
       return !created || created >= since;
     });
@@ -556,26 +560,111 @@ async function repairDoubledQuota(openid) {
     return { ok: false, fixed: false };
   }
 
-  const grantedOrders = rows.filter(
-    (r) => r && (Number(r.grantRounds) > 0 || r.quotaGranted || String(r.status) === 'delivered')
-  );
-
-  const seen = {};
-  let sumGrant = 0;
-  let uniqueCount = 0;
-  grantedOrders.forEach((r) => {
-    const id = String(r.outTradeNo || r._id || '');
-    if (!id || seen[id]) return;
-    seen[id] = true;
-    uniqueCount += 1;
-    sumGrant += Math.max(
-      0,
-      Number(r.grantRounds) || Number((productById(r.productId) || COIN_PACK).rounds) || 0
-    );
-  });
+  const grantedOrders = rows
+    .filter(
+      (r) =>
+        r &&
+        String(r.status) === 'delivered' &&
+        (Number(r.grantRounds) > 0 || r.quotaGranted)
+    )
+    .map((r) =>
+      Object.assign({}, r, {
+        _oid: String(r.outTradeNo || r._id || ''),
+        _g: Math.max(
+          0,
+          Number(r.grantRounds) ||
+            Number((productById(r.productId) || COIN_PACK).rounds) ||
+            0
+        ),
+        _t: Number(r.createTimeMs) || Number(r.deliveredAt) || 0,
+        _pid: String(r.productId || COIN_PACK.productId)
+      })
+    )
+    .filter((r) => r._oid && r._g > 0)
+    .sort((a, b) => a._t - b._t);
 
   const quota = await getOrCreateQuota(oid);
-  const extra = Math.max(0, Number(quota.extraRounds) || 0);
+  let extra = Math.max(0, Number(quota.extraRounds) || 0);
+
+  // —— B) 近时同商品双单：保留最早一单，其余标 duplicate 并扣额度 ——
+  const keep = {};
+  const dupes = [];
+  for (let i = 0; i < grantedOrders.length; i++) {
+    const cur = grantedOrders[i];
+    let matchedKeep = null;
+    const keys = Object.keys(keep);
+    for (let k = 0; k < keys.length; k++) {
+      const prev = keep[keys[k]];
+      if (prev._pid !== cur._pid) continue;
+      if (prev._g !== cur._g) continue;
+      // 15 分钟内同商品同额度 → 视为重复单
+      if (Math.abs(cur._t - prev._t) <= 15 * 60 * 1000) {
+        matchedKeep = prev;
+        break;
+      }
+    }
+    if (matchedKeep) {
+      dupes.push(cur);
+    } else {
+      keep[cur._oid] = cur;
+    }
+  }
+
+  if (dupes.length) {
+    let claw = 0;
+    for (let i = 0; i < dupes.length; i++) {
+      const d = dupes[i];
+      claw += d._g;
+      try {
+        await db
+          .collection('virtual_orders')
+          .doc(d._oid)
+          .update({
+            data: {
+              status: 'duplicate',
+              duplicateOf: (keep[Object.keys(keep)[0]] && keep[Object.keys(keep)[0]]._oid) || '',
+              duplicateFixedAt: Date.now(),
+              // 保留历史 grantRounds 便于审计，但不再计入有效发货
+              quotaGranted: true,
+              note: '同额近时重复单，已作废并扣回额度'
+            }
+          });
+      } catch (_) {}
+    }
+    const next = Math.max(0, extra - claw);
+    if (next !== extra) {
+      await db.collection('user_quota').doc(oid).update({
+        data: {
+          extraRounds: next,
+          updateTimeMs: Date.now(),
+          doubleGrantFixedAt: Date.now(),
+          doubleGrantFixedFrom: extra,
+          doubleGrantFixedReason: 'duplicate_orders'
+        }
+      });
+    }
+    return {
+      ok: true,
+      fixed: true,
+      from: extra,
+      to: next,
+      uniqueOrders: Object.keys(keep).length,
+      voided: dupes.map((d) => d._oid),
+      reason: 'duplicate_orders'
+    };
+  }
+
+  // —— A) 有效唯一订单合计 G，额度却是 2G ——
+  const valid = Object.keys(keep).map((k) => keep[k]);
+  // 若 keep 空（上面没进 B），用 grantedOrders 去重
+  const uniqMap = {};
+  (valid.length ? valid : grantedOrders).forEach((r) => {
+    if (!uniqMap[r._oid]) uniqMap[r._oid] = r;
+  });
+  const uniqList = Object.keys(uniqMap).map((k) => uniqMap[k]);
+  const uniqueCount = uniqList.length;
+  const sumGrant = uniqList.reduce((s, r) => s + r._g, 0);
+  extra = Math.max(0, Number((await getOrCreateQuota(oid)).extraRounds) || 0);
 
   if (uniqueCount === 1 && sumGrant > 0 && extra === sumGrant * 2) {
     await db.collection('user_quota').doc(oid).update({
@@ -583,22 +672,18 @@ async function repairDoubledQuota(openid) {
         extraRounds: sumGrant,
         updateTimeMs: Date.now(),
         doubleGrantFixedAt: Date.now(),
-        doubleGrantFixedFrom: extra
+        doubleGrantFixedFrom: extra,
+        doubleGrantFixedReason: 'double_inc'
       }
     });
-    return { ok: true, fixed: true, from: extra, to: sumGrant, uniqueOrders: uniqueCount };
-  }
-
-  if (uniqueCount >= 1 && sumGrant > 0 && extra > sumGrant && extra - sumGrant === COIN_PACK.rounds) {
-    await db.collection('user_quota').doc(oid).update({
-      data: {
-        extraRounds: sumGrant,
-        updateTimeMs: Date.now(),
-        doubleGrantFixedAt: Date.now(),
-        doubleGrantFixedFrom: extra
-      }
-    });
-    return { ok: true, fixed: true, from: extra, to: sumGrant, uniqueOrders: uniqueCount };
+    return {
+      ok: true,
+      fixed: true,
+      from: extra,
+      to: sumGrant,
+      uniqueOrders: uniqueCount,
+      reason: 'double_inc'
+    };
   }
 
   return {
@@ -607,7 +692,8 @@ async function repairDoubledQuota(openid) {
     extraRounds: extra,
     sumGrant: sumGrant,
     uniqueOrders: uniqueCount,
-    rawOrders: rows.length
+    rawOrders: rows.length,
+    deliveredOrders: grantedOrders.length
   };
 }
 
@@ -812,7 +898,7 @@ async function reconcileMyOrders(openid, event) {
       (!(Number(quota.vipExpireAt) > 0) || Number(quota.vipExpireAt) > Date.now())
     ),
     vipExpireAt: Number(quota.vipExpireAt) || 0,
-    apiVer: 'virtualPay-quota-fix-v4',
+    apiVer: 'virtualPay-quota-fix-v5',
     forcePending: forcePending
   };
 }
@@ -826,7 +912,7 @@ async function diagnosePay(openid) {
     step: 1,
     name: '云函数版本',
     ok: true,
-    detail: 'virtualPay-quota-fix-v4'
+    detail: 'virtualPay-quota-fix-v5'
   });
   steps.push({
     step: 2,
@@ -943,12 +1029,20 @@ async function diagnosePay(openid) {
     hint = '有订单但未发货：点「刷新到账」并确认已付款';
   else if (quotaExtra === 0 && vpayLogs > 0)
     hint = '已有发货日志但额度为0：可能配额文档分裂，再点刷新到账';
+  else if (
+    latest.filter((x) => x.status === 'delivered' && Number(x.grantRounds) > 0).length >= 2 &&
+    quotaExtra >= 2000
+  )
+    hint =
+      '检测到多笔已到账订单且额度为 ' +
+      quotaExtra +
+      '。若只付了一次，请点「刷新到账」自动作废重复单并改回 1000';
   else if (quotaExtra > 0) hint = '云端已有额度 ' + quotaExtra + '，若页面仍显示0是本地未同步';
   else hint = '基础检查通过，可再点刷新到账';
 
   return {
     ok: true,
-    apiVer: 'virtualPay-quota-fix-v4',
+    apiVer: 'virtualPay-quota-fix-v5',
     openidMask: oid ? oid.slice(0, 6) + '…' + oid.slice(-4) : '',
     orderCount: orderCount,
     latestOrders: latest,
@@ -1318,7 +1412,7 @@ exports.main = async (event) => {
     if (action === 'reconcileMyOrders') return await reconcileMyOrders(openid, event);
     if (action === 'diagnosePay') return await diagnosePay(openid);
     if (action === 'buyAdFree') return await buyAdFree(openid);
-    return { ok: false, errMsg: '未知 action: ' + action, apiVer: 'virtualPay-quota-fix-v4' };
+    return { ok: false, errMsg: '未知 action: ' + action, apiVer: 'virtualPay-quota-fix-v5' };
   } catch (e) {
     return { ok: false, errMsg: String((e && e.message) || e) };
   }
