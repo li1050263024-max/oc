@@ -375,7 +375,7 @@ async function hasVpayLog(outTradeNo) {
   }
 }
 
-/** 确保订单已加额度（幂等）。代币充值无道具发货推送，必须靠这条链路到账。 */
+/** 确保订单已加额度（幂等）。以订单 grantRounds 为准，占坑用 quotaGranted。 */
 async function ensureOrderGranted(order, extras) {
   if (!order) return { ok: false, errMsg: '无订单' };
   const outTradeNo = String(order.outTradeNo || order._id || '').trim();
@@ -383,14 +383,21 @@ async function ensureOrderGranted(order, extras) {
   const openid = String(order.openid || '').trim();
   if (!openid) return { ok: false, errMsg: '订单无 openid' };
   const product = productById(order.productId) || COIN_PACK;
+  const expectRounds = Math.max(0, Math.floor(Number(product.rounds) || 0));
 
-  if (await hasVpayLog(outTradeNo)) {
-    if (order.status !== 'delivered') {
-      await markDelivered(outTradeNo, {
-        mchOrderNo: extras && extras.mchOrderNo,
-        recovered: true,
-        grantRounds: Number(order.grantRounds) || product.rounds || 0
-      });
+  // 已真正加过额（有 grantRounds 且非 pendingApply，或已有 VPAY 日志）→ 绝不二次 _.inc
+  const hasGrantMark = Number(order.grantRounds) > 0 && !order.grantPendingApply;
+  const hasLog = await hasVpayLog(outTradeNo);
+  if (hasGrantMark || hasLog) {
+    if (order.status !== 'delivered' || !order.quotaGranted || !hasGrantMark) {
+      try {
+        await markDelivered(outTradeNo, {
+          mchOrderNo: extras && extras.mchOrderNo,
+          recovered: true,
+          quotaGranted: true,
+          grantRounds: Number(order.grantRounds) || expectRounds
+        });
+      } catch (_) {}
     }
     const quota = await getOrCreateQuota(openid);
     return {
@@ -398,7 +405,7 @@ async function ensureOrderGranted(order, extras) {
       already: true,
       grant: {
         extraRounds: Math.max(0, Number(quota.extraRounds) || 0),
-        rounds: Number(order.grantRounds) || product.rounds || 0,
+        rounds: Number(order.grantRounds) || expectRounds,
         vipDays: Number(order.grantVipDays) || 0,
         isVip: !!(
           quota.isVip &&
@@ -409,15 +416,199 @@ async function ensureOrderGranted(order, extras) {
     };
   }
 
-  // 假 delivered（旧逻辑未加额）：允许补发
+  // 原子占坑：grantRounds 仍为 0/不存在 才可发货
+  let claimed = 0;
+  try {
+    const claim = await db
+      .collection('virtual_orders')
+      .where({
+        _id: outTradeNo,
+        grantRounds: _.lte(0)
+      })
+      .update({
+        data: {
+          quotaGranted: true,
+          grantClaimAt: Date.now(),
+          status: 'delivering',
+          deliveringAt: Date.now(),
+          // 先写入预期额度占位，防止并发二次进入；真正加额成功后再确认
+          grantRounds: expectRounds,
+          grantPendingApply: true
+        }
+      });
+    claimed = (claim && claim.stats && claim.stats.updated) || 0;
+  } catch (_) {
+    claimed = 0;
+  }
+
+  if (!claimed) {
+    try {
+      const got = await db.collection('virtual_orders').doc(outTradeNo).get();
+      const cur = got && got.data;
+      if (cur && Number(cur.grantRounds) > 0 && !cur.grantPendingApply) {
+        const quota = await getOrCreateQuota(openid);
+        return {
+          ok: true,
+          already: true,
+          grant: {
+            extraRounds: Math.max(0, Number(quota.extraRounds) || 0),
+            rounds: Number(cur.grantRounds) || expectRounds,
+            vipDays: Number(cur.grantVipDays) || 0,
+            isVip: !!(
+              quota.isVip &&
+              (!(Number(quota.vipExpireAt) > 0) || Number(quota.vipExpireAt) > Date.now())
+            ),
+            vipExpireAt: Number(quota.vipExpireAt) || 0
+          }
+        };
+      }
+      // grantPendingApply：上次占坑后加额可能失败，允许补加额一次（仍靠 VPAY 防双加）
+      if (cur && cur.grantPendingApply && !(await hasVpayLog(outTradeNo))) {
+        claimed = 1;
+        order = Object.assign({}, order, cur);
+      } else if (!cur || !(Number(cur.grantRounds) > 0)) {
+        await db.collection('virtual_orders').doc(outTradeNo).update({
+          data: {
+            quotaGranted: true,
+            grantClaimAt: Date.now(),
+            status: 'delivering',
+            deliveringAt: Date.now(),
+            grantRounds: expectRounds,
+            grantPendingApply: true
+          }
+        });
+        claimed = 1;
+      } else {
+        const quota = await getOrCreateQuota(openid);
+        return {
+          ok: true,
+          already: true,
+          grant: {
+            extraRounds: Math.max(0, Number(quota.extraRounds) || 0),
+            rounds: Number(cur.grantRounds) || expectRounds,
+            vipDays: 0,
+            isVip: false,
+            vipExpireAt: 0
+          }
+        };
+      }
+    } catch (_) {
+      return { ok: false, busy: true, errMsg: '发货占坑失败' };
+    }
+  }
+  if (!claimed) {
+    return { ok: false, busy: true, errMsg: '发货未就绪' };
+  }
+
+  // 若 VPAY 已存在（并发），不再加额
+  if (await hasVpayLog(outTradeNo)) {
+    await markDelivered(outTradeNo, {
+      mchOrderNo: extras && extras.mchOrderNo,
+      grantRounds: expectRounds,
+      quotaGranted: true,
+      grantPendingApply: false
+    });
+    const quota = await getOrCreateQuota(openid);
+    return {
+      ok: true,
+      already: true,
+      grant: {
+        extraRounds: Math.max(0, Number(quota.extraRounds) || 0),
+        rounds: expectRounds,
+        vipDays: 0,
+        isVip: !!(
+          quota.isVip &&
+          (!(Number(quota.vipExpireAt) > 0) || Number(quota.vipExpireAt) > Date.now())
+        ),
+        vipExpireAt: Number(quota.vipExpireAt) || 0
+      }
+    };
+  }
+
   const grant = await deliverProduct(openid, product, { outTradeNo: outTradeNo });
   await markDelivered(outTradeNo, {
     mchOrderNo: extras && extras.mchOrderNo,
     grantRounds: grant.rounds,
     grantVipDays: grant.vipDays,
+    quotaGranted: true,
+    grantPendingApply: false,
     repaired: !!(order.status === 'delivered')
   });
   return { ok: true, grant: grant, already: false };
+}
+
+/**
+ * 纠正「只付一笔却加了两次」
+ */
+async function repairDoubledQuota(openid) {
+  const oid = String(openid || '').trim();
+  if (!oid) return { ok: false, fixed: false };
+  const since = Date.now() - 14 * DAY_MS;
+  let rows = [];
+  try {
+    const res = await db.collection('virtual_orders').where({ openid: oid }).limit(30).get();
+    rows = ((res && res.data) || []).filter((r) => {
+      if (!r || String(r.status || '') === 'refunded') return false;
+      const created = Number(r.createTimeMs) || 0;
+      return !created || created >= since;
+    });
+  } catch (_) {
+    return { ok: false, fixed: false };
+  }
+
+  const grantedOrders = rows.filter(
+    (r) => r && (Number(r.grantRounds) > 0 || r.quotaGranted || String(r.status) === 'delivered')
+  );
+
+  const seen = {};
+  let sumGrant = 0;
+  let uniqueCount = 0;
+  grantedOrders.forEach((r) => {
+    const id = String(r.outTradeNo || r._id || '');
+    if (!id || seen[id]) return;
+    seen[id] = true;
+    uniqueCount += 1;
+    sumGrant += Math.max(
+      0,
+      Number(r.grantRounds) || Number((productById(r.productId) || COIN_PACK).rounds) || 0
+    );
+  });
+
+  const quota = await getOrCreateQuota(oid);
+  const extra = Math.max(0, Number(quota.extraRounds) || 0);
+
+  if (uniqueCount === 1 && sumGrant > 0 && extra === sumGrant * 2) {
+    await db.collection('user_quota').doc(oid).update({
+      data: {
+        extraRounds: sumGrant,
+        updateTimeMs: Date.now(),
+        doubleGrantFixedAt: Date.now(),
+        doubleGrantFixedFrom: extra
+      }
+    });
+    return { ok: true, fixed: true, from: extra, to: sumGrant, uniqueOrders: uniqueCount };
+  }
+
+  if (uniqueCount >= 1 && sumGrant > 0 && extra > sumGrant && extra - sumGrant === COIN_PACK.rounds) {
+    await db.collection('user_quota').doc(oid).update({
+      data: {
+        extraRounds: sumGrant,
+        updateTimeMs: Date.now(),
+        doubleGrantFixedAt: Date.now(),
+        doubleGrantFixedFrom: extra
+      }
+    });
+    return { ok: true, fixed: true, from: extra, to: sumGrant, uniqueOrders: uniqueCount };
+  }
+
+  return {
+    ok: true,
+    fixed: false,
+    extraRounds: extra,
+    sumGrant: sumGrant,
+    uniqueOrders: uniqueCount,
+    rawOrders: rows.length
+  };
 }
 
 async function deliverOrderDoc(order, extras) {
@@ -591,18 +782,37 @@ async function reconcileMyOrders(openid, event) {
   }
 
   const quota = await getOrCreateQuota(oid);
+  let fix = { fixed: false };
+  try {
+    fix = await repairDoubledQuota(oid);
+  } catch (e) {
+    console.warn('[virtualPay] repairDoubledQuota', e && e.message);
+  }
+  const extraAfter = fix && fix.fixed ? Number(fix.to) : Math.max(0, Number(quota.extraRounds) || 0);
+  // 若刚纠偏，重新读一次
+  let extraRounds = extraAfter;
+  if (fix && fix.fixed) {
+    try {
+      const q2 = await getOrCreateQuota(oid);
+      extraRounds = Math.max(0, Number(q2.extraRounds) || 0);
+    } catch (_) {}
+  } else {
+    extraRounds = Math.max(0, Number(quota.extraRounds) || 0);
+  }
   return {
     ok: true,
     repaired: repaired,
     granted: granted,
     scanned: rows.length,
-    extraRounds: Math.max(0, Number(quota.extraRounds) || 0),
+    extraRounds: extraRounds,
+    doubleFixed: !!(fix && fix.fixed),
+    doubleFixedFrom: fix && fix.from,
     isVip: !!(
       quota.isVip &&
       (!(Number(quota.vipExpireAt) > 0) || Number(quota.vipExpireAt) > Date.now())
     ),
     vipExpireAt: Number(quota.vipExpireAt) || 0,
-    apiVer: 'virtualPay-quota-fix-v3',
+    apiVer: 'virtualPay-quota-fix-v4',
     forcePending: forcePending
   };
 }
@@ -616,7 +826,7 @@ async function diagnosePay(openid) {
     step: 1,
     name: '云函数版本',
     ok: true,
-    detail: 'virtualPay-quota-fix-v3'
+    detail: 'virtualPay-quota-fix-v4'
   });
   steps.push({
     step: 2,
@@ -738,13 +948,7 @@ async function diagnosePay(openid) {
 
   return {
     ok: true,
-    apiVer: 'virtualPay-quota-fix-v3',
-    openidMask: oid ? oid.slice(0, 6) + '…' + oid.slice(-4) : '',
-    orderCount: orderCount,
-    latestOrders: latest,
-    extraRounds: quotaExtra,
-    vpayLogs: vpayLogs,
-    steps: steps,
+    apiVer: 'virtualPay-quota-fix-v4',
     failedCount: steps.filter((s) => !s.ok).length,
     hint: hint
   };
@@ -1108,7 +1312,7 @@ exports.main = async (event) => {
     if (action === 'reconcileMyOrders') return await reconcileMyOrders(openid, event);
     if (action === 'diagnosePay') return await diagnosePay(openid);
     if (action === 'buyAdFree') return await buyAdFree(openid);
-    return { ok: false, errMsg: '未知 action: ' + action, apiVer: 'virtualPay-quota-fix-v3' };
+    return { ok: false, errMsg: '未知 action: ' + action, apiVer: 'virtualPay-quota-fix-v4' };
   } catch (e) {
     return { ok: false, errMsg: String((e && e.message) || e) };
   }

@@ -97,6 +97,19 @@ Page({
             } catch (_) {}
             const gained = Number(r && r.granted) || 0;
             const ver = (r && r.apiVer) || '';
+            if (r && r.doubleFixed) {
+              wx.showModal({
+                title: '已纠正重复到账',
+                content:
+                  '检测到同一笔充值被加了两次，已从 ' +
+                  (r.doubleFixedFrom || 2000) +
+                  ' 点改回 ' +
+                  n +
+                  ' 点。',
+                showCancel: false
+              });
+              return;
+            }
             if (n > 0) {
               wx.showToast({
                 title: gained ? '已补发到账：' + n + ' 点' : '当前额度 ' + n + ' 点',

@@ -650,10 +650,7 @@ async function listVirtualPayOrders(limit, openidKeyword, rangeOpts) {
       statusLabel: statusLabel,
       grantRounds: Math.max(
         0,
-        Number(row.grantRounds) ||
-          Number(row.rounds) ||
-          Number(row.buyQuantity) ||
-          0
+        Number(row.grantRounds) || Number(row.rounds) || 0
       ),
       priceYuan: priceYuan,
       priceFen: priceFen,
@@ -666,14 +663,24 @@ async function listVirtualPayOrders(limit, openidKeyword, rangeOpts) {
     (a, b) => (Number(b.createTimeMs) || 0) - (Number(a.createTimeMs) || 0)
   );
 
+  // 按订单号去重（避免 virtual_orders + redeem_logs 兜底重复）
+  const dedup = [];
+  const seenOrder = {};
+  enriched.forEach((row) => {
+    const key = String((row && (row.outTradeNo || row._id)) || '');
+    if (key && seenOrder[key]) return;
+    if (key) seenOrder[key] = true;
+    dedup.push(row);
+  });
+
   return {
     ok: true,
-    list: enriched.slice(0, Math.max(1, Number(limit) || 80)),
+    list: dedup.slice(0, Math.max(1, Number(limit) || 80)),
     warn: fetched.warn || '',
     fromMs: range.fromMs,
     toMs: range.toMs,
     rangeMode: range.mode,
-    apiVer: 'feedbackApi-pay-logs-v1'
+    apiVer: 'feedbackApi-pay-logs-v2'
   };
 }
 
