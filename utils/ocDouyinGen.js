@@ -857,6 +857,8 @@ function fillMissingCaptionsInBackground() {
     let changed = false;
     const next = list.map((clip) => {
       if (!clip) return clip;
+      // 用户自发帖允许无文案，禁止后台补默认文案
+      if (clip.isUserPost || clip.authorType === 'user') return clip;
       if (clip.content && String(clip.content).trim().length >= 4) return clip;
       const topic = { tags: (clip.tags && clip.tags.length ? clip.tags : ['日常']) };
       const cap = pickFallbackCaption({ personalityText: '' }, topic);

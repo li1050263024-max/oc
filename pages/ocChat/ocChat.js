@@ -1226,40 +1226,76 @@ Page({
 
     callCloudFunction({
       name: 'userDataSync',
-      data: { action: 'pull' },
+      data: { action: 'listChatOcSummary' },
       timeout: 55000
     })
       .then((res) => {
         const r = (res && res.result) || {};
-        if (!r.ok) throw new Error(r.errMsg || '拉取失败');
-        const ocSessions = (r.chatMeta && r.chatMeta.ocSessions) || {};
-        const ocIds = Object.keys(ocSessions).filter(
-          (id) => Array.isArray(ocSessions[id]) && ocSessions[id].length
-        );
-        if (!ocIds.length) {
+        let ocs = Array.isArray(r.ocs) ? r.ocs : [];
+        if (r.ok && ocs.length) {
+          const currentId = this.data.selectedId;
+          const ordered = ocs.slice().sort((a, b) => {
+            const idA = a && a.ocId;
+            const idB = b && b.ocId;
+            if (idA === currentId) return -1;
+            if (idB === currentId) return 1;
+            return (b.updatedAt || 0) - (a.updatedAt || 0);
+          });
+          const ocLabels = ordered.map((row) => {
+            const id = row.ocId;
+            const n = Number(row.sessionCount) || 0;
+            const mark = id === currentId ? '（当前）' : '';
+            return nameOf(id) + mark + ' · ' + n + ' 个对话';
+          });
           wx.hideLoading();
-          wx.showToast({ title: '云端暂无对话备份', icon: 'none', duration: 2600 });
-          return;
+          wx.showActionSheet({
+            itemList: ocLabels.slice(0, 6),
+            success: (pickOc) => {
+              const row = ordered[pickOc.tapIndex];
+              const ocId = row && row.ocId;
+              if (!ocId) return;
+              pickSessionForOc(ocId, []);
+            }
+          });
+          return null;
         }
-        const currentId = this.data.selectedId;
-        const ordered = ocIds.slice().sort((a, b) => {
-          if (a === currentId) return -1;
-          if (b === currentId) return 1;
-          return nameOf(a).localeCompare(nameOf(b), 'zh');
-        });
-        const ocLabels = ordered.map((id) => {
-          const n = (ocSessions[id] || []).length;
-          const mark = id === currentId ? '（当前）' : '';
-          return nameOf(id) + mark + ' · ' + n + ' 个对话';
-        });
-        wx.hideLoading();
-        wx.showActionSheet({
-          itemList: ocLabels.slice(0, 6),
-          success: (pickOc) => {
-            const ocId = ordered[pickOc.tapIndex];
-            if (!ocId) return;
-            pickSessionForOc(ocId, ocSessions[ocId] || []);
+        // 汇总失败或空：回退 meta，再由会话列表/探测过滤空壳
+        return callCloudFunction({
+          name: 'userDataSync',
+          data: { action: 'pull' },
+          timeout: 55000
+        }).then((res2) => {
+          const r2 = (res2 && res2.result) || {};
+          if (!r2.ok) throw new Error(r2.errMsg || '拉取失败');
+          const ocSessions = (r2.chatMeta && r2.chatMeta.ocSessions) || {};
+          const ocIds = Object.keys(ocSessions).filter(
+            (id) => Array.isArray(ocSessions[id]) && ocSessions[id].length
+          );
+          if (!ocIds.length) {
+            wx.hideLoading();
+            wx.showToast({ title: '云端暂无对话备份', icon: 'none', duration: 2600 });
+            return;
           }
+          const currentId = this.data.selectedId;
+          const ordered = ocIds.slice().sort((a, b) => {
+            if (a === currentId) return -1;
+            if (b === currentId) return 1;
+            return nameOf(a).localeCompare(nameOf(b), 'zh');
+          });
+          const ocLabels = ordered.map((id) => {
+            const n = (ocSessions[id] || []).length;
+            const mark = id === currentId ? '（当前）' : '';
+            return nameOf(id) + mark + ' · ' + n + ' 个对话';
+          });
+          wx.hideLoading();
+          wx.showActionSheet({
+            itemList: ocLabels.slice(0, 6),
+            success: (pickOc) => {
+              const ocId = ordered[pickOc.tapIndex];
+              if (!ocId) return;
+              pickSessionForOc(ocId, ocSessions[ocId] || []);
+            }
+          });
         });
       })
       .catch((err) => {

@@ -1,4 +1,14 @@
 <view class="sc-page">
+  <view class="sc-nav" style="padding-top: {{statusBar}}px;">
+    <view class="sc-nav-inner" style="height: {{navHeight}}px;">
+      <view class="sc-nav-back" catchtap="onExit">
+        <text class="sc-nav-back-ico">‹</text>
+      </view>
+      <text class="sc-nav-title">清理本地存储</text>
+      <view class="sc-nav-spacer"></view>
+    </view>
+  </view>
+
   <view class="sc-head">
     <text class="sc-title">清理本地存储</text>
     <text class="sc-sub">小程序本地约有 10MB 上限。下方为各部分占用估算，可勾选删除自定义 BGM，或一键清理未引用缓存。</text>

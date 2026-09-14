@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>OC 抽卡器 · 意见反馈后台</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>OC 抽卡器 · 管理后台</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -250,7 +252,7 @@
     <p class="hint" style="margin:0">
       日常只需点「刷新日汇总 / 刷新用户额度」。对话产生后约几秒会写入；
       <code>diag</code> 仅用于排障试写，不必每次跑终端。
-      后台版本：<code id="adminBuildTag">admin-v20</code>
+      后台版本：<code id="adminBuildTag">admin-v21-settings</code>
     </p>
   </div>
   <div class="panel">
@@ -399,20 +401,17 @@
     />
     <label>管理密钥</label>
     <input id="redeemAdminKey" type="text" placeholder="oc-feedback-admin-2026" />
-    <div style="padding:12px 14px;margin:0 0 14px;border-radius:10px;background:linear-gradient(135deg,#fff7ed,#ffedd5);border:1px solid #fdba74">
-      <strong style="display:block;margin-bottom:6px;color:#9a3412">会员月卡 ¥9.9</strong>
-      <p class="hint" style="margin:0 0 10px;color:#9a3412">会员仅享免广告；次数/额度/选人规则与普通用户相同。可在「用量统计」对单用户开通/关闭会员。</p>
-      <div class="row" id="redeemVipTiers" style="flex-wrap:wrap;gap:8px;margin:0">
-        <button type="button" class="choice-btn redeem-vip-btn is-on-orange" data-days="30" data-price="9.9">¥9.9 → 月卡（30天·含每周100对话）</button>
-      </div>
+    <div style="padding:12px 14px;margin:0 0 14px;border-radius:10px;background:linear-gradient(135deg,#f5f3ff,#ede9fe);border:1px solid #c4b5fd">
+      <strong style="display:block;margin-bottom:6px;color:#5b21b6">对话轮次兑换码</strong>
+      <p class="hint" style="margin:0;color:#5b21b6">默认生成轮次码。会员相关请到「用量统计 → 用户额度」单用户操作；本页可不选会员类型。</p>
     </div>
     <p class="hint" style="margin:0 0 12px">
-      也可生成<strong>对话轮次码</strong>。码状态 / 分享记录请切到「刷新明细」。
+      码状态 / 分享记录请切到「刷新明细」。
     </p>
     <label>码类型</label>
     <div class="row" id="redeemKindBtns" style="margin-bottom:12px;gap:10px;flex-wrap:wrap;align-items:center">
       <button type="button" class="choice-btn redeem-kind-btn is-on" data-kind="rounds">对话轮次</button>
-      <button type="button" class="choice-btn redeem-kind-btn" data-kind="vip">会员月卡</button>
+      <button type="button" class="choice-btn redeem-kind-btn" data-kind="vip">会员（运维）</button>
       <button type="button" class="choice-btn redeem-kind-btn" data-kind="combo">会员+轮次</button>
     </div>
     <input id="redeemKindValue" type="hidden" value="rounds" />

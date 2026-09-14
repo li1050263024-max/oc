@@ -2,6 +2,8 @@ const clean = require('../../../utils/ocLocalStorageClean.js');
 
 Page({
   data: {
+    statusBar: 20,
+    navHeight: 44,
     loading: true,
     kvText: '',
     categories: [],
@@ -9,6 +11,19 @@ Page({
     selectedCount: 0,
     orphanAudioText: '',
     orphanImageHint: ''
+  },
+
+  onLoad() {
+    try {
+      const sys = wx.getSystemInfoSync();
+      const menu = wx.getMenuButtonBoundingClientRect
+        ? wx.getMenuButtonBoundingClientRect()
+        : null;
+      const statusBar = Number(sys.statusBarHeight) || 20;
+      const navHeight =
+        menu && menu.height ? menu.height + (menu.top - statusBar) * 2 : 44;
+      this.setData({ statusBar: statusBar, navHeight: navHeight });
+    } catch (_) {}
   },
 
   onShow() {

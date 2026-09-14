@@ -207,7 +207,12 @@
             <text class="dy-date-sep">·</text>
             <text class="dy-date">{{item.dateLabel}}</text>
           </view>
-          <view class="dy-caption-wrap" catchtap="onToggleCaption" data-id="{{item.id}}">
+          <view
+            class="dy-caption-wrap"
+            wx:if="{{item.content}}"
+            catchtap="onToggleCaption"
+            data-id="{{item.id}}"
+          >
             <text
               class="dy-caption {{expandedCaptions[item.id] ? 'dy-caption--open' : 'dy-caption--clamp'}}"
               user-select

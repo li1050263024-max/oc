@@ -413,7 +413,20 @@ async function pullChatSession(openid, event) {
   const sessionId = String((event && event.sessionId) || 'default').trim() || 'default';
   if (!ocId) return { ok: false, errMsg: '缺少 ocId' };
   const docId = sessionDocId(openid, ocId, sessionId);
-  const doc = await getDoc('user_chat_msgs', docId);
+  let doc = await getDoc('user_chat_msgs', docId);
+  const msgLen = (d) => (Array.isArray(d && d.messages) ? d.messages.length : 0);
+  // 文档 _id 与 sessionDocId 不一致时（历史/冲突），按字段回查
+  if (!doc || !msgLen(doc)) {
+    try {
+      const res = await db
+        .collection('user_chat_msgs')
+        .where({ openid: openid, ocId: ocId, sessionId: sessionId })
+        .limit(10)
+        .get();
+      const rows = ((res && res.data) || []).slice().sort((a, b) => msgLen(b) - msgLen(a));
+      if (rows.length && msgLen(rows[0]) > msgLen(doc)) doc = rows[0];
+    } catch (_) {}
+  }
   if (!doc) return { ok: true, session: null };
   return {
     ok: true,
@@ -425,6 +438,39 @@ async function pullChatSession(openid, event) {
       updatedAt: Number(doc.updatedAt) || 0
     }
   };
+}
+
+/** 按真实消息文档汇总 OC，避免 meta 空壳显示「有对话」 */
+async function listChatOcSummary(openid) {
+  let rows = [];
+  try {
+    const res = await db
+      .collection('user_chat_msgs')
+      .where({ openid: openid })
+      .limit(100)
+      .get();
+    rows = (res && res.data) || [];
+  } catch (e) {
+    return { ok: false, errMsg: (e && e.message) || '查询失败', ocs: [] };
+  }
+  const byOc = {};
+  rows.forEach((doc) => {
+    if (!doc) return;
+    const oid = String(doc.ocId || '').trim();
+    if (!oid) return;
+    const n = Array.isArray(doc.messages) ? doc.messages.length : 0;
+    if (n <= 0) return;
+    if (!byOc[oid]) {
+      byOc[oid] = { ocId: oid, sessionCount: 0, messageCount: 0, updatedAt: 0 };
+    }
+    byOc[oid].sessionCount += 1;
+    byOc[oid].messageCount += n;
+    byOc[oid].updatedAt = Math.max(byOc[oid].updatedAt, Number(doc.updatedAt) || 0);
+  });
+  const ocs = Object.keys(byOc)
+    .map((k) => byOc[k])
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  return { ok: true, ocs: ocs };
 }
 
 /** 按真实消息文档列会话，避免 meta 空壳可选却无内容 */
@@ -470,6 +516,7 @@ exports.main = async (event) => {
   try {
     if (action === 'pull') return await pullAll(openid);
     if (action === 'listBackup') return await listBackup(openid);
+    if (action === 'listChatOcSummary') return await listChatOcSummary(openid);
     if (action === 'listChatSessions') return await listChatSessions(openid, event);
     if (action === 'pullChatSession') return await pullChatSession(openid, event);
     if (action === 'pushNotebook') return await pushNotebook(openid, event);
